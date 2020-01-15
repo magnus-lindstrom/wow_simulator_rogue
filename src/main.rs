@@ -1,29 +1,66 @@
+/* TODO
+ * - add check that throws warning if we've been without SnD for too long
+ * - during last 5s, when to evis?
+ * - implement 21 energy increase sometimes
+ * - implement correct energy loss when missing
+ * - buffs, how does BoK work in detail?
+ * - Implement armor reduction
+ * - Implement boss crit reduction
+ */
+extern crate rand;
+
+use rand::distributions::{Distribution, Uniform};
 
 
 fn main() {
 
-    let fight_length = 30.0;
+
+    let fight_length = 60.0;
     let dt = 0.1;
     let mut wep1 = Weapon {
         speed: 2.7,
-        mean_dmg: 90,
+        mean_dmg: 90.0,
         is_offhand: false,
         extra_hit_proc_chance: 3.79
     };
     let mut wep2 = Weapon {
         speed: 1.8,
-        mean_dmg: 90,
+        mean_dmg: 90.0,
         is_offhand: true,
         extra_hit_proc_chance: 0.0
     };
 
     let mut character = Rogue {
         energy: 100,
-        agility: 100,
-        strength: 100,
-        crit: 20.0,
-        hit: 9.0,
-        weapon_skill: 300,
+        agility: 371,
+        strength: 140,
+        attack_power: 80, // IMPORTANT: just attack power given directly by gear
+        crit: 0.212,
+        hit: 0.08,
+        dodge: 0.0,
+        white_miss: 0.0,
+        yellow_miss: 0.0,
+        glancing: 0.40,
+        glancing_red: 0.0,
+        weapon_skill: 310,
+        combo_points: 0
+    };
+    // Store and sort out all numbers for hit/miss/dodge/glancing
+    character.dodge = get_dodge_chance(character.weapon_skill);
+    character.white_miss = get_white_miss_chance(character.weapon_skill);
+    if character.hit > character.white_miss { character.white_miss = 0.0; }
+    else { character.white_miss -= character.hit; }
+    character.yellow_miss = get_yellow_miss_chance(character.weapon_skill);
+    if character.hit > character.yellow_miss { character.yellow_miss = 0.0; }
+    else { character.yellow_miss -= character.hit; }
+    character.glancing_red = get_glancing_reduction(character.weapon_skill);
+
+    print_hit_chances(&character);
+
+    let mut buffs = BuffsActive {
+        blade_flurry: 0.0,
+        snd: 0.0,
+        adrenaline_rush: 0.0
     };
 
     let mut time_struct = TimeTilEvents {
@@ -34,64 +71,325 @@ fn main() {
         fight_ends: fight_length
     };
 
-    let mut tot_dmg = 0;
+    let mut tot_dmg = 0.0;
     while time_struct.fight_ends > 0.0 {
         if time_struct.glob_cd_refresh <= 0.0 {
-            let dmg = yellow_attack(&mut character, &mut time_struct);
-            if dmg > 0 { tot_dmg += dmg; }
+            let dmg = yellow_attack(&mut character, &mut buffs, 
+                                    &wep1, &mut time_struct);
+            if dmg > 0.0 { tot_dmg += dmg; }
         }
         if time_struct.wep1_swing <= 0.0 {
             let dmg = white_attack(character, &mut wep1, time_struct.fight_ends);
-            time_struct.wep1_swing = wep1.speed;
+            if buffs.snd > 0.0 {
+                time_struct.wep1_swing = wep1.speed * 0.7;
+            } else {
+                time_struct.wep1_swing = wep1.speed;
+            }
+
             tot_dmg += dmg;
         }
         if time_struct.wep2_swing <= 0.0 {
             let dmg = white_attack(character, &mut wep2, time_struct.fight_ends);
-            time_struct.wep2_swing = wep2.speed;
+            if buffs.snd > 0.0 {
+                time_struct.wep2_swing = wep2.speed * 0.7;
+            } else {
+                time_struct.wep2_swing = wep2.speed;
+            }
             tot_dmg += dmg;
         }
-        subtract_times(&mut character, &mut time_struct, dt);
+        subtract_times(&mut character, &mut time_struct, &mut buffs, dt);
+    }
+    println!("Dps during {:} seconds was {:}.", fight_length, 
+             tot_dmg/fight_length);
+}
+
+fn print_hit_chances(character: &Rogue) {
+
+    println!("*** White hits summary ***");
+    println!("miss chance: {:}", character.white_miss);
+    println!("dodge chance: {:}", character.dodge);
+    println!("glancing chance: {:}", character.glancing);
+    println!("crit chance: {:}", character.crit);
+    let mut tmp = character.white_miss;
+    let mut tmp1 = tmp + character.dodge;
+    let mut tmp2 = tmp1 + character.glancing;
+    let mut tmp3 = tmp2 + character.crit;
+    println!("{:}-{:}-{:}-{:}\n", tmp, tmp1, tmp2, tmp3);
+    
+    println!("*** Yellow hits summary ***");
+    println!("miss chance: {:}", character.yellow_miss);
+    println!("dodge chance: {:}", character.dodge);
+    println!("glancing chance: {:}", character.glancing);
+    println!("crit chance: {:}", character.crit);
+    tmp = character.yellow_miss;
+    tmp1 = tmp + character.dodge;
+    tmp2 = tmp1 + character.glancing;
+    tmp3 = tmp2 + character.crit;
+    println!("{:}-{:}-{:}-{:}\n", tmp, tmp1, tmp2, tmp3);
+}
+
+fn announce_hit(dmg: f32, attack_type: String, hit_type: String, time: f32) {
+    if attack_type == "sin_strike" {
+        println!("{:2.1}: Sinister strike {} for {:.0}", time, hit_type, dmg);
+    } else if attack_type == "evis" {
+        println!("{:2.1}: Eviscerate {} for {:.0}", time, hit_type, dmg);
+    } else if attack_type == "mh_white" {
+        println!("{:2.1}: MH white {} for {:.0}", time, hit_type, dmg);
+    } else if attack_type == "oh_white" {
+        println!("{:2.1}: OH white {} for {:.0}", time, hit_type, dmg);
+    } else if attack_type == "snd" {
+        println!("{:2.1}: Slice and dice applied for {:.2}s", time, dmg);
     }
 }
 
-fn announce_hit(dmg: u16, hit_type: String, time: f32) {
-    if hit_type == "sin_strike" {
-        println!("{:2.1}: Sinister strike for {:}", time, dmg);
-    } else if hit_type == "evis" {
-        println!("{:2.1}: Eviscerate for {:}", time, dmg);
-    } else if hit_type == "mh_hit" {
-        println!("{:2.1}: Main hand white hit for {:}", time, dmg);
-    } else if hit_type == "oh_hit" {
-        println!("{:2.1}: Off hand white hit for {:}", time, dmg);
-    }
+fn roll_die() -> f32 {
+    let mut rng = rand::thread_rng();
+    let roll_range = Uniform::from(100..10_000); // not including upper bound
+    let roll = roll_range.sample(&mut rng);
+    let roll: f32 = (roll as f32) / 10_000.0;
+    return roll;
 }
 
-fn yellow_attack(mut character: &mut Rogue, 
-                 mut time_struct: &mut TimeTilEvents) -> u16 {
-    let mut dmg = 0;
-    if character.energy >= 40 {
+fn determine_hit(character: &Rogue, color: String) -> String {
+
+    let roll: f32 = roll_die();
+    // println!("rolled {:}", roll);
+
+    if color == "yellow" {
+
+        if roll < character.yellow_miss { return "miss".to_string(); }
+        let mut percent_sum = character.yellow_miss + character.dodge;
+        if roll < percent_sum { return "dodge".to_string(); }
+        percent_sum += character.glancing;
+        if roll < percent_sum { return "glancing".to_string(); }
+        percent_sum += character.crit;
+        if roll < percent_sum { return "crit".to_string(); }
+        return "hit".to_string();
+
+    } else if color == "white" {
+
+        if roll < character.white_miss { return "miss".to_string(); }
+        let mut percent_sum = character.white_miss + character.dodge;
+        if roll < percent_sum { return "dodge".to_string(); }
+        percent_sum += character.glancing;
+        if roll < percent_sum { return "glancing".to_string(); }
+        percent_sum += character.crit;
+        if roll < percent_sum { return "crit".to_string(); }
+        return "hit".to_string();
+
+    } else { panic!("can only strike yellow or white hits"); }
+
+}
+
+fn sinister_strike(character: &mut Rogue, wep: &Weapon, 
+                   time_struct: &TimeTilEvents) -> f32 {
+
+    let hit_result = determine_hit(&character, "yellow".to_string());
+    let mut dmg: f32 = 0.0;
+
+    if hit_result == "miss" {
+        character.energy -= 5; //todo fix this
+        dmg = 0.0;
+
+    } else if hit_result == "dodge" {
+        character.energy -= 5; //todo fix this
+        dmg = 0.0;
+
+    } else if hit_result == "glancing" {
         character.energy -= 40;
-        dmg = 200;
+        dmg = get_sinister_strike_dmg(&wep, &character);
+        dmg *= character.glancing_red;
+        character.combo_points += 1;
+
+    } else if hit_result == "crit" {
+        character.energy -= 40;
+        dmg = get_sinister_strike_dmg(&wep, &character);
+        dmg *= 2.0;
+        character.combo_points += 1;
+
+    } else if hit_result == "hit" {
+        character.energy -= 40;
+        dmg = get_sinister_strike_dmg(&wep, &character);
+        character.combo_points += 1;
+    }
+    announce_hit(dmg, "sin_strike".to_string(), hit_result, 
+                 time_struct.fight_ends);
+    return dmg;
+}
+
+fn eviscerate(character: &mut Rogue, time_struct: &TimeTilEvents) -> f32 {
+
+    let hit_result = determine_hit(&character, "yellow".to_string());
+    let mut dmg: f32 = 0.0;
+
+    if hit_result == "miss" || hit_result == "dodge" {
+        dmg = 0.0;
+
+    } else if hit_result == "glancing" {
+        character.energy -= 35;
+        dmg = get_evis_dmg(character);
+        dmg *= character.glancing_red;
+        character.combo_points = 0;
+
+    } else if hit_result == "crit" {
+        character.energy -= 35;
+        dmg = get_evis_dmg(character);
+        dmg *= 2.0;
+        character.combo_points = 0;
+
+    } else if hit_result == "hit" {
+        dmg = get_evis_dmg(character);
+        character.combo_points = 0;
+    }
+    character.energy -= 35;
+    announce_hit(dmg, "evis".to_string(), hit_result, 
+                 time_struct.fight_ends);
+    return dmg;
+}
+
+fn yellow_attack(character: &mut Rogue, mut buffs: &mut BuffsActive,
+                 wep: &Weapon, mut time_struct: &mut TimeTilEvents) -> f32 {
+    let mut dmg = 0.0;
+    
+    let can_sinister = character.energy >= 40;
+    let can_eviscerate = character.energy >= 35;
+    let can_snd = character.energy >= 25;
+    let snd_active = buffs.snd > 0.0;
+
+    // Short snd if not applied at 2 combo points
+    if character.combo_points == 2 && can_snd && !snd_active {
+        character.energy -= 25;
+        buffs.snd = snd_duration(character.combo_points);
         time_struct.glob_cd_refresh = 1.0;
-        announce_hit(dmg, "sin_strike".to_string(), time_struct.fight_ends);
+        character.combo_points = 0;
+        announce_hit(buffs.snd, "snd".to_string(), "snd".to_string(), 
+                     time_struct.fight_ends);
+    // Sinister strike if not yet at 5 combo points
+    } else if character.combo_points < 5 && can_sinister {
+        dmg = sinister_strike(character, wep, &time_struct);
+        time_struct.glob_cd_refresh = 1.0;
+        if character.combo_points > 5 { character.combo_points = 5; }
+
+    // Long snd if no snd at 5 combo points
+    } else if character.combo_points == 5 && can_snd && !snd_active {
+        character.energy -= 25;
+        buffs.snd = snd_duration(character.combo_points);
+        time_struct.glob_cd_refresh = 1.0;
+        character.combo_points = 0;
+        announce_hit(buffs.snd, "snd".to_string(), "snd".to_string(),
+                     time_struct.fight_ends);
+    // Full eviscerate at 5 combo points if snd is up
+    } else if character.combo_points == 5 && snd_active && can_eviscerate { 
+        dmg = eviscerate(character, &time_struct);
+        time_struct.glob_cd_refresh = 1.0;
     }
     return dmg;
 }
 
-fn white_attack(rogue: Rogue, mut weapon: &mut Weapon, time_left: f32) -> u16 {
-    let mut dmg = weapon.mean_dmg;
+fn get_glancing_reduction(wep_skill: u16) -> f32 {
+    if wep_skill == 305 { return 0.15; }
+    else if wep_skill == 306 { return 0.11; }
+    else if wep_skill == 307 { return 0.07; }
+    else if wep_skill == 308 { return 0.05; }
+    else if wep_skill == 309 { return 0.05; }
+    else if wep_skill == 310 { return 0.05; }
+    else { panic!("weapon skill not implemented"); }
+}
+
+fn get_dodge_chance(wep_skill: u16) -> f32 {
+    let dodge_chance = 0.05 + (315 - wep_skill) as f32 * 0.001;
+    return dodge_chance;
+}
+
+fn get_yellow_miss_chance(wep_skill: u16) -> f32 {
+    let miss_chance = 0.05 + (315 - wep_skill) as f32 * 0.001;
+    return miss_chance;
+}
+
+fn get_white_miss_chance(wep_skill: u16) -> f32 {
+    let yellow_miss_chance = get_yellow_miss_chance(wep_skill);
+    let miss_chance = 0.8 * yellow_miss_chance + 0.2;
+    return miss_chance;
+}
+
+fn get_total_attack_power(character: &Rogue) -> f32 {
+    let attack_power = 100 + character.agility + character.strength 
+        + character.attack_power;
+    return attack_power as f32;
+}
+
+fn get_wep_dmg(wep: &Weapon, character: &Rogue) -> f32 {
+
+    let attack_power = get_total_attack_power(&character);
+    let dmg = wep.mean_dmg + attack_power * wep.speed / 14.0;
+    return dmg;
+}
+
+fn get_sinister_strike_dmg(wep: &Weapon, character: &Rogue) -> f32 {
+    let normal_wep_dmg = get_wep_dmg(&wep, &character);
+    let dmg = normal_wep_dmg + 68.0;
+    return dmg;
+}
+
+fn snd_duration(combo_points: u16) -> f32 {
+
+    let mut dur: f32 = 0.0;
+    if combo_points == 1 { dur = 9.0; }
+    if combo_points == 2 { dur = 12.0; }
+    if combo_points == 3 { dur = 15.0; }
+    if combo_points == 4 { dur = 18.0; }
+    if combo_points == 5 { dur = 21.0; }
+    dur *= 1.3;
+
+    return dur;
+}
+
+fn get_evis_dmg(mut character: &mut Rogue) -> f32 {
+    let mut dmg = 0.0;
+    if character.combo_points == 1 { dmg = 247.0; }
+    else if character.combo_points == 2 { dmg = 398.0; }
+    else if character.combo_points == 3 { dmg = 549.0; }
+    else if character.combo_points == 4 { dmg = 700.0; }
+    else if character.combo_points == 5 { dmg = 851.0; }
+    else { panic!("Invalid nr of combo points in get_evis_dmg"); }
+
+    let attack_power = get_total_attack_power(&character);
+    dmg += (attack_power * (character.combo_points as f32)) * 0.05;
+    return dmg
+}
+
+fn white_attack(character: Rogue, mut weapon: &mut Weapon, 
+                time_left: f32) -> f32 {
+    let hit_result = determine_hit(&character, "white".to_string());
+    let announce_string: String;
     if weapon.is_offhand {
-        dmg = (dmg as f32 * 0.8) as u16;
-        announce_hit(dmg, "oh_hit".to_string(), time_left);
+        announce_string = "oh_white".to_string();
     } else {
-        announce_hit(dmg, "mh_hit".to_string(), time_left);
+        announce_string = "mh_white".to_string();
     }
+
+    if hit_result == "miss" || hit_result == "dodge" { 
+        announce_hit(0.0, announce_string, hit_result, time_left);
+        return 0.0;
+    }
+
+    let mut dmg = get_wep_dmg(&weapon, &character);
+    if weapon.is_offhand {
+        dmg = dmg * 0.8;
+    } 
+    if hit_result == "glancing" { 
+        dmg *= 1.0 - character.glancing_red;
+    } else if hit_result == "crit" { 
+        dmg *= 2.0;
+    }
+    announce_hit(dmg, announce_string, hit_result, time_left);
+
     return dmg;
 }
 
 struct Weapon {
     speed: f32,
-    mean_dmg: u16,
+    mean_dmg: f32,
     is_offhand: bool,
     extra_hit_proc_chance: f32
 }
@@ -101,9 +399,22 @@ struct Rogue {
     energy: i8,
     agility: u16,
     strength: u16,
+    attack_power: u16, // IMPORTANT: just attack power given directly by gear
     crit: f32,
     hit: f32,
-    weapon_skill: u16
+    weapon_skill: u16,
+    dodge: f32,
+    white_miss: f32,
+    yellow_miss: f32,
+    glancing: f32,
+    glancing_red: f32,
+    combo_points: u16
+}
+
+struct BuffsActive {
+    blade_flurry: f32,
+    snd: f32,
+    adrenaline_rush: f32
 }
 
 struct TimeTilEvents {
@@ -119,7 +430,8 @@ fn deb<T: std::fmt::Debug>(x: T) {
 }
 
 fn subtract_times(mut character: &mut Rogue, 
-                  mut time_struct: &mut TimeTilEvents, dt: f32) {
+                  mut time_struct: &mut TimeTilEvents, 
+                  mut buffs: &mut BuffsActive, dt: f32) {
 
     if time_struct.glob_cd_refresh > 0.0 {
         time_struct.glob_cd_refresh -= dt;
@@ -135,7 +447,6 @@ fn subtract_times(mut character: &mut Rogue,
     if time_struct.energy_refill <= 0.0 { 
 
         time_struct.energy_refill = 2.0; 
-        //todo: sometimes add 21 energy
         if character.energy < 81 {
             character.energy += 20;
         } else if character.energy >= 81 {
@@ -143,6 +454,15 @@ fn subtract_times(mut character: &mut Rogue,
         }
     }
     time_struct.fight_ends -= dt;
+
+    if buffs.blade_flurry > 0.0 {
+        buffs.blade_flurry -= dt;
+    }
+    if buffs.adrenaline_rush > 0.0 {
+        buffs.adrenaline_rush -= dt;
+    }
+    // want to see for how long we've been without slice and dice
+    buffs.snd -= dt;
 }
 
 /*
