@@ -1,5 +1,4 @@
 /* TODO
- * - add check that throws warning if we've been without SnD for too long
  * - during last 5s, when to evis?
  * - implement 21 energy increase sometimes
  * - implement correct energy loss when missing
@@ -21,7 +20,7 @@ fn main() {
         speed: 2.7,
         mean_dmg: 90.0,
         is_offhand: false,
-        extra_hit_proc_chance: 3.79
+        extra_hit_proc_chance: 0.0379
     };
     let mut wep2 = Weapon {
         speed: 1.8,
@@ -43,6 +42,7 @@ fn main() {
         glancing: 0.40,
         glancing_red: 0.0,
         weapon_skill: 310,
+        extra_hit_proc_chance: 0.02, // NOTE does not include thrash blade proc
         combo_points: 0
     };
     // Store and sort out all numbers for hit/miss/dodge/glancing
@@ -73,28 +73,51 @@ fn main() {
 
     let mut tot_dmg = 0.0;
     while time_struct.fight_ends > 0.0 {
+        let extra_attacks: i8 = 0;
         if time_struct.glob_cd_refresh <= 0.0 {
-            let dmg = yellow_attack(&mut character, &mut buffs, 
-                                    &wep1, &mut time_struct);
+            let (dmg, extra_swing) = yellow_attack(&mut character, &mut buffs,
+                                                   &wep1, &mut time_struct);
             if dmg > 0.0 { tot_dmg += dmg; }
+            if extra_swing { extra_attacks += 1; }
         }
+        // check if oh is ready for swing
+        if time_struct.wep2_swing <= 0.0 {
+            let (dmg, extra_swing) = white_attack(character, &mut wep2, 
+                                                  time_struct.fight_ends);
+            if buffs.snd > 0.0 {
+                time_struct.wep2_swing = wep2.speed * 0.7;
+            } else {
+                time_struct.wep2_swing = wep2.speed;
+            }
+            tot_dmg += dmg;
+            if extra_swing { extra_attacks += 1; }
+        }
+        // check if extra swings are lined up
+        while extra_attacks > 0 {
+            println!("Extra swing!");
+            let (dmg, extra_swing) = white_attack(character, &mut wep1, 
+                                                  time_struct.fight_ends);
+            // reset swing timer for MH
+            if buffs.snd > 0.0 {
+                time_struct.wep1_swing = wep1.speed * 0.7;
+            } else {
+                time_struct.wep1_swing = wep1.speed;
+            }
+            tot_dmg += dmg;
+            if !extra_swing {
+                extra_attacks -= 1;
+            }
+        }
+
+        // check if mh is ready for swing
         if time_struct.wep1_swing <= 0.0 {
-            let dmg = white_attack(character, &mut wep1, time_struct.fight_ends);
+            let (dmg, extra_swing) = white_attack(character, &mut wep1, time_struct.fight_ends);
             if buffs.snd > 0.0 {
                 time_struct.wep1_swing = wep1.speed * 0.7;
             } else {
                 time_struct.wep1_swing = wep1.speed;
             }
 
-            tot_dmg += dmg;
-        }
-        if time_struct.wep2_swing <= 0.0 {
-            let dmg = white_attack(character, &mut wep2, time_struct.fight_ends);
-            if buffs.snd > 0.0 {
-                time_struct.wep2_swing = wep2.speed * 0.7;
-            } else {
-                time_struct.wep2_swing = wep2.speed;
-            }
             tot_dmg += dmg;
         }
         subtract_times(&mut character, &mut time_struct, &mut buffs, dt);
@@ -256,7 +279,7 @@ fn yellow_attack(character: &mut Rogue, mut buffs: &mut BuffsActive,
     let can_snd = character.energy >= 25;
     let snd_active = buffs.snd > 0.0;
 
-    // Short snd if not applied at 2 combo points
+    // Short snd if no snd up at 2 combo points
     if character.combo_points == 2 && can_snd && !snd_active {
         character.energy -= 25;
         buffs.snd = snd_duration(character.combo_points);
@@ -270,7 +293,7 @@ fn yellow_attack(character: &mut Rogue, mut buffs: &mut BuffsActive,
         time_struct.glob_cd_refresh = 1.0;
         if character.combo_points > 5 { character.combo_points = 5; }
 
-    // Long snd if no snd at 5 combo points
+    // Long snd if no snd up at 5 combo points
     } else if character.combo_points == 5 && can_snd && !snd_active {
         character.energy -= 25;
         buffs.snd = snd_duration(character.combo_points);
@@ -344,8 +367,8 @@ fn snd_duration(combo_points: u16) -> f32 {
     return dur;
 }
 
-fn get_evis_dmg(mut character: &mut Rogue) -> f32 {
-    let mut dmg = 0.0;
+fn get_evis_dmg(character: &mut Rogue) -> f32 {
+    let mut dmg: f32 ;
     if character.combo_points == 1 { dmg = 247.0; }
     else if character.combo_points == 2 { dmg = 398.0; }
     else if character.combo_points == 3 { dmg = 549.0; }
@@ -358,7 +381,7 @@ fn get_evis_dmg(mut character: &mut Rogue) -> f32 {
     return dmg
 }
 
-fn white_attack(character: Rogue, mut weapon: &mut Weapon, 
+fn white_attack(character: Rogue, weapon: &mut Weapon, 
                 time_left: f32) -> f32 {
     let hit_result = determine_hit(&character, "white".to_string());
     let announce_string: String;
@@ -387,6 +410,13 @@ fn white_attack(character: Rogue, mut weapon: &mut Weapon,
     return dmg;
 }
 
+fn armor_reduction(dmg: f32) -> f32 {
+    let x = 0.1 * 3731 / (8.5 * 60 + 40);
+    let red = x / (1 + x);
+    return dmg * (1 - red);
+}
+
+
 struct Weapon {
     speed: f32,
     mean_dmg: f32,
@@ -408,6 +438,7 @@ struct Rogue {
     yellow_miss: f32,
     glancing: f32,
     glancing_red: f32,
+    extra_hit_proc_chance: f32,
     combo_points: u16
 }
 
