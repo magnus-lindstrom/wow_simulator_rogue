@@ -71,9 +71,10 @@ fn main() {
         fight_ends: fight_length
     };
 
+    let mut extra_attacks: i8 = 0;
     let mut tot_dmg = 0.0;
+
     while time_struct.fight_ends > 0.0 {
-        let extra_attacks: i8 = 0;
         if time_struct.glob_cd_refresh <= 0.0 {
             let (dmg, extra_swing) = yellow_attack(&mut character, &mut buffs,
                                                    &wep1, &mut time_struct);
@@ -82,7 +83,7 @@ fn main() {
         }
         // check if oh is ready for swing
         if time_struct.wep2_swing <= 0.0 {
-            let (dmg, extra_swing) = white_attack(character, &mut wep2, 
+            let (dmg, extra_swing) = white_attack(&mut character, &mut wep2, 
                                                   time_struct.fight_ends);
             if buffs.snd > 0.0 {
                 time_struct.wep2_swing = wep2.speed * 0.7;
@@ -95,7 +96,7 @@ fn main() {
         // check if extra swings are lined up
         while extra_attacks > 0 {
             println!("Extra swing!");
-            let (dmg, extra_swing) = white_attack(character, &mut wep1, 
+            let (dmg, extra_swing) = white_attack(&mut character, &mut wep1, 
                                                   time_struct.fight_ends);
             // reset swing timer for MH
             if buffs.snd > 0.0 {
@@ -111,13 +112,16 @@ fn main() {
 
         // check if mh is ready for swing
         if time_struct.wep1_swing <= 0.0 {
-            let (dmg, extra_swing) = white_attack(character, &mut wep1, time_struct.fight_ends);
+            let (dmg, extra_swing) = white_attack(&mut character, 
+                                                  &mut wep1, 
+                                                  time_struct.fight_ends);
             if buffs.snd > 0.0 {
                 time_struct.wep1_swing = wep1.speed * 0.7;
             } else {
                 time_struct.wep1_swing = wep1.speed;
             }
 
+            if extra_swing { extra_attacks += 1; }
             tot_dmg += dmg;
         }
         subtract_times(&mut character, &mut time_struct, &mut buffs, dt);
@@ -166,6 +170,8 @@ fn announce_hit(dmg: f32, attack_type: String, hit_type: String, time: f32) {
 }
 
 fn roll_die() -> f32 {
+    // rolls a die between [0, 1)
+    
     let mut rng = rand::thread_rng();
     let roll_range = Uniform::from(100..10_000); // not including upper bound
     let roll = roll_range.sample(&mut rng);
@@ -271,8 +277,12 @@ fn eviscerate(character: &mut Rogue, time_struct: &TimeTilEvents) -> f32 {
 }
 
 fn yellow_attack(character: &mut Rogue, mut buffs: &mut BuffsActive,
-                 wep: &Weapon, mut time_struct: &mut TimeTilEvents) -> f32 {
+                 wep: &Weapon, 
+                 mut time_struct: &mut TimeTilEvents) -> (f32, bool) {
+    // returns dmg and a true bool if an extra attack was triggered
+    
     let mut dmg = 0.0;
+    let mut extra_hit: bool = false;
     
     let can_sinister = character.energy >= 40;
     let can_eviscerate = character.energy >= 35;
@@ -290,6 +300,9 @@ fn yellow_attack(character: &mut Rogue, mut buffs: &mut BuffsActive,
     // Sinister strike if not yet at 5 combo points
     } else if character.combo_points < 5 && can_sinister {
         dmg = sinister_strike(character, wep, &time_struct);
+        if dmg > 0.0 {
+            extra_hit = roll_for_extra_hit(character, wep);
+        }
         time_struct.glob_cd_refresh = 1.0;
         if character.combo_points > 5 { character.combo_points = 5; }
 
@@ -304,9 +317,19 @@ fn yellow_attack(character: &mut Rogue, mut buffs: &mut BuffsActive,
     // Full eviscerate at 5 combo points if snd is up
     } else if character.combo_points == 5 && snd_active && can_eviscerate { 
         dmg = eviscerate(character, &time_struct);
+        if dmg > 0.0 {
+            extra_hit = roll_for_extra_hit(character, wep);
+        }
         time_struct.glob_cd_refresh = 1.0;
     }
-    return dmg;
+    return (dmg, extra_hit);
+}
+
+fn roll_for_extra_hit(character: &mut Rogue, wep: &Weapon) -> bool {
+    let die = roll_die();
+    if die < character.extra_hit_proc_chance + wep.extra_hit_proc_chance {
+        return true;
+    } else { return false; }
 }
 
 fn get_glancing_reduction(wep_skill: u16) -> f32 {
@@ -381,11 +404,13 @@ fn get_evis_dmg(character: &mut Rogue) -> f32 {
     return dmg
 }
 
-fn white_attack(character: Rogue, weapon: &mut Weapon, 
-                time_left: f32) -> f32 {
+fn white_attack(character: &mut Rogue, wep: &mut Weapon, 
+                time_left: f32) -> (f32, bool) {
+    // returns damage and a bool that is true if an extra swing procced
+
     let hit_result = determine_hit(&character, "white".to_string());
     let announce_string: String;
-    if weapon.is_offhand {
+    if wep.is_offhand {
         announce_string = "oh_white".to_string();
     } else {
         announce_string = "mh_white".to_string();
@@ -393,11 +418,11 @@ fn white_attack(character: Rogue, weapon: &mut Weapon,
 
     if hit_result == "miss" || hit_result == "dodge" { 
         announce_hit(0.0, announce_string, hit_result, time_left);
-        return 0.0;
+        return (0.0, false);
     }
 
-    let mut dmg = get_wep_dmg(&weapon, &character);
-    if weapon.is_offhand {
+    let mut dmg = get_wep_dmg(&wep, &character);
+    if wep.is_offhand {
         dmg = dmg * 0.8;
     } 
     if hit_result == "glancing" { 
@@ -406,14 +431,15 @@ fn white_attack(character: Rogue, weapon: &mut Weapon,
         dmg *= 2.0;
     }
     announce_hit(dmg, announce_string, hit_result, time_left);
+    let extra_hit: bool = roll_for_extra_hit(character, wep);
 
-    return dmg;
+    return (dmg, extra_hit);
 }
 
 fn armor_reduction(dmg: f32) -> f32 {
-    let x = 0.1 * 3731 / (8.5 * 60 + 40);
-    let red = x / (1 + x);
-    return dmg * (1 - red);
+    let x = 0.1 * 3731.0 / (8.5 * 60.0 + 40.0);
+    let red = x / (1.0 + x);
+    return dmg * (1.0 - red);
 }
 
 
