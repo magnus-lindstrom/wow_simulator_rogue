@@ -8,12 +8,13 @@
  */
 extern crate rand;
 
+use std::env;
 use rand::distributions::{Distribution, Uniform};
 
 
 fn main() {
 
-
+    let args: Vec<String> = env::args().collect();  
     let fight_length = 60.0;
     let dt = 0.1;
     let mut wep1 = Weapon {
@@ -128,6 +129,37 @@ fn main() {
     }
     println!("Dps during {:} seconds was {:}.", fight_length, 
              tot_dmg/fight_length);
+}
+
+
+fn get_params(param_path: String) -> Rogue {
+    let mut character: Rogue = init_rogue();
+    let mut param_field: u8 = 0; // to check what part the file is about
+    let mut read_last: bool = false;
+    let f = File::open("src/params").expect("Couldn't open params file");
+    let file = BufReader::new(&f);
+    for line in file.lines() {
+        let l = line.unwrap();
+        let first_char = l.chars().next().unwrap();
+        if first_char != '#' && first_char != '@' {
+            read_last = true;
+            param_adder(param_field, &l, &mut par_struct);
+            continue;
+        }
+
+        if read_last {
+            param_field += 1;
+        }
+        read_last = false;
+    }
+    // make a list of unlocked letters as well, for convenience
+    for letter in &par_struct.letters {
+        let mut iter = par_struct.locked_letters.keys();
+        if let None = iter.find(|&lock_let| lock_let == letter) {
+            par_struct.free_letters.push(*letter);
+        }
+    }
+    par_struct
 }
 
 fn print_hit_chances(character: &Rogue) {
@@ -520,6 +552,26 @@ fn subtract_times(mut character: &mut Rogue,
     }
     // want to see for how long we've been without slice and dice
     buffs.snd -= dt;
+}
+
+fn init_rogue() -> Rogue {
+
+    let mut character = Rogue {
+        energy: 100,
+        agility: 0,
+        strength: 0,
+        attack_power: 0, // IMPORTANT: just attack power given directly by gear
+        crit: 0.0,
+        hit: 0.0,
+        dodge: 0.0,
+        white_miss: 0.0,
+        yellow_miss: 0.0,
+        glancing: 0.0,
+        glancing_red: 0.0,
+        weapon_skill: 0,
+        extra_hit_proc_chance: 0.0, // NOTE does not include thrash blade proc
+        combo_points: 0
+    }
 }
 
 /*

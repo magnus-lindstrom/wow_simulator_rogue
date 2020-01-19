@@ -1,0 +1,39 @@
+# This file contains the stats of the character to be analysed.
+# 
+# Lines beginning with # or @ will not be interpreted by program.
+#
+# Sections containing information to be read must be preceded by a line
+# starting with @ and finished with @
+#
+# comments can be make within sections with the # character, following
+# information
+@@@@
+stats
+agility 371
+strength 140
+attack_power 80 # OBS just attack power given directly by gear
+crit 0.212
+hit 0.08
+weapon_skill 310
+extra_hit_proc_chance 0.02 # OBS does not include weapons
+@@@@
+#
+#
+# Next sections contains talents
+# It is assumed that a combat rogue with standard dual wield sword specc
+# is being simulated, so only talents that are relevant to this build,
+# and that does not fall under the 'stats' section above will be
+# mentioned
+#
+# name of talent, followed by nr of points spent on it
+#
+@@@@
+talents
+aggression 5
+improved_eviscerate 0
+ruthlessness 3
+improved_slice_and_dice 3
+relentless_strikes 1
+lethality 5
+@@@@
+
