@@ -7,15 +7,24 @@
 #
 # comments can be make within sections with the # character, following
 # information
-@@@@
-stats
+@@@@ stats gained from armor + weapons
 agility 371
 strength 140
 attack_power 80 # OBS just attack power given directly by gear
-crit 0.212
+crit 0.05
 hit 0.08
 weapon_skill 310
 extra_hit_proc_chance 0.02 # OBS does not include weapons
+@@@@
+# Next section deals with special gear abilities.
+# The supported abilities are listed below
+#
+# - thrash_blade (chance to procc extra swings)
+# - shadowcraft_six_bonus (chance to gain 35 energy on hit)
+#
+@@@@
+thrash_blade
+shadowcraft_six_bonus
 @@@@
 #
 #
@@ -28,7 +37,6 @@ extra_hit_proc_chance 0.02 # OBS does not include weapons
 # name of talent, followed by nr of points spent on it
 #
 @@@@
-talents
 aggression 5
 improved_eviscerate 0
 ruthlessness 3

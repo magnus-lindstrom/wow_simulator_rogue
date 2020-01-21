@@ -1,10 +1,11 @@
 /* TODO
- * - during last 5s, when to evis?
- * - implement 21 energy increase sometimes
- * - implement correct energy loss when missing
- * - buffs, how does BoK work in detail?
- * - Implement armor reduction
- * - Implement boss crit reduction
+ * - implement 21 energy increase sometimes (every fourth tic, roughly)
+ * - add buff support, BoK comes after all other buffs
+ * - Implement boss crit reduction 
+ * - read from params file 
+ * - Implement the option to modify stats to gain insight on how important
+ *   specific stats are at different levels
+ *   - maybe print to file to plot with python?
  */
 extern crate rand;
 
