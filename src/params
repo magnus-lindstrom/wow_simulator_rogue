@@ -8,11 +8,11 @@
 # comments can be make within sections with the # character, following
 # information
 @@@@ stats gained from armor + weapons
-agility 371
+agility 383
 strength 140
 attack_power 80 # OBS just attack power given directly by gear
-crit 0.05
-hit 0.08
+crit 0.04
+hit 0.04
 weapon_skill 310
 extra_hit_proc_chance 0.02 # OBS does not include weapons
 @@@@
@@ -37,8 +37,14 @@ shadowcraft_six_bonus
 # name of talent, followed by nr of points spent on it
 #
 @@@@
-aggression 5
+imp_sin_strike 2
+precision 5
+dw_specialization 5
+sword_specialization 5
+weapon_expertise 2
+aggression 3
 improved_eviscerate 0
+malice 5
 ruthlessness 3
 improved_slice_and_dice 3
 relentless_strikes 1

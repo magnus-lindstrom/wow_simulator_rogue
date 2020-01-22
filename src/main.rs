@@ -1,7 +1,9 @@
 /* TODO
+ * - make param_adder work
  * - implement 21 energy increase sometimes (every fourth tic, roughly)
  * - add buff support, BoK comes after all other buffs
  * - Implement boss crit reduction 
+ * - Implement full formula for calculating crit chance.
  * - read from params file 
  * - Implement the option to modify stats to gain insight on how important
  *   specific stats are at different levels
@@ -10,6 +12,8 @@
 extern crate rand;
 
 use std::env;
+use std::fs::File;
+use std::io::{BufRead, BufReader, stdin, stdout, Read, Write};
 use rand::distributions::{Distribution, Uniform};
 
 
@@ -130,37 +134,6 @@ fn main() {
     }
     println!("Dps during {:} seconds was {:}.", fight_length, 
              tot_dmg/fight_length);
-}
-
-
-fn get_params(param_path: String) -> Rogue {
-    let mut character: Rogue = init_rogue();
-    let mut param_field: u8 = 0; // to check what part the file is about
-    let mut read_last: bool = false;
-    let f = File::open("src/params").expect("Couldn't open params file");
-    let file = BufReader::new(&f);
-    for line in file.lines() {
-        let l = line.unwrap();
-        let first_char = l.chars().next().unwrap();
-        if first_char != '#' && first_char != '@' {
-            read_last = true;
-            param_adder(param_field, &l, &mut par_struct);
-            continue;
-        }
-
-        if read_last {
-            param_field += 1;
-        }
-        read_last = false;
-    }
-    // make a list of unlocked letters as well, for convenience
-    for letter in &par_struct.letters {
-        let mut iter = par_struct.locked_letters.keys();
-        if let None = iter.find(|&lock_let| lock_let == letter) {
-            par_struct.free_letters.push(*letter);
-        }
-    }
-    par_struct
 }
 
 fn print_hit_chances(character: &Rogue) {
@@ -573,6 +546,70 @@ fn init_rogue() -> Rogue {
         extra_hit_proc_chance: 0.0, // NOTE does not include thrash blade proc
         combo_points: 0
     }
+}
+
+fn read_params() -> Rogue {
+    
+    let mut param_field: u8 = 0; // to check what part the file is about
+    let mut character: Rogue = init_rogue();
+
+    let f = File::open("src/params").expect("Couldn't open params file");
+    let file = BufReader::new(&f);
+    for line in file.lines() {
+        let l = line.unwrap();
+        let first_char = l.chars().next().unwrap();
+        if first_char != '#' && first_char != '@' {
+            read_last = true;
+            param_adder(param_field, &l, &mut character);
+            continue;
+        }
+
+        if read_last {
+            param_field += 1;
+        }
+        read_last = false;
+    }
+    character
+}
+  
+fn param_adder(nr: u8, text: &str, par_struct: &mut Params) {
+
+    if nr == 0 {
+        match text.parse() {
+            Ok(x) => par_struct.nr_min_loss_target = x,
+            Err(x) => panic!("Wrong number of loss target in params file. {}", x)
+        }
+    }
+
+    if nr == 1 {
+        par_struct.keyboard_file = text.to_string();
+    } else if nr == 2 {
+        for c in text.chars() {
+            if c != ' ' {
+                par_struct.letters.push(c);
+            }
+        }
+    } else if nr == 3 {
+        par_struct.unused_keys.push(text.to_string());
+    } else if nr == 4 {
+        let mut iter = text.split_whitespace();
+        let letter = iter.next().unwrap().chars().next().unwrap();
+        let key_name = iter.next().unwrap().to_string();
+        par_struct.locked_letters.insert(letter, key_name);
+    } else if nr == 5 {
+        par_struct.loss_params.insert("out_roll_punish".to_string(), 
+                                      text.parse().unwrap());
+    } else if nr == 6 {
+        par_struct.loss_params.insert("same_fing_punish".to_string(), 
+                                      text.parse().unwrap());
+    } else if nr == 7 {
+        par_struct.loss_params.insert("big_y_jump_punish".to_string(), 
+                                      text.parse().unwrap());
+    } else if nr == 8 {
+        par_struct.loss_params.insert("hill_shape_punish".to_string(), 
+                                      text.parse().unwrap());
+    }
+
 }
 
 /*

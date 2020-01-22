@@ -1,0 +1,21 @@
+# Overview of the mechanics of wow classic, used in these simulations
+
+Main source of information comes from
+https://github.com/magey/classic-warrior/wiki/Attack-table
+
+Other findings in game:
+
+- BoK is applied after all other buffs, irrespective of buff order. Has
+  been confirmed in game.
+- When missing a sinister strike, 8 energy is lost. Has been confirmed
+  in game.
+- When missing a eviscerate, 35 energy is lost. Has been confirmed in
+  game.
+- Weapon damage is calculated through 
+  wep_mean_dmg + wep_speed * attack_power / 14
+- Dual wield specialization gives a damage increase of 50%. This is
+  simply multiplied with the factor of .5 that comes with dual wield,
+  for off hand. Comes to .75. Stats backing this are available on google
+  drive.
+- Every 5 energy ticks, on average, 21 energy is restored instead of the
+  usual 20. Confirmed in game.
