@@ -10,11 +10,31 @@
 @@@@ stats gained from armor + weapons
 agility 383
 strength 140
-attack_power 80 # OBS just attack power given directly by gear
+attack_power 80
 crit 0.04
 hit 0.04
 weapon_skill 310
-extra_hit_proc_chance 0.02 # OBS does not include weapons
+extra_hit_proc_chance 0.07
+@@@@
+#
+#
+#
+# Weapons now
+#
+#
+@@@@ main hand
+speed 2.7
+mean_dmg 90.0
+is_offhand false
+extra_hit_proc_chance 0.0379
+@@@@
+#
+#
+@@@@ off hand
+speed 1.8
+mean_dmg 90.0
+is_offhand true
+extra_hit_proc_chance 0.0
 @@@@
 # Next section deals with special gear abilities.
 # The supported abilities are listed below
@@ -23,7 +43,6 @@ extra_hit_proc_chance 0.02 # OBS does not include weapons
 # - shadowcraft_six_bonus (chance to gain 35 energy on hit)
 #
 @@@@
-thrash_blade
 shadowcraft_six_bonus
 @@@@
 #
@@ -50,4 +69,3 @@ improved_slice_and_dice 3
 relentless_strikes 1
 lethality 5
 @@@@
-

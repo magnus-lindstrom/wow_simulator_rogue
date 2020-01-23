@@ -1,10 +1,10 @@
 /* TODO
- * - make param_adder work
  * - implement 21 energy increase sometimes (every fourth tic, roughly)
  * - add buff support, BoK comes after all other buffs
+ * - Insert correct values for mirah's song and thrash blade.
  * - Implement boss crit reduction 
  * - Implement full formula for calculating crit chance.
- * - read from params file 
+ * - Implement CORRECT hit calculation
  * - Implement the option to modify stats to gain insight on how important
  *   specific stats are at different levels
  *   - maybe print to file to plot with python?
@@ -13,127 +13,137 @@ extern crate rand;
 
 use std::env;
 use std::fs::File;
-use std::io::{BufRead, BufReader, stdin, stdout, Read, Write};
+use std::io::{BufRead, BufReader};
 use rand::distributions::{Distribution, Uniform};
 
 
 fn main() {
 
-    let args: Vec<String> = env::args().collect();  
+    let n_runs = 1000;
     let fight_length = 60.0;
+    let mut verb = false;
     let dt = 0.1;
-    let mut wep1 = Weapon {
-        speed: 2.7,
-        mean_dmg: 90.0,
-        is_offhand: false,
-        extra_hit_proc_chance: 0.0379
-    };
-    let mut wep2 = Weapon {
-        speed: 1.8,
-        mean_dmg: 90.0,
-        is_offhand: true,
-        extra_hit_proc_chance: 0.0
-    };
 
-    let mut character = Rogue {
-        energy: 100,
-        agility: 371,
-        strength: 140,
-        attack_power: 80, // IMPORTANT: just attack power given directly by gear
-        crit: 0.212,
-        hit: 0.08,
-        dodge: 0.0,
-        white_miss: 0.0,
-        yellow_miss: 0.0,
-        glancing: 0.40,
-        glancing_red: 0.0,
-        weapon_skill: 310,
-        extra_hit_proc_chance: 0.02, // NOTE does not include thrash blade proc
-        combo_points: 0
-    };
-    // Store and sort out all numbers for hit/miss/dodge/glancing
-    character.dodge = get_dodge_chance(character.weapon_skill);
-    character.white_miss = get_white_miss_chance(character.weapon_skill);
-    if character.hit > character.white_miss { character.white_miss = 0.0; }
-    else { character.white_miss -= character.hit; }
-    character.yellow_miss = get_yellow_miss_chance(character.weapon_skill);
-    if character.hit > character.yellow_miss { character.yellow_miss = 0.0; }
-    else { character.yellow_miss -= character.hit; }
-    character.glancing_red = get_glancing_reduction(character.weapon_skill);
+    let args: Vec<String> = env::args().collect();
+    if args.len() == 1 { 
+        println!("Usage: supply one argument, the param file followed by a -v for verbose, if wanted.");
+    }
+
+    let param_file = &args[1];
+
+    let mut total_extra_hits: u16 = 0;
+    let mut total_mh_hits: u16 = 0;
+    let mut total_oh_hits: u16 = 0;
+
+    let mut character: Rogue;
+    let mut wep1: Weapon;
+    let mut wep2: Weapon;
+    let char_tuple: (Rogue, Weapon, Weapon) = read_params(param_file);
+    character = char_tuple.0;
+    wep1 = char_tuple.1;
+    wep2 = char_tuple.2;
+
+    calculate_hit_numbers(&mut character);
 
     print_hit_chances(&character);
 
-    let mut buffs = BuffsActive {
-        blade_flurry: 0.0,
-        snd: 0.0,
-        adrenaline_rush: 0.0
-    };
+    let mut dps_vec = Vec::new();
 
-    let mut time_struct = TimeTilEvents {
-        glob_cd_refresh: 0.0,
-        wep1_swing: 0.0,
-        wep2_swing: 0.0,
-        energy_refill: 0.0,
-        fight_ends: fight_length
-    };
+    for i_run in 0..n_runs {
 
-    let mut extra_attacks: i8 = 0;
-    let mut tot_dmg = 0.0;
+        let mut buffs = BuffsActive {
+            blade_flurry: 0.0,
+            snd: 0.0,
+            adrenaline_rush: 0.0
+        };
 
-    while time_struct.fight_ends > 0.0 {
-        if time_struct.glob_cd_refresh <= 0.0 {
-            let (dmg, extra_swing) = yellow_attack(&mut character, &mut buffs,
-                                                   &wep1, &mut time_struct);
-            if dmg > 0.0 { tot_dmg += dmg; }
-            if extra_swing { extra_attacks += 1; }
-        }
-        // check if oh is ready for swing
-        if time_struct.wep2_swing <= 0.0 {
-            let (dmg, extra_swing) = white_attack(&mut character, &mut wep2, 
-                                                  time_struct.fight_ends);
-            if buffs.snd > 0.0 {
-                time_struct.wep2_swing = wep2.speed * 0.7;
-            } else {
-                time_struct.wep2_swing = wep2.speed;
+        let mut time_struct = TimeTilEvents {
+            glob_cd_refresh: 0.0,
+            wep1_swing: 0.0,
+            wep2_swing: 0.0,
+            energy_refill: 0.0,
+            fight_ends: fight_length
+        };
+
+        let mut extra_attacks: i8 = 0;
+        let mut tot_dmg = 0.0;
+
+        while time_struct.fight_ends > 0.0 {
+            if time_struct.glob_cd_refresh <= 0.0 {
+                let (dmg, extra_swing) = yellow_attack(&mut character, &mut buffs,
+                                                       &wep1, &mut time_struct,
+                                                       verb);
+                if dmg > 0.0 { 
+                    tot_dmg += dmg; 
+                    total_mh_hits += 1;
+                }
+                if extra_swing { extra_attacks += 1; }
             }
-            tot_dmg += dmg;
-            if extra_swing { extra_attacks += 1; }
+            // check if oh is ready for swing
+            if time_struct.wep2_swing <= 0.0 {
+                let (dmg, extra_swing) = white_attack(&mut character, &mut wep2, 
+                                                      time_struct.fight_ends,
+                                                      verb);
+                if dmg > 0.0 { total_oh_hits += 1; }
+                if buffs.snd > 0.0 {
+                    time_struct.wep2_swing = wep2.speed * 0.7;
+                } else {
+                    time_struct.wep2_swing = wep2.speed;
+                }
+                tot_dmg += dmg;
+                if extra_swing { extra_attacks += 1; }
+            }
+            // check if extra swings are lined up
+            while extra_attacks > 0 {
+                if verb { println!("Extra swing!"); }
+                total_extra_hits += 1;
+                total_mh_hits += 1;
+                let (dmg, extra_swing) = white_attack(&mut character, &mut wep1, 
+                                                      time_struct.fight_ends,
+                                                      verb);
+                // reset swing timer for MH
+                if buffs.snd > 0.0 {
+                    time_struct.wep1_swing = wep1.speed * 0.7;
+                } else {
+                    time_struct.wep1_swing = wep1.speed;
+                }
+                tot_dmg += dmg;
+                if !extra_swing {
+                    extra_attacks -= 1;
+                }
+            }
+
+            // check if mh is ready for swing
+            if time_struct.wep1_swing <= 0.0 {
+                let (dmg, extra_swing) = white_attack(&mut character, 
+                                                      &mut wep1, 
+                                                      time_struct.fight_ends,
+                                                      verb);
+                if dmg > 0.0 { total_mh_hits += 1; }
+                if buffs.snd > 0.0 {
+                    time_struct.wep1_swing = wep1.speed * 0.7;
+                } else {
+                    time_struct.wep1_swing = wep1.speed;
+                }
+
+                if extra_swing { extra_attacks += 1; }
+                tot_dmg += dmg;
+            }
+            subtract_times(&mut character, &mut time_struct, &mut buffs, dt);
         }
-        // check if extra swings are lined up
-        while extra_attacks > 0 {
-            println!("Extra swing!");
-            let (dmg, extra_swing) = white_attack(&mut character, &mut wep1, 
-                                                  time_struct.fight_ends);
-            // reset swing timer for MH
-            if buffs.snd > 0.0 {
-                time_struct.wep1_swing = wep1.speed * 0.7;
-            } else {
-                time_struct.wep1_swing = wep1.speed;
-            }
-            tot_dmg += dmg;
-            if !extra_swing {
-                extra_attacks -= 1;
-            }
+        if verb {
+            println!("\nDps during {:} seconds was {:}.", fight_length, 
+                     tot_dmg/fight_length);
+            println!("Total number of mh/of hits: {}/{}.", total_mh_hits, 
+                     total_oh_hits);
+            println!("Total number of extra hits: {}.", total_extra_hits);
         }
 
-        // check if mh is ready for swing
-        if time_struct.wep1_swing <= 0.0 {
-            let (dmg, extra_swing) = white_attack(&mut character, 
-                                                  &mut wep1, 
-                                                  time_struct.fight_ends);
-            if buffs.snd > 0.0 {
-                time_struct.wep1_swing = wep1.speed * 0.7;
-            } else {
-                time_struct.wep1_swing = wep1.speed;
-            }
-
-            if extra_swing { extra_attacks += 1; }
-            tot_dmg += dmg;
-        }
-        subtract_times(&mut character, &mut time_struct, &mut buffs, dt);
+        // store dps of run
+        dps_vec.push(tot_dmg/fight_length);
     }
-    println!("Dps during {:} seconds was {:}.", fight_length, 
-             tot_dmg/fight_length);
+
+    println!("Average dps for {} was {:}.", param_file, mean(&dps_vec));
 }
 
 fn print_hit_chances(character: &Rogue) {
@@ -217,7 +227,7 @@ fn determine_hit(character: &Rogue, color: String) -> String {
 }
 
 fn sinister_strike(character: &mut Rogue, wep: &Weapon, 
-                   time_struct: &TimeTilEvents) -> f32 {
+                   time_struct: &TimeTilEvents, verb: bool) -> f32 {
 
     let hit_result = determine_hit(&character, "yellow".to_string());
     let mut dmg: f32 = 0.0;
@@ -247,12 +257,15 @@ fn sinister_strike(character: &mut Rogue, wep: &Weapon,
         dmg = get_sinister_strike_dmg(&wep, &character);
         character.combo_points += 1;
     }
-    announce_hit(dmg, "sin_strike".to_string(), hit_result, 
-                 time_struct.fight_ends);
+    if verb {
+        announce_hit(dmg, "sin_strike".to_string(), hit_result, 
+                     time_struct.fight_ends);
+    }
     return dmg;
 }
 
-fn eviscerate(character: &mut Rogue, time_struct: &TimeTilEvents) -> f32 {
+fn eviscerate(character: &mut Rogue, time_struct: &TimeTilEvents,
+              verb: bool) -> f32 {
 
     let hit_result = determine_hit(&character, "yellow".to_string());
     let mut dmg: f32 = 0.0;
@@ -277,14 +290,17 @@ fn eviscerate(character: &mut Rogue, time_struct: &TimeTilEvents) -> f32 {
         character.combo_points = 0;
     }
     character.energy -= 35;
-    announce_hit(dmg, "evis".to_string(), hit_result, 
-                 time_struct.fight_ends);
+    if verb {
+        announce_hit(dmg, "evis".to_string(), hit_result, 
+                     time_struct.fight_ends);
+    }
     return dmg;
 }
 
 fn yellow_attack(character: &mut Rogue, mut buffs: &mut BuffsActive,
                  wep: &Weapon, 
-                 mut time_struct: &mut TimeTilEvents) -> (f32, bool) {
+                 mut time_struct: &mut TimeTilEvents,
+                 verb: bool) -> (f32, bool) {
     // returns dmg and a true bool if an extra attack was triggered
     
     let mut dmg = 0.0;
@@ -301,11 +317,13 @@ fn yellow_attack(character: &mut Rogue, mut buffs: &mut BuffsActive,
         buffs.snd = snd_duration(character.combo_points);
         time_struct.glob_cd_refresh = 1.0;
         character.combo_points = 0;
-        announce_hit(buffs.snd, "snd".to_string(), "snd".to_string(), 
-                     time_struct.fight_ends);
+        if verb {
+            announce_hit(buffs.snd, "snd".to_string(), "snd".to_string(), 
+                         time_struct.fight_ends);
+        }
     // Sinister strike if not yet at 5 combo points
     } else if character.combo_points < 5 && can_sinister {
-        dmg = sinister_strike(character, wep, &time_struct);
+        dmg = sinister_strike(character, wep, &time_struct, verb);
         if dmg > 0.0 {
             extra_hit = roll_for_extra_hit(character, wep);
         }
@@ -318,11 +336,13 @@ fn yellow_attack(character: &mut Rogue, mut buffs: &mut BuffsActive,
         buffs.snd = snd_duration(character.combo_points);
         time_struct.glob_cd_refresh = 1.0;
         character.combo_points = 0;
-        announce_hit(buffs.snd, "snd".to_string(), "snd".to_string(),
-                     time_struct.fight_ends);
+        if verb {
+            announce_hit(buffs.snd, "snd".to_string(), "snd".to_string(),
+                         time_struct.fight_ends);
+        }
     // Full eviscerate at 5 combo points if snd is up
     } else if character.combo_points == 5 && snd_active && can_eviscerate { 
-        dmg = eviscerate(character, &time_struct);
+        dmg = eviscerate(character, &time_struct, verb);
         if dmg > 0.0 {
             extra_hit = roll_for_extra_hit(character, wep);
         }
@@ -411,7 +431,7 @@ fn get_evis_dmg(character: &mut Rogue) -> f32 {
 }
 
 fn white_attack(character: &mut Rogue, wep: &mut Weapon, 
-                time_left: f32) -> (f32, bool) {
+                time_left: f32, verb: bool) -> (f32, bool) {
     // returns damage and a bool that is true if an extra swing procced
 
     let hit_result = determine_hit(&character, "white".to_string());
@@ -423,7 +443,9 @@ fn white_attack(character: &mut Rogue, wep: &mut Weapon,
     }
 
     if hit_result == "miss" || hit_result == "dodge" { 
-        announce_hit(0.0, announce_string, hit_result, time_left);
+        if verb {
+            announce_hit(0.0, announce_string, hit_result, time_left);
+        }
         return (0.0, false);
     }
 
@@ -436,7 +458,7 @@ fn white_attack(character: &mut Rogue, wep: &mut Weapon,
     } else if hit_result == "crit" { 
         dmg *= 2.0;
     }
-    announce_hit(dmg, announce_string, hit_result, time_left);
+    if verb { announce_hit(dmg, announce_string, hit_result, time_left); }
     let extra_hit: bool = roll_for_extra_hit(character, wep);
 
     return (dmg, extra_hit);
@@ -447,7 +469,6 @@ fn armor_reduction(dmg: f32) -> f32 {
     let red = x / (1.0 + x);
     return dmg * (1.0 - red);
 }
-
 
 struct Weapon {
     speed: f32,
@@ -471,6 +492,19 @@ struct Rogue {
     glancing: f32,
     glancing_red: f32,
     extra_hit_proc_chance: f32,
+    shadowcraft_six_bonus: bool,
+    imp_sin_strike: u8,
+    precision: u8,
+    dw_specialization: u8,
+    sword_specialization: u8,
+    weapon_expertise: u8,
+    aggression: u8,
+    improved_eviscerate: u8,
+    malice: u8,
+    ruthlessness: u8,
+    improved_slice_and_dice: u8,
+    relentless_strikes: u8,
+    lethality: u8,
     combo_points: u16
 }
 
@@ -530,7 +564,7 @@ fn subtract_times(mut character: &mut Rogue,
 
 fn init_rogue() -> Rogue {
 
-    let mut character = Rogue {
+    let character = Rogue {
         energy: 100,
         agility: 0,
         strength: 0,
@@ -544,23 +578,54 @@ fn init_rogue() -> Rogue {
         glancing_red: 0.0,
         weapon_skill: 0,
         extra_hit_proc_chance: 0.0, // NOTE does not include thrash blade proc
+        shadowcraft_six_bonus: false,
+        imp_sin_strike: 0,
+        precision: 0,
+        dw_specialization: 0,
+        sword_specialization: 0,
+        weapon_expertise: 0,
+        aggression: 0,
+        improved_eviscerate: 0,
+        malice: 0,
+        ruthlessness: 0,
+        improved_slice_and_dice: 0,
+        relentless_strikes: 0,
+        lethality: 0,
         combo_points: 0
-    }
+    };
+    return character;
 }
 
-fn read_params() -> Rogue {
+fn init_weapon() -> Weapon {
+
+    let wep = Weapon {
+        speed: 0.0,
+        mean_dmg: 0.0,
+        is_offhand: false,
+        extra_hit_proc_chance: 0.0
+    };
+    return wep;
+}
+
+fn read_params(param_file: &String) -> (Rogue, Weapon, Weapon) {
     
     let mut param_field: u8 = 0; // to check what part the file is about
+    let mut read_last = false;
     let mut character: Rogue = init_rogue();
+    let mut wep1: Weapon = init_weapon();
+    let mut wep2: Weapon = init_weapon();
 
-    let f = File::open("src/params").expect("Couldn't open params file");
+    let f = File::open(param_file).expect("Couldn't open param_file");
     let file = BufReader::new(&f);
     for line in file.lines() {
         let l = line.unwrap();
         let first_char = l.chars().next().unwrap();
         if first_char != '#' && first_char != '@' {
             read_last = true;
-            param_adder(param_field, &l, &mut character);
+            if param_field == 1 { weapon_adder(&l, &mut wep1); }
+            else if param_field == 2 { weapon_adder(&l, &mut wep2); } 
+            else { param_adder(&l, &mut character); }
+
             continue;
         }
 
@@ -569,47 +634,168 @@ fn read_params() -> Rogue {
         }
         read_last = false;
     }
-    character
+    (character, wep1, wep2)
 }
   
-fn param_adder(nr: u8, text: &str, par_struct: &mut Params) {
+fn param_adder(text: &str, character: &mut Rogue) {
 
-    if nr == 0 {
-        match text.parse() {
-            Ok(x) => par_struct.nr_min_loss_target = x,
-            Err(x) => panic!("Wrong number of loss target in params file. {}", x)
+    let words = text.split_whitespace();
+    let words_vec = words.collect::<Vec<&str>>();
+    if words_vec[0] == "agility" {
+        match words_vec[1].parse() {
+            Ok(x) => character.agility = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
         }
-    }
-
-    if nr == 1 {
-        par_struct.keyboard_file = text.to_string();
-    } else if nr == 2 {
-        for c in text.chars() {
-            if c != ' ' {
-                par_struct.letters.push(c);
-            }
+    } else if words_vec[0] == "strength" { 
+        match words_vec[1].parse() {
+            Ok(x) => character.strength = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
         }
-    } else if nr == 3 {
-        par_struct.unused_keys.push(text.to_string());
-    } else if nr == 4 {
-        let mut iter = text.split_whitespace();
-        let letter = iter.next().unwrap().chars().next().unwrap();
-        let key_name = iter.next().unwrap().to_string();
-        par_struct.locked_letters.insert(letter, key_name);
-    } else if nr == 5 {
-        par_struct.loss_params.insert("out_roll_punish".to_string(), 
-                                      text.parse().unwrap());
-    } else if nr == 6 {
-        par_struct.loss_params.insert("same_fing_punish".to_string(), 
-                                      text.parse().unwrap());
-    } else if nr == 7 {
-        par_struct.loss_params.insert("big_y_jump_punish".to_string(), 
-                                      text.parse().unwrap());
-    } else if nr == 8 {
-        par_struct.loss_params.insert("hill_shape_punish".to_string(), 
-                                      text.parse().unwrap());
+    } else if words_vec[0] == "crit" { 
+        match words_vec[1].parse() {
+            Ok(x) => character.crit = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
+    } else if words_vec[0] == "hit" { 
+        match words_vec[1].parse() {
+            Ok(x) => character.hit = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
+    } else if words_vec[0] == "weapon_skill" { 
+        match words_vec[1].parse() {
+            Ok(x) => character.weapon_skill = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
+    } else if words_vec[0] == "attack_power" { 
+        match words_vec[1].parse() {
+            Ok(x) => character.attack_power = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
+    } else if words_vec[0] == "extra_hit_proc_chance" { 
+        match words_vec[1].parse() {
+            Ok(x) => character.extra_hit_proc_chance = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
+    } else if words_vec[0] == "shadowcraft_six_bonus" { 
+        character.shadowcraft_six_bonus = true;
+    } 
+    // now for talents
+    else if words_vec[0] == "imp_sin_strike" { 
+        match words_vec[1].parse() {
+            Ok(x) => character.imp_sin_strike = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
+    } else if words_vec[0] == "precision" { 
+        match words_vec[1].parse() {
+            Ok(x) => character.precision = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
+    } else if words_vec[0] == "dw_specialization" { 
+        match words_vec[1].parse() {
+            Ok(x) => character.dw_specialization = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
+    } else if words_vec[0] == "sword_specialization" { 
+        match words_vec[1].parse() {
+            Ok(x) => character.sword_specialization = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
+    } else if words_vec[0] == "weapon_expertise" { 
+        match words_vec[1].parse() {
+            Ok(x) => character.weapon_expertise = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
+    } else if words_vec[0] == "aggression" { 
+        match words_vec[1].parse() {
+            Ok(x) => character.aggression = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
+    } else if words_vec[0] == "improved_eviscerate" { 
+        match words_vec[1].parse() {
+            Ok(x) => character.improved_eviscerate = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
+    } else if words_vec[0] == "malice" { 
+        match words_vec[1].parse() {
+            Ok(x) => character.malice = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
+    } else if words_vec[0] == "ruthlessness" { 
+        match words_vec[1].parse() {
+            Ok(x) => character.ruthlessness = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
+    } else if words_vec[0] == "improved_slice_and_dice" { 
+        match words_vec[1].parse() {
+            Ok(x) => character.improved_slice_and_dice = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
+    } else if words_vec[0] == "relentless_strikes" { 
+        match words_vec[1].parse() {
+            Ok(x) => character.relentless_strikes = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
+    } else if words_vec[0] == "lethality" { 
+        match words_vec[1].parse() {
+            Ok(x) => character.lethality = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
+    } else {
+        panic!("Unrecognized keyword in params file: {}", words_vec[0]);
     }
+}
 
+fn weapon_adder(text: &str, wep: &mut Weapon) {
+
+    let words = text.split_whitespace();
+    let words_vec = words.collect::<Vec<&str>>();
+
+    if words_vec[0] == "speed" {
+        match words_vec[1].parse() {
+            Ok(x) => wep.speed = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
+    } else if words_vec[0] == "mean_dmg" { 
+        match words_vec[1].parse() {
+            Ok(x) => wep.mean_dmg = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
+    } else if words_vec[0] == "is_offhand" { 
+        match words_vec[1].parse() {
+            Ok(x) => wep.is_offhand = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
+    } else if words_vec[0] == "extra_hit_proc_chance" { 
+        match words_vec[1].parse() {
+            Ok(x) => wep.extra_hit_proc_chance = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
+    } else {
+        panic!("Unrecognized keyword in params file: {}", words_vec[0]);
+    }
+}
+
+fn calculate_hit_numbers(character: &mut Rogue) {
+
+    character.dodge = get_dodge_chance(character.weapon_skill);
+    character.white_miss = get_white_miss_chance(character.weapon_skill);
+
+    if character.hit > character.white_miss { character.white_miss = 0.0; }
+    else { character.white_miss -= character.hit; }
+
+    character.yellow_miss = get_yellow_miss_chance(character.weapon_skill);
+
+    if character.hit > character.yellow_miss { character.yellow_miss = 0.0; }
+    else { character.yellow_miss -= character.hit; }
+
+    character.glancing_red = get_glancing_reduction(character.weapon_skill);
+}
+ 
+fn mean(numbers: &Vec<f32>) -> f32 {
+
+    let sum: f32 = numbers.iter().sum();
+
+    sum / numbers.len() as f32
 }
 
 /*
@@ -624,4 +810,22 @@ fn decide_event(mut time_struct: &mut TimeTilEvents, fight_time_left: f32,
         return "energy_refill"
     } 
 }
+
+Old rogue initialization
+    let mut character = Rogue {
+        energy: 100,
+        agility: 371,
+        strength: 140,
+        attack_power: 80, // IMPORTANT: just attack power given directly by gear
+        crit: 0.212,
+        hit: 0.08,
+        dodge: 0.0,
+        white_miss: 0.0,
+        yellow_miss: 0.0,
+        glancing: 0.40,
+        glancing_red: 0.0,
+        weapon_skill: 310,
+        extra_hit_proc_chance: 0.02, // NOTE does not include thrash blade proc
+        combo_points: 0
+    };
 */
