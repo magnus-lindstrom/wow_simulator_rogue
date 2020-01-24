@@ -1,12 +1,10 @@
 /* TODO
- * - implement 21 energy increase sometimes (every fourth tic, roughly)
- * - add buff support, BoK comes after all other buffs
- * - Insert correct values for mirah's song and thrash blade.
- * - Implement boss crit reduction 
- * - Implement full formula for calculating crit chance.
- * - Implement CORRECT hit calculation
+ * - Add raid buffs
+ * - Implement 21 energy increase sometimes (every fourth tic, roughly)
  * - Implement the option to modify stats to gain insight on how important
  *   specific stats are at different levels
+ * - add buff support, BoK comes after all other buffs
+ * - Insert correct values for mirah's song and thrash blade.
  *   - maybe print to file to plot with python?
  */
 extern crate rand;
@@ -19,7 +17,7 @@ use rand::distributions::{Distribution, Uniform};
 
 fn main() {
 
-    let n_runs = 1000;
+    let n_runs = 10000;
     let fight_length = 60.0;
     let mut verb = false;
     let dt = 0.1;
@@ -31,9 +29,11 @@ fn main() {
 
     let param_file = &args[1];
 
-    let mut total_extra_hits: u16 = 0;
-    let mut total_mh_hits: u16 = 0;
-    let mut total_oh_hits: u16 = 0;
+    let mut total_extra_hits: u32 = 0;
+    let mut total_mh_hits: u32 = 0;
+    let mut total_oh_hits: u32 = 0;
+    let mut total_mh_crits: u32 = 0;
+    let mut total_oh_crits: u32 = 0;
 
     let mut character: Rogue;
     let mut wep1: Weapon;
@@ -75,6 +75,7 @@ fn main() {
                                                        verb);
                 if dmg > 0.0 { 
                     tot_dmg += dmg; 
+                    shadowcraft_roll(&mut character);
                     total_mh_hits += 1;
                 }
                 if extra_swing { extra_attacks += 1; }
@@ -84,7 +85,10 @@ fn main() {
                 let (dmg, extra_swing) = white_attack(&mut character, &mut wep2, 
                                                       time_struct.fight_ends,
                                                       verb);
-                if dmg > 0.0 { total_oh_hits += 1; }
+                if dmg > 0.0 { 
+                    shadowcraft_roll(&mut character);
+                    total_oh_hits += 1; 
+                }
                 if buffs.snd > 0.0 {
                     time_struct.wep2_swing = wep2.speed * 0.7;
                 } else {
@@ -97,10 +101,13 @@ fn main() {
             while extra_attacks > 0 {
                 if verb { println!("Extra swing!"); }
                 total_extra_hits += 1;
-                total_mh_hits += 1;
                 let (dmg, extra_swing) = white_attack(&mut character, &mut wep1, 
                                                       time_struct.fight_ends,
                                                       verb);
+                if dmg > 0.0 { 
+                    shadowcraft_roll(&mut character);
+                    total_mh_hits += 1;
+                }
                 // reset swing timer for MH
                 if buffs.snd > 0.0 {
                     time_struct.wep1_swing = wep1.speed * 0.7;
@@ -119,7 +126,10 @@ fn main() {
                                                       &mut wep1, 
                                                       time_struct.fight_ends,
                                                       verb);
-                if dmg > 0.0 { total_mh_hits += 1; }
+                if dmg > 0.0 { 
+                    shadowcraft_roll(&mut character);
+                    total_mh_hits += 1; 
+                }
                 if buffs.snd > 0.0 {
                     time_struct.wep1_swing = wep1.speed * 0.7;
                 } else {
@@ -143,7 +153,18 @@ fn main() {
         dps_vec.push(tot_dmg/fight_length);
     }
 
-    println!("Average dps for {} was {:}.", param_file, mean(&dps_vec));
+    println!("Average dps for {} over {} runs was {:}.", param_file, 
+             n_runs, mean(&dps_vec));
+}
+
+fn shadowcraft_roll(character: &mut Rogue) {
+    if character.shadowcraft_six_bonus {
+        let die = roll_die();
+        if die < 0.03 { 
+            character.energy += 35;
+            if character.energy > 100 { character.energy = 100; }
+        }
+    }
 }
 
 fn print_hit_chances(character: &Rogue) {
@@ -232,24 +253,20 @@ fn sinister_strike(character: &mut Rogue, wep: &Weapon,
     let hit_result = determine_hit(&character, "yellow".to_string());
     let mut dmg: f32 = 0.0;
 
-    if hit_result == "miss" {
-        character.energy -= 5; //todo fix this
-        dmg = 0.0;
-
-    } else if hit_result == "dodge" {
-        character.energy -= 5; //todo fix this
+    if hit_result == "miss" || hit_result == "dodge" {
+        character.energy -= 8; //todo fix this
         dmg = 0.0;
 
     } else if hit_result == "glancing" {
         character.energy -= 40;
         dmg = get_sinister_strike_dmg(&wep, &character);
-        dmg *= character.glancing_red;
+        dmg *= 1.0 - character.glancing_red;
         character.combo_points += 1;
 
     } else if hit_result == "crit" {
         character.energy -= 40;
         dmg = get_sinister_strike_dmg(&wep, &character);
-        dmg *= 2.0;
+        dmg *= (2.0 + 0.06 * character.lethality as f32);
         character.combo_points += 1;
 
     } else if hit_result == "hit" {
@@ -261,6 +278,9 @@ fn sinister_strike(character: &mut Rogue, wep: &Weapon,
         announce_hit(dmg, "sin_strike".to_string(), hit_result, 
                      time_struct.fight_ends);
     }
+
+    dmg *= 1.0 + (0.02 * character.aggression as f32);
+
     return dmg;
 }
 
@@ -274,22 +294,31 @@ fn eviscerate(character: &mut Rogue, time_struct: &TimeTilEvents,
         dmg = 0.0;
 
     } else if hit_result == "glancing" {
-        character.energy -= 35;
         dmg = get_evis_dmg(character);
-        dmg *= character.glancing_red;
-        character.combo_points = 0;
+        dmg *= 1.0 - character.glancing_red;
+        let die = roll_die();
+        if die < 0.2 * character.ruthlessness as f32 {
+            character.combo_points = 1;
+        } else { character.combo_points = 0; }
 
     } else if hit_result == "crit" {
-        character.energy -= 35;
         dmg = get_evis_dmg(character);
         dmg *= 2.0;
-        character.combo_points = 0;
+        let die = roll_die();
+        if die < 0.2 * character.ruthlessness as f32 {
+            character.combo_points = 1;
+        } else { character.combo_points = 0; }
 
     } else if hit_result == "hit" {
         dmg = get_evis_dmg(character);
-        character.combo_points = 0;
+        let die = roll_die();
+        if die < 0.2 * character.ruthlessness as f32 {
+            character.combo_points = 1;
+        } else { character.combo_points = 0; }
     }
     character.energy -= 35;
+    dmg *= 1.0 + (0.02 * character.aggression as f32);
+    dmg *= 1.0 + (0.05 * character.improved_eviscerate as f32);
     if verb {
         announce_hit(dmg, "evis".to_string(), hit_result, 
                      time_struct.fight_ends);
@@ -314,9 +343,12 @@ fn yellow_attack(character: &mut Rogue, mut buffs: &mut BuffsActive,
     // Short snd if no snd up at 2 combo points
     if character.combo_points == 2 && can_snd && !snd_active {
         character.energy -= 25;
-        buffs.snd = snd_duration(character.combo_points);
+        buffs.snd = snd_duration(character);
         time_struct.glob_cd_refresh = 1.0;
-        character.combo_points = 0;
+        let die = roll_die();
+        if die < 0.2 * character.ruthlessness as f32 {
+            character.combo_points = 1;
+        } else { character.combo_points = 0; }
         if verb {
             announce_hit(buffs.snd, "snd".to_string(), "snd".to_string(), 
                          time_struct.fight_ends);
@@ -333,9 +365,12 @@ fn yellow_attack(character: &mut Rogue, mut buffs: &mut BuffsActive,
     // Long snd if no snd up at 5 combo points
     } else if character.combo_points == 5 && can_snd && !snd_active {
         character.energy -= 25;
-        buffs.snd = snd_duration(character.combo_points);
+        buffs.snd = snd_duration(character);
         time_struct.glob_cd_refresh = 1.0;
-        character.combo_points = 0;
+        let die = roll_die();
+        if die < 0.2 * character.ruthlessness as f32 {
+            character.combo_points = 1;
+        } else { character.combo_points = 0; }
         if verb {
             announce_hit(buffs.snd, "snd".to_string(), "snd".to_string(),
                          time_struct.fight_ends);
@@ -403,15 +438,15 @@ fn get_sinister_strike_dmg(wep: &Weapon, character: &Rogue) -> f32 {
     return dmg;
 }
 
-fn snd_duration(combo_points: u16) -> f32 {
+fn snd_duration(character: &mut Rogue) -> f32 {
 
     let mut dur: f32 = 0.0;
-    if combo_points == 1 { dur = 9.0; }
-    if combo_points == 2 { dur = 12.0; }
-    if combo_points == 3 { dur = 15.0; }
-    if combo_points == 4 { dur = 18.0; }
-    if combo_points == 5 { dur = 21.0; }
-    dur *= 1.3;
+    if character.combo_points == 1 { dur = 9.0; }
+    if character.combo_points == 2 { dur = 12.0; }
+    if character.combo_points == 3 { dur = 15.0; }
+    if character.combo_points == 4 { dur = 18.0; }
+    if character.combo_points == 5 { dur = 21.0; }
+    dur *= 1.0 + (0.15 * character.improved_slice_and_dice as f32);
 
     return dur;
 }
@@ -451,7 +486,7 @@ fn white_attack(character: &mut Rogue, wep: &mut Weapon,
 
     let mut dmg = get_wep_dmg(&wep, &character);
     if wep.is_offhand {
-        dmg = dmg * 0.8;
+        dmg = dmg * 0.5 * (1.0 + 0.1 * character.dw_specialization as f32) ;
     } 
     if hit_result == "glancing" { 
         dmg *= 1.0 - character.glancing_red;
@@ -574,7 +609,7 @@ fn init_rogue() -> Rogue {
         dodge: 0.0,
         white_miss: 0.0,
         yellow_miss: 0.0,
-        glancing: 0.0,
+        glancing: 0.40,
         glancing_red: 0.0,
         weapon_skill: 0,
         extra_hit_proc_chance: 0.0, // NOTE does not include thrash blade proc
@@ -775,16 +810,37 @@ fn weapon_adder(text: &str, wep: &mut Weapon) {
     }
 }
 
+fn get_agi_crit_chance(agi: u16) -> f32 {
+    // this function calculates the contribution to crit from agility alone
+    // rogues get 1% crit per 29 agility, according to blizzard
+    let extra_crit = 0.01 * agi as f32 / 29.0;
+    return extra_crit;
+}
+
 fn calculate_hit_numbers(character: &mut Rogue) {
 
-    character.dodge = get_dodge_chance(character.weapon_skill);
-    character.white_miss = get_white_miss_chance(character.weapon_skill);
+    if character.weapon_expertise == 1 { character.weapon_skill += 3; }
+    else if character.weapon_expertise == 2 { character.weapon_skill += 5; }
 
+    character.extra_hit_proc_chance += 
+        0.01 * character.sword_specialization as f32;
+
+    character.hit += character.precision as f32 * 0.01;
+    character.dodge = get_dodge_chance(character.weapon_skill);
+
+    character.crit += get_agi_crit_chance(character.agility);
+    character.crit += 0.01 * character.malice as f32;
+    // 1.8 crit is removed from non-agi crit. Assumed here that the character
+    // has at least 2% crit gained directly from gear
+    // + 3% crit reduction vs bosses brings the crit down a total of 4.8
+    if character.crit < 0.048 { character.crit = 0.0; }
+    else { character.crit -= 0.048; }
+
+    character.white_miss = get_white_miss_chance(character.weapon_skill);
     if character.hit > character.white_miss { character.white_miss = 0.0; }
     else { character.white_miss -= character.hit; }
 
     character.yellow_miss = get_yellow_miss_chance(character.weapon_skill);
-
     if character.hit > character.yellow_miss { character.yellow_miss = 0.0; }
     else { character.yellow_miss -= character.hit; }
 
@@ -793,9 +849,11 @@ fn calculate_hit_numbers(character: &mut Rogue) {
  
 fn mean(numbers: &Vec<f32>) -> f32 {
 
-    let sum: f32 = numbers.iter().sum();
+    let mut sum: f64 = 0.0;
+    for n in numbers.iter() { sum += *n as f64; }
 
-    sum / numbers.len() as f32
+    let avg = sum / numbers.len() as f64;
+    return avg as f32;
 }
 
 /*

@@ -8,13 +8,13 @@
 # comments can be make within sections with the # character, following
 # information
 @@@@ stats gained from armor + weapons
-agility 383
-strength 140
-attack_power 80
-crit 0.04
+agility 374
+strength 131
+attack_power 130
+crit 0.05
 hit 0.04
-weapon_skill 310
-extra_hit_proc_chance 0.07
+weapon_skill 305
+extra_hit_proc_chance 0.02
 @@@@
 #
 #
@@ -22,17 +22,17 @@ extra_hit_proc_chance 0.07
 # Weapons now
 #
 #
-@@@@ main hand
-speed 2.7
-mean_dmg 90.0
+@@@@ main hand dalrend main hand
+speed 2.8
+mean_dmg 116.0
 is_offhand false
-extra_hit_proc_chance 0.0379
+extra_hit_proc_chance 0.0
 @@@@
 #
 #
-@@@@ off hand
+@@@@ off hand - dalrend offhand
 speed 1.8
-mean_dmg 90.0
+mean_dmg 74.5
 is_offhand true
 extra_hit_proc_chance 0.0
 @@@@
