@@ -8,3 +8,7 @@ edition = "2018"
 
 [dependencies]
 rand = "0.5"
+clap = "2.33.0"
+
+[profile.dev]
+opt-level = 3

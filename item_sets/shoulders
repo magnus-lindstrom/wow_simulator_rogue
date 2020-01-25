@@ -1,0 +1,74 @@
+# This file contains the stats of the character to be analysed.
+# 
+# Lines beginning with # or @ will not be interpreted by program.
+#
+# Sections containing information to be read must be preceded by a line
+# starting with @ and finished with @
+#
+# comments can be make within sections with the # character, following
+# information
+@@@@ stats gained from armor + weapons
+agility 336
+strength 134
+attack_power 128
+crit 0.06
+hit 0.07
+weapon_skill 305
+extra_hit_proc_chance 0.02
+@@@@
+#
+#
+#
+# Weapons now
+#
+#
+@@@@ main hand Thrash Blade
+speed 2.7
+mean_dmg 95.0
+is_offhand false
+is_sword true
+is_dagger false
+extra_hit_proc_chance 0.0379
+@@@@
+#
+#
+@@@@ off hand - Mirah's Song
+speed 1.8
+mean_dmg 72.0
+is_offhand true
+is_sword true
+is_dagger false
+extra_hit_proc_chance 0.0
+@@@@
+# Next section deals with special gear abilities.
+# The supported abilities are listed below
+#
+# - shadowcraft_six_bonus (chance to gain 35 energy on hit)
+#
+@@@@
+nothing
+@@@@
+#
+#
+# Next sections contains talents
+# It is assumed that a combat rogue with standard dual wield sword specc
+# is being simulated, so only talents that are relevant to this build,
+# and that does not fall under the 'stats' section above will be
+# mentioned
+#
+# name of talent, followed by nr of points spent on it
+#
+@@@@
+imp_sin_strike 2
+precision 5
+dw_specialization 5
+sword_specialization 5
+weapon_expertise 2
+aggression 3
+improved_eviscerate 0
+malice 5
+ruthlessness 3
+improved_slice_and_dice 3
+relentless_strikes 1
+lethality 5
+@@@@
