@@ -8,11 +8,11 @@
 # comments can be make within sections with the # character, following
 # information
 @@@@ stats gained from armor + weapons
-agility 383
-strength 140
-attack_power 80
-crit 0.04
-hit 0.04
+agility 363
+strength 153
+attack_power 128
+crit 0.06
+hit 0.05
 swords_skill 305
 daggers_skill 300
 extra_hit_proc_chance 0.02
@@ -47,11 +47,11 @@ extra_hit_proc_chance 0.0
 # Next section deals with special gear abilities.
 # The supported abilities are listed below
 #
-# - thrash_blade (chance to procc extra swings)
 # - shadowcraft_six_bonus (chance to gain 35 energy on hit)
+# - nothing
 #
 @@@@
-shadowcraft_six_bonus
+nothing
 @@@@
 #
 #

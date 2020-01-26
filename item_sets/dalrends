@@ -13,7 +13,8 @@ strength 131
 attack_power 130
 crit 0.05
 hit 0.04
-weapon_skill 305
+swords_skill 305
+daggers_skill 300
 extra_hit_proc_chance 0.02
 @@@@
 #
@@ -24,7 +25,8 @@ extra_hit_proc_chance 0.02
 #
 @@@@ main hand dalrend main hand
 speed 2.8
-mean_dmg 116.0
+min_dmg 81
+max_dmg 151
 is_offhand false
 is_sword true
 is_dagger false
@@ -34,7 +36,8 @@ extra_hit_proc_chance 0.0
 #
 @@@@ off hand - dalrend offhand
 speed 1.8
-mean_dmg 74.5
+min_dmg 52
+max_dmg 97
 is_offhand true
 is_sword true
 is_dagger false

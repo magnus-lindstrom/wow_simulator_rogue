@@ -11,7 +11,7 @@
 agility 383
 strength 140
 attack_power 80
-crit 0.04
+crit 0.05
 hit 0.04
 swords_skill 305
 daggers_skill 300
@@ -24,27 +24,27 @@ extra_hit_proc_chance 0.02
 #
 #
 #
-@@@@ main hand Thrash Blade
-speed 2.7
-min_dmg 66
-max_dmg 124
+@@@@ main hand Vis'Kag the Bloodletter
+speed 2.8
+min_dmg 100
+max_dmg 187
 is_offhand false
 is_dagger false
 is_sword true
-extra_hit_proc_chance 0.0379
+extra_hit_proc_chance 0.0
 @@@@
 #
 #
-@@@@ off hand - Mirah's Song
-speed 1.8
-min_dmg 57
-max_dmg 87
+@@@@ off hand Brutality Blade
+speed 2.5
+min_dmg 90
+max_dmg 168
 is_offhand true
 is_dagger false
 is_sword true
 extra_hit_proc_chance 0.0
 @@@@
-# Next section deals with special gear abilities.
+# next section deals with special gear abilities.
 # The supported abilities are listed below
 #
 # - thrash_blade (chance to procc extra swings)

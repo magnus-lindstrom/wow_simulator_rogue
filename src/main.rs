@@ -1,9 +1,6 @@
 /* TODO
- * - Implement dagger spec support
- * - Implement 21 energy increase sometimes (every fourth tic, roughly)
  * - Implement the option to modify stats to gain insight on how important
  *   specific stats are at different levels
- * - Insert correct values for mirah's song and thrash blade.
  *   - maybe print to file to plot with python?
  */
 extern crate rand;
@@ -40,7 +37,7 @@ fn main() {
 
     calculate_hit_numbers(&mut rogue, &mut wep1, &mut wep2);
 
-    print_hit_chances(&rogue);
+    print_hit_chances(&rogue, wep1.is_dagger);
 
     let mut dps_vec = Vec::new();
 
@@ -136,6 +133,10 @@ fn main() {
             }
             subtract_times(&mut rogue, &mut time_struct, &mut buffs, dt);
         }
+        //
+        // armor reduction
+        tot_dmg = armor_reduction(tot_dmg);
+
         if verb {
             println!("\nDps during {:} seconds was {:}.", fight_length, 
                      tot_dmg/fight_length);
@@ -143,8 +144,6 @@ fn main() {
                      total_oh_hits);
             println!("Total number of extra hits: {}.", total_extra_hits);
         }
-        // armor reduction
-        tot_dmg = armor_reduction(tot_dmg);
 
         // store dps of run
         dps_vec.push(tot_dmg/fight_length);
@@ -214,34 +213,61 @@ fn shadowcraft_roll(rogue: &mut Rogue) {
     }
 }
 
-fn print_hit_chances(rogue: &Rogue) {
+fn print_hit_chances(rogue: &Rogue, mh_is_dagger: bool) {
 
+    let mut crit: f32;
+    let white_miss: f32;
+    let yellow_miss: f32;
+    let dodge: f32;
+    if mh_is_dagger { 
+        crit = rogue.crit + 0.01 * rogue.dagger_specialization as f32;
+        white_miss = rogue.white_miss_daggers;
+        yellow_miss = rogue.yellow_miss_daggers;
+        dodge = rogue.dodge_daggers;
+    } else { 
+        crit = rogue.crit; 
+        white_miss = rogue.white_miss_swords;
+        yellow_miss = rogue.yellow_miss_swords;
+        dodge = rogue.dodge_swords;
+    }
     println!("*** White hits summary ***");
-    println!("miss chance: {:}", rogue.white_miss);
-    println!("dodge chance: {:}", rogue.dodge);
+    println!("miss chance: {:}", white_miss);
+    println!("dodge chance: {:}", dodge);
     println!("glancing chance: {:}", rogue.glancing);
-    println!("crit chance: {:}", rogue.crit);
-    let mut tmp = rogue.white_miss;
-    let mut tmp1 = tmp + rogue.dodge;
+    println!("crit chance: {:}", crit);
+    let mut tmp = white_miss;
+    let mut tmp1 = tmp + dodge;
     let mut tmp2 = tmp1 + rogue.glancing;
-    let mut tmp3 = tmp2 + rogue.crit;
+    let     tmp3 = tmp2 + crit;
     println!("{:}-{:}-{:}-{:}\n", tmp, tmp1, tmp2, tmp3);
     
     println!("*** Yellow hits summary ***");
-    println!("miss chance: {:}", rogue.yellow_miss);
-    println!("dodge chance: {:}", rogue.dodge);
-    println!("glancing chance: {:}", rogue.glancing);
-    println!("crit chance: {:}", rogue.crit);
-    tmp = rogue.yellow_miss;
-    tmp1 = tmp + rogue.dodge;
-    tmp2 = tmp1 + rogue.glancing;
-    tmp3 = tmp2 + rogue.crit;
-    println!("{:}-{:}-{:}-{:}\n", tmp, tmp1, tmp2, tmp3);
+    println!("miss chance: {:}", yellow_miss);
+    println!("dodge chance: {:}", dodge);
+    println!("crit chance: {:}", crit);
+    tmp = yellow_miss;
+    tmp1 = tmp + dodge;
+    tmp2 = tmp1 + crit;
+    println!("{:}-{:}-{:}\n", tmp, tmp1, tmp2);
+
+    if mh_is_dagger {
+        crit += 0.1 * rogue.imp_backstab as f32; 
+        println!("*** Backstab summary ***");
+        println!("miss chance: {:}", yellow_miss);
+        println!("dodge chance: {:}", dodge);
+        println!("crit chance: {:}", crit);
+        tmp = yellow_miss;
+        tmp1 = tmp + dodge;
+        tmp2 = tmp1 + crit;
+        println!("{:}-{:}-{:}\n", tmp, tmp1, tmp2);
+    }
 }
 
 fn announce_hit(dmg: f32, attack_type: String, hit_type: String, time: f32) {
     if attack_type == "sin_strike" {
         println!("{:2.1}: Sinister strike {} for {:.0}", time, hit_type, dmg);
+    } else if attack_type == "backstab" {
+        println!("{:2.1}: Backstab {} for {:.0}", time, hit_type, dmg);
     } else if attack_type == "evis" {
         println!("{:2.1}: Eviscerate {} for {:.0}", time, hit_type, dmg);
     } else if attack_type == "mh_white" {
@@ -263,41 +289,104 @@ fn roll_die() -> f32 {
     return roll;
 }
 
-fn determine_hit(rogue: &Rogue, color: String) -> String {
+fn determine_hit(rogue: &Rogue, is_dagger: bool, color: String, 
+                 is_backstab: bool) -> String {
 
     let roll: f32 = roll_die();
-    // println!("rolled {:}", roll);
+    let mut percent_sum: f32;
 
     if color == "yellow" {
 
-        if roll < rogue.yellow_miss { return "miss".to_string(); }
-        let mut percent_sum = rogue.yellow_miss + rogue.dodge;
-        if roll < percent_sum { return "dodge".to_string(); }
-        percent_sum += rogue.glancing;
-        if roll < percent_sum { return "glancing".to_string(); }
-        percent_sum += rogue.crit;
-        if roll < percent_sum { return "crit".to_string(); }
-        return "hit".to_string();
+        if is_dagger {
+            if roll < rogue.yellow_miss_daggers { return "miss".to_string(); }
+            percent_sum = rogue.yellow_miss_daggers + rogue.dodge_daggers;
+            if roll < percent_sum { return "dodge".to_string(); }
+            percent_sum += rogue.crit 
+                + 0.01 * rogue.dagger_specialization as f32; 
+            if is_backstab {
+                percent_sum += 0.1 * rogue.imp_backstab as f32; 
+            }
+            if roll < percent_sum { return "crit".to_string(); }
+
+            return "hit".to_string();
+
+        } else {
+            if roll < rogue.yellow_miss_swords { return "miss".to_string(); }
+            percent_sum = rogue.yellow_miss_swords + rogue.dodge_swords;
+            if roll < percent_sum { return "dodge".to_string(); }
+            percent_sum += rogue.crit;
+            if roll < percent_sum { return "crit".to_string(); }
+
+            return "hit".to_string();
+        }
+
 
     } else if color == "white" {
 
-        if roll < rogue.white_miss { return "miss".to_string(); }
-        let mut percent_sum = rogue.white_miss + rogue.dodge;
-        if roll < percent_sum { return "dodge".to_string(); }
-        percent_sum += rogue.glancing;
-        if roll < percent_sum { return "glancing".to_string(); }
-        percent_sum += rogue.crit;
-        if roll < percent_sum { return "crit".to_string(); }
-        return "hit".to_string();
+        if is_dagger {
+            if roll < rogue.white_miss_daggers { return "miss".to_string(); }
+            let mut percent_sum = rogue.white_miss_daggers 
+                + rogue.dodge_daggers;
+            if roll < percent_sum { return "dodge".to_string(); }
+            percent_sum += rogue.glancing;
+            if roll < percent_sum { return "glancing".to_string(); }
+            percent_sum += rogue.crit 
+                + 0.01 * rogue.dagger_specialization as f32;
+            if roll < percent_sum { return "crit".to_string(); }
+            return "hit".to_string();
+        } else {
+            if roll < rogue.white_miss_swords { return "miss".to_string(); }
+            let mut percent_sum = rogue.white_miss_swords 
+                + rogue.dodge_swords;
+            if roll < percent_sum { return "dodge".to_string(); }
+            percent_sum += rogue.glancing;
+            if roll < percent_sum { return "glancing".to_string(); }
+            percent_sum += rogue.crit;
+            if roll < percent_sum { return "crit".to_string(); }
+            return "hit".to_string();
+        }
 
     } else { panic!("can only strike yellow or white hits"); }
 
 }
 
+fn backstab(rogue: &mut Rogue, wep: &Weapon, 
+            time_struct: &TimeTilEvents, verb: bool) -> f32 {
+
+    let hit_result = determine_hit(&rogue, wep.is_dagger, "yellow".to_string(),
+        true);
+    let mut dmg: f32;
+
+    if hit_result == "miss" || hit_result == "dodge" {
+        rogue.energy -= 12;
+        dmg = 0.0;
+
+    } else if hit_result == "crit" {
+        rogue.energy -= 60;
+        dmg = get_backstab_dmg(&wep, &rogue);
+        dmg *= 2.0 + 0.06 * rogue.lethality as f32;
+        rogue.combo_points += 1;
+
+    } else if hit_result == "hit" {
+        rogue.energy -= 60;
+        dmg = get_backstab_dmg(&wep, &rogue);
+        rogue.combo_points += 1;
+    } else { panic!("Backstab can't be glancing hit."); }
+    dmg *= 1.0 + 0.04 * rogue.opportunity as f32;
+
+    if verb {
+        announce_hit(dmg, "backstab".to_string(), hit_result, 
+                     time_struct.fight_ends);
+    }
+
+    return dmg;
+}
+
 fn sinister_strike(rogue: &mut Rogue, wep: &Weapon, 
                    time_struct: &TimeTilEvents, verb: bool) -> f32 {
 
-    let hit_result = determine_hit(&rogue, "yellow".to_string());
+    let hit_result = determine_hit(&rogue, wep.is_dagger, "yellow".to_string(),
+        false);
     let mut dmg: f32 = 0.0;
 
     if hit_result == "miss" || hit_result == "dodge" {
@@ -307,7 +396,8 @@ fn sinister_strike(rogue: &mut Rogue, wep: &Weapon,
     } else if hit_result == "glancing" {
         rogue.energy -= 40;
         dmg = get_sinister_strike_dmg(&wep, &rogue);
-        dmg *= 1.0 - rogue.glancing_red;
+        if wep.is_dagger { dmg *= 1.0 - rogue.glancing_red_daggers; }
+        else { dmg *= 1.0 - rogue.glancing_red_swords; }
         rogue.combo_points += 1;
 
     } else if hit_result == "crit" {
@@ -331,22 +421,15 @@ fn sinister_strike(rogue: &mut Rogue, wep: &Weapon,
     return dmg;
 }
 
-fn eviscerate(rogue: &mut Rogue, time_struct: &TimeTilEvents,
+fn eviscerate(rogue: &mut Rogue, wep: &Weapon, time_struct: &TimeTilEvents,
               verb: bool) -> f32 {
 
-    let hit_result = determine_hit(&rogue, "yellow".to_string());
+    let hit_result = determine_hit(&rogue, wep.is_dagger, 
+                                   "yellow".to_string(), false);
     let mut dmg: f32 = 0.0;
 
     if hit_result == "miss" || hit_result == "dodge" {
         dmg = 0.0;
-
-    } else if hit_result == "glancing" {
-        dmg = get_evis_dmg(rogue);
-        dmg *= 1.0 - rogue.glancing_red;
-        let die = roll_die();
-        if die < 0.2 * rogue.ruthlessness as f32 {
-            rogue.combo_points = 1;
-        } else { rogue.combo_points = 0; }
 
     } else if hit_result == "crit" {
         dmg = get_evis_dmg(rogue);
@@ -383,6 +466,7 @@ fn yellow_attack(rogue: &mut Rogue, mut buffs: &mut BuffsActive,
     let mut extra_hit: bool = false;
     
     let can_sinister = rogue.energy >= 40;
+    let can_backstab = rogue.energy >= 60;
     let can_eviscerate = rogue.energy >= 35;
     let can_snd = rogue.energy >= 25;
     let snd_active = buffs.snd > 0.0;
@@ -400,9 +484,20 @@ fn yellow_attack(rogue: &mut Rogue, mut buffs: &mut BuffsActive,
             announce_hit(buffs.snd, "snd".to_string(), "snd".to_string(), 
                          time_struct.fight_ends);
         }
+    // Sword weapon
     // Sinister strike if not yet at 5 combo points
-    } else if rogue.combo_points < 5 && can_sinister {
+    } else if wep.is_sword && rogue.combo_points < 5 && can_sinister {
         dmg = sinister_strike(rogue, wep, &time_struct, verb);
+        if dmg > 0.0 {
+            extra_hit = roll_for_extra_hit(rogue, wep);
+        }
+        time_struct.glob_cd_refresh = 1.0;
+        if rogue.combo_points > 5 { rogue.combo_points = 5; }
+
+    // Dagger weapon
+    // Backstab if not yet at 5 combo points
+    } else if wep.is_dagger && rogue.combo_points < 5 && can_backstab {
+        dmg = backstab(rogue, wep, &time_struct, verb);
         if dmg > 0.0 {
             extra_hit = roll_for_extra_hit(rogue, wep);
         }
@@ -424,7 +519,7 @@ fn yellow_attack(rogue: &mut Rogue, mut buffs: &mut BuffsActive,
         }
     // Full eviscerate at 5 combo points if snd is up
     } else if rogue.combo_points == 5 && snd_active && can_eviscerate { 
-        dmg = eviscerate(rogue, &time_struct, verb);
+        dmg = eviscerate(rogue, wep, &time_struct, verb);
         if dmg > 0.0 {
             extra_hit = roll_for_extra_hit(rogue, wep);
         }
@@ -485,6 +580,12 @@ fn get_sinister_strike_dmg(wep: &Weapon, rogue: &Rogue) -> f32 {
     return dmg;
 }
 
+fn get_backstab_dmg(wep: &Weapon, rogue: &Rogue) -> f32 {
+    let normal_wep_dmg = get_wep_dmg(&wep, &rogue);
+    let dmg = 1.5 * normal_wep_dmg + 210.0;
+    return dmg;
+}
+
 fn snd_duration(rogue: &mut Rogue) -> f32 {
 
     let mut dur: f32 = 0.0;
@@ -516,7 +617,8 @@ fn white_attack(rogue: &mut Rogue, wep: &mut Weapon,
                 time_left: f32, verb: bool) -> (f32, bool) {
     // returns damage and a bool that is true if an extra swing procced
 
-    let hit_result = determine_hit(&rogue, "white".to_string());
+    let hit_result = determine_hit(&rogue, wep.is_dagger, "white".to_string(),
+        false);
     let announce_string: String;
     if wep.is_offhand {
         announce_string = "oh_white".to_string();
@@ -536,7 +638,8 @@ fn white_attack(rogue: &mut Rogue, wep: &mut Weapon,
         dmg = dmg * 0.5 * (1.0 + 0.1 * rogue.dw_specialization as f32) ;
     } 
     if hit_result == "glancing" { 
-        dmg *= 1.0 - rogue.glancing_red;
+        if wep.is_dagger { dmg *= 1.0 - rogue.glancing_red_daggers; }
+        else { dmg *= 1.0 - rogue.glancing_red_swords; }
     } else if hit_result == "crit" { 
         dmg *= 2.0;
     }
@@ -554,6 +657,8 @@ fn armor_reduction(dmg: f32) -> f32 {
 
 struct Weapon {
     speed: f32,
+    max_dmg: u16,
+    min_dmg: u16,
     mean_dmg: f32,
     is_offhand: bool,
     is_dagger: bool,
@@ -569,20 +674,28 @@ struct Rogue {
     attack_power: u16, // IMPORTANT: just attack power given directly by gear
     crit: f32,
     hit: f32,
-    weapon_skill: u16,
-    dodge: f32,
-    white_miss: f32,
-    yellow_miss: f32,
+    swords_skill: u16,
+    daggers_skill: u16,
+    dodge_swords: f32,
+    dodge_daggers: f32,
+    white_miss_swords: f32,
+    white_miss_daggers: f32,
+    yellow_miss_swords: f32,
+    yellow_miss_daggers: f32,
     glancing: f32,
-    glancing_red: f32,
+    glancing_red_swords: f32,
+    glancing_red_daggers: f32,
     extra_hit_proc_chance: f32,
     shadowcraft_six_bonus: bool,
     imp_sin_strike: u8,
+    imp_backstab: u8,
     precision: u8,
     dw_specialization: u8,
     sword_specialization: u8,
+    dagger_specialization: u8,
     weapon_expertise: u8,
     aggression: u8,
+    opportunity: u8,
     improved_eviscerate: u8,
     malice: u8,
     ruthlessness: u8,
@@ -626,14 +739,18 @@ fn subtract_times(mut rogue: &mut Rogue,
 
     time_struct.energy_refill -= dt;
     if time_struct.energy_refill <= 0.0 { 
+        let energy_increase: i8;
+        let die = roll_die();
+        if die < 0.25 { energy_increase = 21; }
+        else { energy_increase = 20; }
+
+        if rogue.energy < (100 - energy_increase) {
+            rogue.energy += energy_increase;
+        } else { rogue.energy = 100; }
 
         time_struct.energy_refill = 2.0; 
-        if rogue.energy < 81 {
-            rogue.energy += 20;
-        } else if rogue.energy >= 81 {
-            rogue.energy = 100;
-        }
     }
+
     time_struct.fight_ends -= dt;
 
     if buffs.blade_flurry > 0.0 {
@@ -655,20 +772,28 @@ fn init_rogue() -> Rogue {
         attack_power: 0, // IMPORTANT: just attack power given directly by gear
         crit: 0.0,
         hit: 0.0,
-        dodge: 0.0,
-        white_miss: 0.0,
-        yellow_miss: 0.0,
+        dodge_swords: 0.0,
+        dodge_daggers: 0.0,
+        white_miss_swords: 0.0,
+        white_miss_daggers: 0.0,
+        yellow_miss_swords: 0.0,
+        yellow_miss_daggers: 0.0,
         glancing: 0.40,
-        glancing_red: 0.0,
-        weapon_skill: 0,
+        glancing_red_swords: 0.0,
+        glancing_red_daggers: 0.0,
+        swords_skill: 0,
+        daggers_skill: 0,
         extra_hit_proc_chance: 0.0, // NOTE does not include thrash blade proc
         shadowcraft_six_bonus: false,
         imp_sin_strike: 0,
+        imp_backstab: 0,
         precision: 0,
         dw_specialization: 0,
         sword_specialization: 0,
+        dagger_specialization: 0,
         weapon_expertise: 0,
         aggression: 0,
+        opportunity: 0,
         improved_eviscerate: 0,
         malice: 0,
         ruthlessness: 0,
@@ -684,6 +809,8 @@ fn init_weapon() -> Weapon {
 
     let wep = Weapon {
         speed: 0.0,
+        max_dmg: 0,
+        min_dmg: 0,
         mean_dmg: 0.0,
         is_offhand: false,
         is_dagger: false,
@@ -747,9 +874,14 @@ fn param_adder(text: &str, rogue: &mut Rogue) {
             Ok(x) => rogue.hit = x,
             Err(x) => panic!("Can't translate word to number. {}", x)
         }
-    } else if words_vec[0] == "weapon_skill" { 
+    } else if words_vec[0] == "swords_skill" { 
         match words_vec[1].parse() {
-            Ok(x) => rogue.weapon_skill = x,
+            Ok(x) => rogue.swords_skill = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
+    } else if words_vec[0] == "daggers_skill" { 
+        match words_vec[1].parse() {
+            Ok(x) => rogue.daggers_skill = x,
             Err(x) => panic!("Can't translate word to number. {}", x)
         }
     } else if words_vec[0] == "attack_power" { 
@@ -771,6 +903,11 @@ fn param_adder(text: &str, rogue: &mut Rogue) {
             Ok(x) => rogue.imp_sin_strike = x,
             Err(x) => panic!("Can't translate word to number. {}", x)
         }
+    } else if words_vec[0] == "imp_backstab" { 
+        match words_vec[1].parse() {
+            Ok(x) => rogue.imp_backstab = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
     } else if words_vec[0] == "precision" { 
         match words_vec[1].parse() {
             Ok(x) => rogue.precision = x,
@@ -786,6 +923,11 @@ fn param_adder(text: &str, rogue: &mut Rogue) {
             Ok(x) => rogue.sword_specialization = x,
             Err(x) => panic!("Can't translate word to number. {}", x)
         }
+    } else if words_vec[0] == "dagger_specialization" { 
+        match words_vec[1].parse() {
+            Ok(x) => rogue.dagger_specialization = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
     } else if words_vec[0] == "weapon_expertise" { 
         match words_vec[1].parse() {
             Ok(x) => rogue.weapon_expertise = x,
@@ -794,6 +936,11 @@ fn param_adder(text: &str, rogue: &mut Rogue) {
     } else if words_vec[0] == "aggression" { 
         match words_vec[1].parse() {
             Ok(x) => rogue.aggression = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
+    } else if words_vec[0] == "opportunity" { 
+        match words_vec[1].parse() {
+            Ok(x) => rogue.opportunity = x,
             Err(x) => panic!("Can't translate word to number. {}", x)
         }
     } else if words_vec[0] == "improved_eviscerate" { 
@@ -842,9 +989,14 @@ fn weapon_adder(text: &str, wep: &mut Weapon) {
             Ok(x) => wep.speed = x,
             Err(x) => panic!("Can't translate word to number. {}", x)
         }
-    } else if words_vec[0] == "mean_dmg" { 
+    } else if words_vec[0] == "min_dmg" { 
         match words_vec[1].parse() {
-            Ok(x) => wep.mean_dmg = x,
+            Ok(x) => wep.min_dmg = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
+    } else if words_vec[0] == "max_dmg" { 
+        match words_vec[1].parse() {
+            Ok(x) => wep.max_dmg = x,
             Err(x) => panic!("Can't translate word to number. {}", x)
         }
     } else if words_vec[0] == "is_offhand" { 
@@ -870,6 +1022,8 @@ fn weapon_adder(text: &str, wep: &mut Weapon) {
     } else {
         panic!("Unrecognized keyword in params file: {}", words_vec[0]);
     }
+
+    wep.mean_dmg = (wep.min_dmg + wep.max_dmg) as f32 / 2.0;
 }
 
 fn get_agi_crit_chance(agi: u16) -> f32 {
@@ -882,8 +1036,14 @@ fn get_agi_crit_chance(agi: u16) -> f32 {
 fn calculate_hit_numbers(rogue: &mut Rogue, wep1: &mut Weapon, 
                          wep2: &mut Weapon) {
 
-    if rogue.weapon_expertise == 1 { rogue.weapon_skill += 3; }
-    else if rogue.weapon_expertise == 2 { rogue.weapon_skill += 5; }
+    if rogue.weapon_expertise == 1 { 
+        rogue.swords_skill += 3; 
+        rogue.daggers_skill += 3; 
+    }
+    else if rogue.weapon_expertise == 2 { 
+        rogue.swords_skill += 5; 
+        rogue.daggers_skill += 5; 
+    }
 
     if wep1.is_sword {
         wep1.extra_hit_proc_chance += 
@@ -895,7 +1055,8 @@ fn calculate_hit_numbers(rogue: &mut Rogue, wep1: &mut Weapon,
     }
     
     rogue.hit += rogue.precision as f32 * 0.01;
-    rogue.dodge = get_dodge_chance(rogue.weapon_skill);
+    rogue.dodge_daggers = get_dodge_chance(rogue.daggers_skill);
+    rogue.dodge_swords = get_dodge_chance(rogue.swords_skill);
 
     rogue.crit += get_agi_crit_chance(rogue.agility);
     rogue.crit += 0.01 * rogue.malice as f32;
@@ -905,15 +1066,24 @@ fn calculate_hit_numbers(rogue: &mut Rogue, wep1: &mut Weapon,
     if rogue.crit < 0.048 { rogue.crit = 0.0; }
     else { rogue.crit -= 0.048; }
 
-    rogue.white_miss = get_white_miss_chance(rogue.weapon_skill);
-    if rogue.hit > rogue.white_miss { rogue.white_miss = 0.0; }
-    else { rogue.white_miss -= rogue.hit; }
+    rogue.white_miss_swords = get_white_miss_chance(rogue.swords_skill);
+    rogue.white_miss_daggers = get_white_miss_chance(rogue.daggers_skill);
+    if rogue.hit > rogue.white_miss_swords { rogue.white_miss_swords = 0.0; }
+    else { rogue.white_miss_swords -= rogue.hit; }
+    if rogue.hit > rogue.white_miss_daggers { rogue.white_miss_daggers = 0.0; }
+    else { rogue.white_miss_daggers -= rogue.hit; }
 
-    rogue.yellow_miss = get_yellow_miss_chance(rogue.weapon_skill);
-    if rogue.hit > rogue.yellow_miss { rogue.yellow_miss = 0.0; }
-    else { rogue.yellow_miss -= rogue.hit; }
+    rogue.yellow_miss_swords = get_yellow_miss_chance(rogue.swords_skill);
+    rogue.yellow_miss_daggers = get_yellow_miss_chance(rogue.swords_skill);
+    if rogue.hit > rogue.yellow_miss_swords { rogue.yellow_miss_swords = 0.0; }
+    else { rogue.yellow_miss_swords -= rogue.hit; }
+    if rogue.hit > rogue.yellow_miss_daggers { 
+        rogue.yellow_miss_daggers = 0.0;
+    }
+    else { rogue.yellow_miss_daggers -= rogue.hit; }
 
-    rogue.glancing_red = get_glancing_reduction(rogue.weapon_skill);
+    rogue.glancing_red_swords = get_glancing_reduction(rogue.swords_skill);
+    rogue.glancing_red_daggers = get_glancing_reduction(rogue.daggers_skill);
 }
  
 fn mean(numbers: &Vec<f32>) -> f32 {
@@ -924,35 +1094,3 @@ fn mean(numbers: &Vec<f32>) -> f32 {
     let avg = sum / numbers.len() as f64;
     return avg as f32;
 }
-
-/*
-fn decide_event(mut time_struct: &mut TimeTilEvents, fight_time_left: f32, 
-                rogue: Rogue) -> String {
-
-    } else if time_struct.wep1_swing == 0 {
-        return "white_1"
-    } else if time_struct.wep2_swing == 0 {
-        return "white_2"
-    } else if time_struct.energy_refill == 0 {
-        return "energy_refill"
-    } 
-}
-
-Old rogue initialization
-    let mut rogue = Rogue {
-        energy: 100,
-        agility: 371,
-        strength: 140,
-        attack_power: 80, // IMPORTANT: just attack power given directly by gear
-        crit: 0.212,
-        hit: 0.08,
-        dodge: 0.0,
-        white_miss: 0.0,
-        yellow_miss: 0.0,
-        glancing: 0.40,
-        glancing_red: 0.0,
-        weapon_skill: 310,
-        extra_hit_proc_chance: 0.02, // NOTE does not include thrash blade proc
-        combo_points: 0
-    };
-*/

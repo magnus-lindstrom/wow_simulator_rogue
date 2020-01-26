@@ -8,40 +8,36 @@
 # comments can be make within sections with the # character, following
 # information
 @@@@ stats gained from armor + weapons
-agility 383
-strength 140
-attack_power 80
-crit 0.04
+agility 374
+strength 131
+attack_power 100
+crit 0.05
 hit 0.04
 swords_skill 305
 daggers_skill 300
 extra_hit_proc_chance 0.02
 @@@@
 #
-#
-#
 # Weapons now
 #
-#
-#
-@@@@ main hand Thrash Blade
-speed 2.7
-min_dmg 66
-max_dmg 124
+@@@@ main hand Perdition's Blade
+speed 1.8
+min_dmg 73
+max_dmg 137
 is_offhand false
-is_dagger false
-is_sword true
-extra_hit_proc_chance 0.0379
+is_dagger true
+is_sword false
+extra_hit_proc_chance 0.0
 @@@@
 #
 #
-@@@@ off hand - Mirah's Song
-speed 1.8
+@@@@ off hand - Core Hound Tooth
+speed 1.6
 min_dmg 57
-max_dmg 87
+max_dmg 107
 is_offhand true
-is_dagger false
-is_sword true
+is_dagger true
+is_sword false
 extra_hit_proc_chance 0.0
 @@@@
 # Next section deals with special gear abilities.
@@ -64,18 +60,19 @@ shadowcraft_six_bonus
 # name of talent, followed by nr of points spent on it
 #
 @@@@
-imp_sin_strike 2
-imp_backstab 0
-precision 5
-dw_specialization 5
-sword_specialization 5
-dagger_specialization 0
-weapon_expertise 2
-aggression 3
 improved_eviscerate 0
 malice 5
-ruthlessness 3
+relentless_strikes 0
+ruthlessness 2
 improved_slice_and_dice 3
-relentless_strikes 1
 lethality 5
+imp_sin_strike 2
+imp_backstab 3
+precision 5
+dagger_specialization 5
+dw_specialization 5
+sword_specialization 0
+weapon_expertise 2
+aggression 2
+opportunity 5
 @@@@
