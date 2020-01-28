@@ -28,6 +28,7 @@ extra_hit_proc_chance 0.02
 speed 1.3
 min_dmg 37
 max_dmg 70
+enchant superior_striking
 is_offhand false
 is_dagger true
 is_sword false
@@ -39,6 +40,7 @@ extra_hit_proc_chance 0.0
 speed 1.3
 min_dmg 42
 max_dmg 64
+enchant superior_striking
 is_offhand true
 is_dagger true
 is_sword false

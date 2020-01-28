@@ -50,7 +50,7 @@ fn main() {
         let mut buffs = BuffsActive {
             blade_flurry: 0.0,
             snd: 0.0,
-            adrenaline_rush: 0.0
+            adrenaline_rush: 0.0,
         };
 
         let mut time_struct = TimeTilEvents {
@@ -66,12 +66,18 @@ fn main() {
         let mut tot_poison_dmg = 0.0;
 
         while time_struct.fight_ends > 0.0 {
+
+            check_for_crusader(&mut rogue, &wep1, &wep2);
+
             if time_struct.glob_cd_refresh <= 0.0 {
                 let (dmg, dmg_poison, extra_swing) = 
                     yellow_attack(&mut rogue, &mut buffs, &wep1, 
                                   &mut time_struct, verb);
                 if dmg > 0.0 { 
                     tot_dmg += dmg; 
+                    if wep1.enchant == "crusader" { 
+                        crusader_roll(&mut wep1, verb); 
+                    }
                     shadowcraft_roll(&mut rogue);
                     total_mh_hits += 1;
                 }
@@ -84,6 +90,9 @@ fn main() {
                     white_attack(&mut rogue, &mut wep2, 
                                  time_struct.fight_ends, verb);
                 if dmg > 0.0 { 
+                    if wep2.enchant == "crusader" { 
+                        crusader_roll(&mut wep2, verb); 
+                    }
                     shadowcraft_roll(&mut rogue);
                     total_oh_hits += 1; 
                 }
@@ -104,6 +113,9 @@ fn main() {
                     white_attack(&mut rogue, &mut wep1, time_struct.fight_ends,
                                  verb);
                 if dmg > 0.0 { 
+                    if wep1.enchant == "crusader" { 
+                        crusader_roll(&mut wep1, verb); 
+                    }
                     shadowcraft_roll(&mut rogue);
                     total_mh_hits += 1;
                 }
@@ -126,6 +138,9 @@ fn main() {
                     white_attack(&mut rogue, &mut wep1, time_struct.fight_ends,
                                  verb);
                 if dmg > 0.0 { 
+                    if wep1.enchant == "crusader" { 
+                        crusader_roll(&mut wep1, verb); 
+                    }
                     shadowcraft_roll(&mut rogue);
                     total_mh_hits += 1; 
                 }
@@ -139,7 +154,8 @@ fn main() {
                 if extra_swing { extra_attacks += 1; }
                 tot_dmg += dmg;
             }
-            subtract_times(&mut rogue, &mut time_struct, &mut buffs, dt);
+            subtract_times(&mut rogue, &mut time_struct, &mut buffs,
+                           &mut wep1, &mut wep2, dt);
         }
         //
         // armor reduction
@@ -160,6 +176,17 @@ fn main() {
 
     println!("Average dps for {} over {} runs was {:}.", param_file, 
              n_runs, mean(&dps_vec));
+}
+
+fn check_for_crusader(rogue: &mut Rogue, wep1: &Weapon, wep2: &Weapon) {
+
+    if wep1.crusader > 0.0 && wep2.crusader > 0.0 {
+        rogue.nr_crusaders_active = 2.0;
+    } else if wep1.crusader > 0.0 || wep2.crusader > 0.0 {
+        rogue.nr_crusaders_active = 1.0;
+    } else {
+        rogue.nr_crusaders_active = 0.0;
+    }
 }
 
 fn get_arguments() -> (u32, bool, String) {
@@ -190,6 +217,18 @@ fn get_arguments() -> (u32, bool, String) {
     return (iterations.parse().unwrap(), verb, file.to_string());
 
 }
+
+fn crusader_roll(wep: &mut Weapon, verb: bool) {
+    let die = roll_die();
+    if die < wep.speed / 40.0 {
+        wep.crusader = 15.0;
+        if verb { 
+            if wep.is_offhand { println!("Crusader OH procc."); }
+            else { println!("Crusader MH procc."); }
+        }
+    }
+}
+
 fn add_raid_buffs(rogue: &mut Rogue) {
     // motw
     rogue.agility += 12;
@@ -540,6 +579,7 @@ fn yellow_attack(rogue: &mut Rogue, mut buffs: &mut BuffsActive,
         }
         time_struct.glob_cd_refresh = 1.0;
     }
+
     return (dmg, dmg_poison, extra_hit);
 }
 
@@ -582,7 +622,8 @@ fn get_total_attack_power(rogue: &Rogue) -> f32 {
 
 fn get_wep_dmg(wep: &Weapon, rogue: &Rogue) -> f32 {
 
-    let attack_power = get_total_attack_power(&rogue);
+    let mut attack_power = get_total_attack_power(&rogue);
+    attack_power += rogue.nr_crusaders_active * 100.0;
     let dmg = wep.mean_dmg + attack_power * wep.speed / 14.0;
     return dmg;
 }
@@ -688,6 +729,8 @@ struct Weapon {
     max_dmg: u16,
     min_dmg: u16,
     mean_dmg: f32,
+    enchant: String,
+    crusader: f32, // the time left on crusader
     is_offhand: bool,
     is_dagger: bool,
     is_sword: bool,
@@ -702,6 +745,7 @@ struct Rogue {
     attack_power: u16, // IMPORTANT: just attack power given directly by gear
     crit: f32,
     hit: f32,
+    nr_crusaders_active: f32,
     swords_skill: u16,
     daggers_skill: u16,
     dodge_swords: f32,
@@ -753,7 +797,8 @@ fn deb<T: std::fmt::Debug>(x: T) {
 
 fn subtract_times(mut rogue: &mut Rogue, 
                   mut time_struct: &mut TimeTilEvents, 
-                  mut buffs: &mut BuffsActive, dt: f32) {
+                  mut buffs: &mut BuffsActive, wep1: &mut Weapon, 
+                  wep2: &mut Weapon, dt: f32) {
 
     if time_struct.glob_cd_refresh > 0.0 {
         time_struct.glob_cd_refresh -= dt;
@@ -763,6 +808,13 @@ fn subtract_times(mut rogue: &mut Rogue,
     } 
     if time_struct.wep2_swing > 0.0 { 
         time_struct.wep2_swing -= dt; 
+    }
+
+    if wep1.crusader > 0.0 { 
+        wep1.crusader -= dt; 
+    }
+    if wep2.crusader > 0.0 { 
+        wep2.crusader -= dt; 
     }
 
     time_struct.energy_refill -= dt;
@@ -800,6 +852,7 @@ fn init_rogue() -> Rogue {
         attack_power: 0, // IMPORTANT: just attack power given directly by gear
         crit: 0.0,
         hit: 0.0,
+        nr_crusaders_active: 0.0,
         dodge_swords: 0.0,
         dodge_daggers: 0.0,
         white_miss_swords: 0.0,
@@ -840,6 +893,8 @@ fn init_weapon() -> Weapon {
         max_dmg: 0,
         min_dmg: 0,
         mean_dmg: 0.0,
+        enchant: "none".to_string(),
+        crusader: 0.0,
         is_offhand: false,
         is_dagger: false,
         is_sword: false,
@@ -1027,6 +1082,11 @@ fn weapon_adder(text: &str, wep: &mut Weapon) {
             Ok(x) => wep.max_dmg = x,
             Err(x) => panic!("Can't translate word to number. {}", x)
         }
+    } else if words_vec[0] == "enchant" { 
+        match words_vec[1].parse() {
+            Ok(x) => wep.enchant = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
     } else if words_vec[0] == "is_offhand" { 
         match words_vec[1].parse() {
             Ok(x) => wep.is_offhand = x,
@@ -1051,7 +1111,12 @@ fn weapon_adder(text: &str, wep: &mut Weapon) {
         panic!("Unrecognized keyword in params file: {}", words_vec[0]);
     }
 
-    wep.mean_dmg = (wep.min_dmg + wep.max_dmg) as f32 / 2.0;
+    if wep.enchant == "greater_striking" {
+        wep.mean_dmg = 4.0 + (wep.min_dmg + wep.max_dmg) as f32 / 2.0;
+    } else if wep.enchant == "superior_striking" {
+        wep.mean_dmg = 5.0 + (wep.min_dmg + wep.max_dmg) as f32 / 2.0;
+    } else { wep.mean_dmg = (wep.min_dmg + wep.max_dmg) as f32 / 2.0; }
+
 }
 
 fn get_agi_crit_chance(agi: u16) -> f32 {
