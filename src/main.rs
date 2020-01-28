@@ -1,4 +1,8 @@
 /* TODO
+ * - Add poisons, scale them vs armor reduction with proper resistances.
+ *   - 20% chance to apply a poison, base stat.
+ *   - 20% chance for a boss to resist the poison
+ *   - 130 dmg with current best instant poison
  * - Implement the option to modify stats to gain insight on how important
  *   specific stats are at different levels
  *   - maybe print to file to plot with python?
@@ -59,28 +63,31 @@ fn main() {
 
         let mut extra_attacks: i8 = 0;
         let mut tot_dmg = 0.0;
+        let mut tot_poison_dmg = 0.0;
 
         while time_struct.fight_ends > 0.0 {
             if time_struct.glob_cd_refresh <= 0.0 {
-                let (dmg, extra_swing) = yellow_attack(&mut rogue, &mut buffs,
-                                                       &wep1, &mut time_struct,
-                                                       verb);
+                let (dmg, dmg_poison, extra_swing) = 
+                    yellow_attack(&mut rogue, &mut buffs, &wep1, 
+                                  &mut time_struct, verb);
                 if dmg > 0.0 { 
                     tot_dmg += dmg; 
                     shadowcraft_roll(&mut rogue);
                     total_mh_hits += 1;
                 }
+                if dmg_poison > 0.0 { tot_poison_dmg += dmg_poison; }
                 if extra_swing { extra_attacks += 1; }
             }
             // check if oh is ready for swing
             if time_struct.wep2_swing <= 0.0 {
-                let (dmg, extra_swing) = white_attack(&mut rogue, &mut wep2, 
-                                                      time_struct.fight_ends,
-                                                      verb);
+                let (dmg, dmg_poison, extra_swing) = 
+                    white_attack(&mut rogue, &mut wep2, 
+                                 time_struct.fight_ends, verb);
                 if dmg > 0.0 { 
                     shadowcraft_roll(&mut rogue);
                     total_oh_hits += 1; 
                 }
+                if dmg_poison > 0.0 { tot_poison_dmg += dmg_poison; }
                 if buffs.snd > 0.0 {
                     time_struct.wep2_swing = wep2.speed * 0.7;
                 } else {
@@ -93,13 +100,14 @@ fn main() {
             while extra_attacks > 0 {
                 if verb { println!("Extra swing!"); }
                 total_extra_hits += 1;
-                let (dmg, extra_swing) = white_attack(&mut rogue, &mut wep1, 
-                                                      time_struct.fight_ends,
-                                                      verb);
+                let (dmg, dmg_poison, extra_swing) = 
+                    white_attack(&mut rogue, &mut wep1, time_struct.fight_ends,
+                                 verb);
                 if dmg > 0.0 { 
                     shadowcraft_roll(&mut rogue);
                     total_mh_hits += 1;
                 }
+                if dmg_poison > 0.0 { tot_poison_dmg += dmg_poison; }
                 // reset swing timer for MH
                 if buffs.snd > 0.0 {
                     time_struct.wep1_swing = wep1.speed * 0.7;
@@ -114,14 +122,14 @@ fn main() {
 
             // check if mh is ready for swing
             if time_struct.wep1_swing <= 0.0 {
-                let (dmg, extra_swing) = white_attack(&mut rogue, 
-                                                      &mut wep1, 
-                                                      time_struct.fight_ends,
-                                                      verb);
+                let (dmg, dmg_poison, extra_swing) = 
+                    white_attack(&mut rogue, &mut wep1, time_struct.fight_ends,
+                                 verb);
                 if dmg > 0.0 { 
                     shadowcraft_roll(&mut rogue);
                     total_mh_hits += 1; 
                 }
+                if dmg_poison > 0.0 { tot_poison_dmg += dmg_poison; }
                 if buffs.snd > 0.0 {
                     time_struct.wep1_swing = wep1.speed * 0.7;
                 } else {
@@ -136,17 +144,18 @@ fn main() {
         //
         // armor reduction
         tot_dmg = armor_reduction(tot_dmg);
+        let all_dmg = tot_dmg + tot_poison_dmg;
 
         if verb {
             println!("\nDps during {:} seconds was {:}.", fight_length, 
-                     tot_dmg/fight_length);
+                     all_dmg/fight_length);
             println!("Total number of mh/of hits: {}/{}.", total_mh_hits, 
                      total_oh_hits);
             println!("Total number of extra hits: {}.", total_extra_hits);
         }
 
         // store dps of run
-        dps_vec.push(tot_dmg/fight_length);
+        dps_vec.push(all_dmg/fight_length);
     }
 
     println!("Average dps for {} over {} runs was {:}.", param_file, 
@@ -276,6 +285,8 @@ fn announce_hit(dmg: f32, attack_type: String, hit_type: String, time: f32) {
         println!("{:2.1}: OH white {} for {:.0}", time, hit_type, dmg);
     } else if attack_type == "snd" {
         println!("{:2.1}: Slice and dice applied for {:.2}s", time, dmg);
+    } else if attack_type == "poison" {
+        println!("{:2.1}: Instant poison for {:.0}", time, dmg);
     }
 }
 
@@ -459,10 +470,11 @@ fn eviscerate(rogue: &mut Rogue, wep: &Weapon, time_struct: &TimeTilEvents,
 fn yellow_attack(rogue: &mut Rogue, mut buffs: &mut BuffsActive,
                  wep: &Weapon, 
                  mut time_struct: &mut TimeTilEvents,
-                 verb: bool) -> (f32, bool) {
+                 verb: bool) -> (f32, f32, bool) {
     // returns dmg and a true bool if an extra attack was triggered
     
     let mut dmg = 0.0;
+    let mut dmg_poison = 0.0;
     let mut extra_hit: bool = false;
     
     let can_sinister = rogue.energy >= 40;
@@ -490,6 +502,7 @@ fn yellow_attack(rogue: &mut Rogue, mut buffs: &mut BuffsActive,
         dmg = sinister_strike(rogue, wep, &time_struct, verb);
         if dmg > 0.0 {
             extra_hit = roll_for_extra_hit(rogue, wep);
+            dmg_poison = poison_dmg(verb, time_struct.fight_ends);
         }
         time_struct.glob_cd_refresh = 1.0;
         if rogue.combo_points > 5 { rogue.combo_points = 5; }
@@ -500,6 +513,7 @@ fn yellow_attack(rogue: &mut Rogue, mut buffs: &mut BuffsActive,
         dmg = backstab(rogue, wep, &time_struct, verb);
         if dmg > 0.0 {
             extra_hit = roll_for_extra_hit(rogue, wep);
+            dmg_poison = poison_dmg(verb, time_struct.fight_ends);
         }
         time_struct.glob_cd_refresh = 1.0;
         if rogue.combo_points > 5 { rogue.combo_points = 5; }
@@ -522,10 +536,11 @@ fn yellow_attack(rogue: &mut Rogue, mut buffs: &mut BuffsActive,
         dmg = eviscerate(rogue, wep, &time_struct, verb);
         if dmg > 0.0 {
             extra_hit = roll_for_extra_hit(rogue, wep);
+            dmg_poison = poison_dmg(verb, time_struct.fight_ends);
         }
         time_struct.glob_cd_refresh = 1.0;
     }
-    return (dmg, extra_hit);
+    return (dmg, dmg_poison, extra_hit);
 }
 
 fn roll_for_extra_hit(rogue: &mut Rogue, wep: &Weapon) -> bool {
@@ -539,9 +554,7 @@ fn get_glancing_reduction(wep_skill: u16) -> f32 {
     if wep_skill == 305 { return 0.15; }
     else if wep_skill == 306 { return 0.11; }
     else if wep_skill == 307 { return 0.07; }
-    else if wep_skill == 308 { return 0.05; }
-    else if wep_skill == 309 { return 0.05; }
-    else if wep_skill == 310 { return 0.05; }
+    else if wep_skill >= 308 && wep_skill <= 315 { return 0.05; }
     else { panic!("weapon skill not implemented"); }
 }
 
@@ -614,7 +627,7 @@ fn get_evis_dmg(rogue: &mut Rogue) -> f32 {
 }
 
 fn white_attack(rogue: &mut Rogue, wep: &mut Weapon, 
-                time_left: f32, verb: bool) -> (f32, bool) {
+                time_left: f32, verb: bool) -> (f32, f32, bool) {
     // returns damage and a bool that is true if an extra swing procced
 
     let hit_result = determine_hit(&rogue, wep.is_dagger, "white".to_string(),
@@ -630,7 +643,7 @@ fn white_attack(rogue: &mut Rogue, wep: &mut Weapon,
         if verb {
             announce_hit(0.0, announce_string, hit_result, time_left);
         }
-        return (0.0, false);
+        return (0.0, 0.0, false);
     }
 
     let mut dmg = get_wep_dmg(&wep, &rogue);
@@ -645,8 +658,23 @@ fn white_attack(rogue: &mut Rogue, wep: &mut Weapon,
     }
     if verb { announce_hit(dmg, announce_string, hit_result, time_left); }
     let extra_hit: bool = roll_for_extra_hit(rogue, wep);
+    let dmg_poison = poison_dmg(verb, time_left);
 
-    return (dmg, extra_hit);
+    return (dmg, dmg_poison, extra_hit);
+}
+
+fn poison_dmg(verb: bool, time_left: f32) -> f32 {
+
+    let die = roll_die();
+    let mut dmg = 0.0;
+    if die < 0.2 { 
+        dmg = 130.0;
+        if verb {
+            announce_hit(dmg, "poison".to_string(), "poison".to_string(), 
+                         time_left);
+        }
+    }
+    return dmg;
 }
 
 fn armor_reduction(dmg: f32) -> f32 {
