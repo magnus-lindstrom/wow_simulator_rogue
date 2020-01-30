@@ -8,7 +8,7 @@
 # comments can be make within sections with the # character, following
 # information
 @@@@ stats gained from armor + weapons
-agility 354
+agility 381
 strength 144
 attack_power 128
 crit 0.06

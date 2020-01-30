@@ -18,13 +18,9 @@ use clap::{Arg, App};
 
 fn main() {
 
-    let fight_length = 60.0;
-    let dt = 0.1;
+    let dt = 0.01;
 
-    let arg_tuple: (u32, bool, String) = get_arguments();
-    let n_runs = arg_tuple.0;
-    let verb = arg_tuple.1;
-    let param_file = arg_tuple.2;
+    let args = get_arguments();
 
     let mut total_extra_hits: u32 = 0;
     let mut total_mh_hits: u32 = 0;
@@ -33,149 +29,186 @@ fn main() {
     let mut rogue: Rogue;
     let mut wep1: Weapon;
     let mut wep2: Weapon;
-    let char_tuple: (Rogue, Weapon, Weapon) = read_params(&param_file);
-    rogue = char_tuple.0;
-    wep1 = char_tuple.1;
-    wep2 = char_tuple.2;
-    add_raid_buffs(&mut rogue);
 
-    calculate_hit_numbers(&mut rogue, &mut wep1, &mut wep2);
+    // get the different characters that will be looped through
+    let character_tuples = get_characters(&args);
+    let characters = character_tuples.0;
+    let descriptions = character_tuples.1;
+    let mut chars_dps_vectors = Vec::new();
 
-    print_hit_chances(&rogue, wep1.is_dagger);
+    for (description, character) in descriptions.iter().zip(characters.iter()) {
 
-    let mut dps_vec = Vec::new();
+        rogue = character.0;
+        wep1 = copy_wep(&character.1);
+        wep2 = copy_wep(&character.2);
 
-    for _i_run in 0..n_runs {
+        add_raid_buffs(&mut rogue);
 
-        let mut buffs = BuffsActive {
-            blade_flurry: 0.0,
-            snd: 0.0,
-            adrenaline_rush: 0.0,
-        };
+        calculate_hit_numbers(&mut rogue, &mut wep1, &mut wep2);
 
-        let mut time_struct = TimeTilEvents {
-            glob_cd_refresh: 0.0,
-            wep1_swing: 0.0,
-            wep2_swing: 0.0,
-            energy_refill: 1.0,
-            fight_ends: fight_length
-        };
+        // if not going for weights, print hit chances once
+        if !args.weights { print_hit_chances(&rogue, wep1.is_dagger); }
 
-        let mut extra_attacks: i8 = 0;
-        let mut tot_dmg = 0.0;
-        let mut tot_poison_dmg = 0.0;
+        let mut dps_vec = Vec::new();
 
-        while time_struct.fight_ends > 0.0 {
+        for _i_run in 0..args.iterations {
 
-            check_for_crusader(&mut rogue, &wep1, &wep2);
+            let mut buffs = BuffsActive {
+                blade_flurry: 0.0,
+                snd: 0.0,
+                adrenaline_rush: 0.0,
+            };
 
-            if time_struct.glob_cd_refresh <= 0.0 {
-                let (dmg, dmg_poison, extra_swing) = 
-                    yellow_attack(&mut rogue, &mut buffs, &wep1, 
-                                  &mut time_struct, verb);
-                if dmg > 0.0 { 
-                    tot_dmg += dmg; 
-                    if wep1.enchant == "crusader" { 
-                        crusader_roll(&mut wep1, verb); 
+            let mut time_struct = TimeTilEvents {
+                glob_cd_refresh: 0.0,
+                wep1_swing: 0.0,
+                wep2_swing: 0.0,
+                energy_refill: 1.0,
+                fight_ends: args.fight_length
+            };
+
+            let mut extra_attacks: i8 = 0;
+            let mut tot_dmg = 0.0;
+            let mut tot_poison_dmg = 0.0;
+
+            while time_struct.fight_ends > 0.0 {
+
+                check_for_crusader(&mut rogue, &wep1, &wep2);
+
+                if time_struct.glob_cd_refresh <= 0.0 {
+                    let (dmg, dmg_poison, extra_swing) = 
+                        yellow_attack(&mut rogue, &mut buffs, &wep1, 
+                                      &mut time_struct, args.verb);
+                    if dmg > 0.0 { 
+                        tot_dmg += dmg; 
+                        if wep1.enchant == "crusader" { 
+                            crusader_roll(&mut wep1, args.verb); 
+                        }
+                        shadowcraft_roll(&mut rogue);
+                        total_mh_hits += 1;
                     }
-                    shadowcraft_roll(&mut rogue);
-                    total_mh_hits += 1;
+                    if dmg_poison > 0.0 { tot_poison_dmg += dmg_poison; }
+                    if extra_swing { extra_attacks += 1; }
                 }
-                if dmg_poison > 0.0 { tot_poison_dmg += dmg_poison; }
-                if extra_swing { extra_attacks += 1; }
-            }
-            // check if oh is ready for swing
-            if time_struct.wep2_swing <= 0.0 {
-                let (dmg, dmg_poison, extra_swing) = 
-                    white_attack(&mut rogue, &mut wep2, 
-                                 time_struct.fight_ends, verb);
-                if dmg > 0.0 { 
-                    if wep2.enchant == "crusader" { 
-                        crusader_roll(&mut wep2, verb); 
+                // check if oh is ready for swing
+                if time_struct.wep2_swing <= 0.0 {
+                    let (dmg, dmg_poison, extra_swing) = 
+                        white_attack(&mut rogue, &mut wep2, 
+                                     time_struct.fight_ends, args.verb);
+                    if dmg > 0.0 { 
+                        if wep2.enchant == "crusader" { 
+                            crusader_roll(&mut wep2, args.verb); 
+                        }
+                        shadowcraft_roll(&mut rogue);
+                        total_oh_hits += 1; 
                     }
-                    shadowcraft_roll(&mut rogue);
-                    total_oh_hits += 1; 
-                }
-                if dmg_poison > 0.0 { tot_poison_dmg += dmg_poison; }
-                if buffs.snd > 0.0 {
-                    time_struct.wep2_swing = wep2.speed * 0.7;
-                } else {
+                    if dmg_poison > 0.0 { tot_poison_dmg += dmg_poison; }
+
+                    // Reset swing timer
                     time_struct.wep2_swing = wep2.speed;
+                    let mut haste_mult = 1.0;
+                    if buffs.snd > 0.0 { haste_mult -= 0.3; } 
+                    if rogue.haste > 0.0 { haste_mult -= rogue.haste; }
+                    time_struct.wep2_swing *= haste_mult; 
+                    
+
+                    tot_dmg += dmg;
+                    if extra_swing { extra_attacks += 1; }
                 }
-                tot_dmg += dmg;
-                if extra_swing { extra_attacks += 1; }
-            }
-            // check if extra swings are lined up
-            while extra_attacks > 0 {
-                if verb { println!("Extra swing!"); }
-                total_extra_hits += 1;
-                let (dmg, dmg_poison, extra_swing) = 
-                    white_attack(&mut rogue, &mut wep1, time_struct.fight_ends,
-                                 verb);
-                if dmg > 0.0 { 
-                    if wep1.enchant == "crusader" { 
-                        crusader_roll(&mut wep1, verb); 
+                // check if extra swings are lined up
+                while extra_attacks > 0 {
+                    if args.verb { println!("Extra swing!"); }
+                    total_extra_hits += 1;
+                    let (dmg, dmg_poison, extra_swing) = 
+                        white_attack(&mut rogue, &mut wep1, time_struct.fight_ends,
+                                     args.verb);
+                    if dmg > 0.0 { 
+                        if wep1.enchant == "crusader" { 
+                            crusader_roll(&mut wep1, args.verb); 
+                        }
+                        shadowcraft_roll(&mut rogue);
+                        total_mh_hits += 1;
                     }
-                    shadowcraft_roll(&mut rogue);
-                    total_mh_hits += 1;
-                }
-                if dmg_poison > 0.0 { tot_poison_dmg += dmg_poison; }
-                // reset swing timer for MH
-                if buffs.snd > 0.0 {
-                    time_struct.wep1_swing = wep1.speed * 0.7;
-                } else {
-                    time_struct.wep1_swing = wep1.speed;
-                }
-                tot_dmg += dmg;
-                if !extra_swing {
-                    extra_attacks -= 1;
-                }
-            }
+                    if dmg_poison > 0.0 { tot_poison_dmg += dmg_poison; }
 
-            // check if mh is ready for swing
-            if time_struct.wep1_swing <= 0.0 {
-                let (dmg, dmg_poison, extra_swing) = 
-                    white_attack(&mut rogue, &mut wep1, time_struct.fight_ends,
-                                 verb);
-                if dmg > 0.0 { 
-                    if wep1.enchant == "crusader" { 
-                        crusader_roll(&mut wep1, verb); 
+                    // Reset swing timer for MH
+                    time_struct.wep1_swing = wep1.speed;
+                    let mut haste_mult = 1.0;
+                    if buffs.snd > 0.0 { haste_mult -= 0.3; } 
+                    if rogue.haste > 0.0 { haste_mult -= rogue.haste; }
+                    time_struct.wep1_swing *= haste_mult; 
+
+                    tot_dmg += dmg;
+                    if !extra_swing {
+                        extra_attacks -= 1;
                     }
-                    shadowcraft_roll(&mut rogue);
-                    total_mh_hits += 1; 
                 }
-                if dmg_poison > 0.0 { tot_poison_dmg += dmg_poison; }
-                if buffs.snd > 0.0 {
-                    time_struct.wep1_swing = wep1.speed * 0.7;
-                } else {
+
+                // check if mh is ready for swing
+                if time_struct.wep1_swing <= 0.0 {
+                    let (dmg, dmg_poison, extra_swing) = 
+                        white_attack(&mut rogue, &mut wep1, time_struct.fight_ends,
+                                     args.verb);
+                    if dmg > 0.0 { 
+                        if wep1.enchant == "crusader" { 
+                            crusader_roll(&mut wep1, args.verb); 
+                        }
+                        shadowcraft_roll(&mut rogue);
+                        total_mh_hits += 1; 
+                    }
+                    if dmg_poison > 0.0 { tot_poison_dmg += dmg_poison; }
+                    
+                    // Reset swing timer
                     time_struct.wep1_swing = wep1.speed;
+                    let mut haste_mult = 1.0;
+                    if buffs.snd > 0.0 { haste_mult -= 0.3; } 
+                    if rogue.haste > 0.0 { haste_mult -= rogue.haste; }
+                    time_struct.wep1_swing *= haste_mult; 
+
+
+                    if extra_swing { extra_attacks += 1; }
+                    tot_dmg += dmg;
                 }
-
-                if extra_swing { extra_attacks += 1; }
-                tot_dmg += dmg;
+                subtract_times(&mut rogue, &mut time_struct, &mut buffs,
+                               &mut wep1, &mut wep2, dt);
             }
-            subtract_times(&mut rogue, &mut time_struct, &mut buffs,
-                           &mut wep1, &mut wep2, dt);
-        }
-        //
-        // armor reduction
-        tot_dmg = armor_reduction(tot_dmg);
-        let all_dmg = tot_dmg + tot_poison_dmg;
+            //
+            // armor reduction
+            tot_dmg = armor_reduction(tot_dmg);
+            let all_dmg = tot_dmg + tot_poison_dmg;
 
-        if verb {
-            println!("\nDps during {:} seconds was {:}.", fight_length, 
-                     all_dmg/fight_length);
-            println!("Total number of mh/of hits: {}/{}.", total_mh_hits, 
-                     total_oh_hits);
-            println!("Total number of extra hits: {}.", total_extra_hits);
+            if args.verb {
+                println!("\nDps during {:} seconds was {:}.", args.fight_length, 
+                         all_dmg/args.fight_length);
+                println!("Total number of mh/of hits: {}/{}.", total_mh_hits, 
+                         total_oh_hits);
+                println!("Total number of extra hits: {}.", total_extra_hits);
+            }
+
+            // store dps of run
+            dps_vec.push(all_dmg/args.fight_length);
         }
 
-        // store dps of run
-        dps_vec.push(all_dmg/fight_length);
+        chars_dps_vectors.push(mean(&dps_vec));
+
+        if !args.weights {
+            println!("Average dps for {} over {} runs was {:}.", 
+                     args.param_file, args.iterations, mean(&dps_vec));
+        } else {
+            if description == "base" {
+                println!("\nAnalysis of stat weights based on char in file: {}", 
+                         args.param_file);
+                println!("Length of each fight: {}", 
+                         args.fight_length);
+                println!("Nr of iterations per variation: {}\n", 
+                         args.iterations);
+                println!("{:_<12}:  {:}", description, mean(&dps_vec));
+            } else {
+                println!("{:_<12}: {:+.5}", description, 
+                         mean(&dps_vec) - chars_dps_vectors[0]);
+            }
+        }
     }
-
-    println!("Average dps for {} over {} runs was {:}.", param_file, 
-             n_runs, mean(&dps_vec));
 }
 
 fn check_for_crusader(rogue: &mut Rogue, wep1: &Weapon, wep2: &Weapon) {
@@ -189,7 +222,7 @@ fn check_for_crusader(rogue: &mut Rogue, wep1: &Weapon, wep2: &Weapon) {
     }
 }
 
-fn get_arguments() -> (u32, bool, String) {
+fn get_arguments() -> Args {
 
     let matches = App::new("WoW rogue simulator") 
         .version("0.1.0") 
@@ -204,6 +237,15 @@ fn get_arguments() -> (u32, bool, String) {
              .short("i") 
              .long("iterations").takes_value(true) 
              .help("Number of iterations to average over."))
+        .arg(Arg::with_name("fight_length") 
+             .short("t") 
+             .long("time").takes_value(true) 
+             .help("Seconds of duration per fight."))
+        .arg(Arg::with_name("weights") 
+            .short("w") 
+            .long("weights") 
+            .takes_value(false) 
+            .help("Permute stats/talents slightly to get dps values."))
         .arg(Arg::with_name("verbose") 
             .short("v") 
             .long("verbose") 
@@ -213,8 +255,20 @@ fn get_arguments() -> (u32, bool, String) {
 
     let file = matches.value_of("file").unwrap();
     let iterations = matches.value_of("iterations").unwrap_or("10_000");
+    let fight_length = matches.value_of("fight_length").unwrap_or("60");
+    let weights = matches.is_present("weights");
     let verb = matches.is_present("verbose");
-    return (iterations.parse().unwrap(), verb, file.to_string());
+
+
+    let mut args: Args = default_args();
+    args.param_file = file.to_string();
+    args.verb = verb;
+    args.weights = weights;
+    args.iterations = iterations.parse().unwrap();
+    let fl: u16 = fight_length.parse().unwrap();
+    args.fight_length = fl as f32;
+
+    return args;
 
 }
 
@@ -309,6 +363,25 @@ fn print_hit_chances(rogue: &Rogue, mh_is_dagger: bool) {
         tmp2 = tmp1 + crit;
         println!("{:}-{:}-{:}\n", tmp, tmp1, tmp2);
     }
+}
+
+struct Args {
+    verb: bool,
+    iterations: u32,
+    param_file: String,
+    weights: bool,
+    fight_length: f32
+}
+
+fn default_args() -> Args {
+    let args = Args {
+        verb: false,
+        iterations: 1000,
+        param_file: "".to_string(),
+        weights: false,
+        fight_length: 60.0
+    };
+    return args;
 }
 
 fn announce_hit(dmg: f32, attack_type: String, hit_type: String, time: f32) {
@@ -724,6 +797,22 @@ fn armor_reduction(dmg: f32) -> f32 {
     return dmg * (1.0 - red);
 }
 
+fn copy_wep(wep: &Weapon) -> Weapon {
+    let copy = Weapon {
+        speed: wep.speed,
+        max_dmg: wep.max_dmg,
+        min_dmg: wep.min_dmg,
+        mean_dmg: wep.mean_dmg,
+        enchant: wep.enchant.clone(),
+        crusader: wep.crusader,
+        is_offhand: wep.is_offhand,
+        is_dagger: wep.is_dagger,
+        is_sword: wep.is_sword,
+        extra_hit_proc_chance: wep.extra_hit_proc_chance
+    };
+    return copy;
+}
+
 struct Weapon {
     speed: f32,
     max_dmg: u16,
@@ -745,6 +834,7 @@ struct Rogue {
     attack_power: u16, // IMPORTANT: just attack power given directly by gear
     crit: f32,
     hit: f32,
+    haste: f32,
     nr_crusaders_active: f32,
     swords_skill: u16,
     daggers_skill: u16,
@@ -852,6 +942,7 @@ fn init_rogue() -> Rogue {
         attack_power: 0, // IMPORTANT: just attack power given directly by gear
         crit: 0.0,
         hit: 0.0,
+        haste: 0.0,
         nr_crusaders_active: 0.0,
         dodge_swords: 0.0,
         dodge_daggers: 0.0,
@@ -901,6 +992,120 @@ fn init_weapon() -> Weapon {
         extra_hit_proc_chance: 0.0
     };
     return wep;
+}
+
+fn get_characters(args: &Args) -> (Vec<(Rogue, Weapon, Weapon)>, Vec<String>) {
+
+    let mut characters = Vec::new();
+    let mut descriptions = Vec::new();
+
+    let mut char_tuple = read_params(&args.param_file);
+    characters.push(char_tuple);
+    descriptions.push("base".to_string());
+
+    if args.weights {
+        // one less agility
+        char_tuple = read_params(&args.param_file);
+        char_tuple.0.agility -= 10;
+        characters.push(char_tuple);
+        descriptions.push("-10 agi".to_string());
+        
+        // one more agility
+        char_tuple = read_params(&args.param_file);
+        char_tuple.0.agility += 10;
+        characters.push(char_tuple);
+        descriptions.push("+10 agi".to_string());
+        
+        // ten less strength
+        char_tuple = read_params(&args.param_file);
+        char_tuple.0.strength -= 10;
+        characters.push(char_tuple);
+        descriptions.push("-10 str".to_string());
+        // ten more strength
+        char_tuple = read_params(&args.param_file);
+        char_tuple.0.strength += 10;
+        characters.push(char_tuple);
+        descriptions.push("+10 str".to_string());
+         
+        // ten less attack power
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.attack_power >= 10 {
+            char_tuple.0.attack_power -= 10;
+            characters.push(char_tuple);
+            descriptions.push("-10 atp".to_string());
+        }
+        // ten more attack power
+        char_tuple = read_params(&args.param_file);
+        char_tuple.0.attack_power += 10;
+        characters.push(char_tuple);
+        descriptions.push("+10 atp".to_string());
+        
+        // one less hit
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.hit >= 0.01 {
+            char_tuple.0.hit -= 0.01;
+            characters.push(char_tuple);
+            descriptions.push("-1 hit".to_string());
+        }
+        // one more hit
+        char_tuple = read_params(&args.param_file);
+        char_tuple.0.hit += 0.01;
+        characters.push(char_tuple);
+        descriptions.push("+1 hit".to_string());
+
+        // one less crit
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.crit >= 0.01 {
+            char_tuple.0.crit -= 0.01;
+            characters.push(char_tuple);
+            descriptions.push("-1 crit".to_string());
+        }
+        // one more crit
+        char_tuple = read_params(&args.param_file);
+        char_tuple.0.crit += 0.01;
+        characters.push(char_tuple);
+        descriptions.push("+1 crit".to_string());
+         
+        // one less haste
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.haste >= 0.01 {
+            char_tuple.0.haste -= 0.01;
+            characters.push(char_tuple);
+            descriptions.push("-1 haste".to_string());
+        }
+        // one more haste
+        char_tuple = read_params(&args.param_file);
+        char_tuple.0.haste += 0.01;
+        characters.push(char_tuple);
+        descriptions.push("+1 haste".to_string());
+
+        // one less dagger skill
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.daggers_skill > 300 {
+            char_tuple.0.daggers_skill -= 1;
+            characters.push(char_tuple);
+            descriptions.push("-1 dgr_skill".to_string());
+        }
+        // one more dagger skill
+        char_tuple = read_params(&args.param_file);
+        char_tuple.0.daggers_skill += 1;
+        characters.push(char_tuple);
+        descriptions.push("+1 dgr_skill".to_string());
+         
+        // two less extra hit proc chance
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.extra_hit_proc_chance >= 0.02 {
+            char_tuple.0.extra_hit_proc_chance -= 0.02;
+            characters.push(char_tuple);
+            descriptions.push("-2 hit proc".to_string());
+        }
+        // two more extra hit proc chance
+        char_tuple = read_params(&args.param_file);
+        char_tuple.0.extra_hit_proc_chance += 0.02;
+        characters.push(char_tuple);
+        descriptions.push("+2 hit proc".to_string());
+    } 
+    return (characters, descriptions);
 }
 
 fn read_params(param_file: &String) -> (Rogue, Weapon, Weapon) {
@@ -955,6 +1160,11 @@ fn param_adder(text: &str, rogue: &mut Rogue) {
     } else if words_vec[0] == "hit" { 
         match words_vec[1].parse() {
             Ok(x) => rogue.hit = x,
+            Err(x) => panic!("Can't translate word to number. {}", x)
+        }
+    } else if words_vec[0] == "haste" { 
+        match words_vec[1].parse() {
+            Ok(x) => rogue.haste = x,
             Err(x) => panic!("Can't translate word to number. {}", x)
         }
     } else if words_vec[0] == "swords_skill" { 
