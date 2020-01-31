@@ -12,6 +12,7 @@ extern crate clap;
 
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::f32;
 use rand::distributions::{Distribution, Uniform};
 use clap::{Arg, App};
 
@@ -106,10 +107,12 @@ fn main() {
 
                     // Reset swing timer
                     time_struct.wep2_swing = wep2.speed;
-                    let mut haste_mult = 1.0;
-                    if buffs.snd > 0.0 { haste_mult -= 0.3; } 
-                    if rogue.haste > 0.0 { haste_mult -= rogue.haste; }
-                    time_struct.wep2_swing *= haste_mult; 
+                    if buffs.snd > 0.0 { 
+                        time_struct.wep2_swing *= 1.0 - 0.3; 
+                    } 
+                    if rogue.haste > 0.0 { 
+                        time_struct.wep2_swing *= 1.0 - rogue.haste; 
+                    }
                     
 
                     tot_dmg += dmg;
@@ -131,12 +134,14 @@ fn main() {
                     }
                     if dmg_poison > 0.0 { tot_poison_dmg += dmg_poison; }
 
-                    // Reset swing timer for MH
+                    // Reset swing timer
                     time_struct.wep1_swing = wep1.speed;
-                    let mut haste_mult = 1.0;
-                    if buffs.snd > 0.0 { haste_mult -= 0.3; } 
-                    if rogue.haste > 0.0 { haste_mult -= rogue.haste; }
-                    time_struct.wep1_swing *= haste_mult; 
+                    if buffs.snd > 0.0 { 
+                        time_struct.wep1_swing *= 1.0 - 0.3; 
+                    } 
+                    if rogue.haste > 0.0 { 
+                        time_struct.wep1_swing *= 1.0 - rogue.haste; 
+                    }
 
                     tot_dmg += dmg;
                     if !extra_swing {
@@ -160,10 +165,12 @@ fn main() {
                     
                     // Reset swing timer
                     time_struct.wep1_swing = wep1.speed;
-                    let mut haste_mult = 1.0;
-                    if buffs.snd > 0.0 { haste_mult -= 0.3; } 
-                    if rogue.haste > 0.0 { haste_mult -= rogue.haste; }
-                    time_struct.wep1_swing *= haste_mult; 
+                    if buffs.snd > 0.0 { 
+                        time_struct.wep1_swing *= 1.0 - 0.3; 
+                    } 
+                    if rogue.haste > 0.0 { 
+                        time_struct.wep1_swing *= 1.0 - rogue.haste; 
+                    }
 
 
                     if extra_swing { extra_attacks += 1; }
@@ -202,10 +209,12 @@ fn main() {
                          args.fight_length);
                 println!("Nr of iterations per variation: {}\n", 
                          args.iterations);
-                println!("{:_<12}:  {:}", description, mean(&dps_vec));
+                println!("{:_<15}:{:>9.4} ±{:.1}", description, mean(&dps_vec),
+                         std_dev(&dps_vec));
             } else {
-                println!("{:_<12}: {:+.5}", description, 
-                         mean(&dps_vec) - chars_dps_vectors[0]);
+                let dps_diff = mean(&dps_vec) - chars_dps_vectors[0];
+                println!("{:_<15}:{:>+9.4} ±{:.1}", description, 
+                         dps_diff, std_dev(&dps_vec));
             }
         }
     }
@@ -246,6 +255,11 @@ fn get_arguments() -> Args {
             .long("weights") 
             .takes_value(false) 
             .help("Permute stats/talents slightly to get dps values."))
+        .arg(Arg::with_name("weight_mult") 
+            .short("m") 
+            .long("weight_mult") 
+            .takes_value(true) 
+            .help("Change degree of permutation by a factor."))
         .arg(Arg::with_name("verbose") 
             .short("v") 
             .long("verbose") 
@@ -257,6 +271,7 @@ fn get_arguments() -> Args {
     let iterations = matches.value_of("iterations").unwrap_or("10_000");
     let fight_length = matches.value_of("fight_length").unwrap_or("60");
     let weights = matches.is_present("weights");
+    let weight_mult = matches.value_of("weight_mult").unwrap_or("1");
     let verb = matches.is_present("verbose");
 
 
@@ -264,6 +279,7 @@ fn get_arguments() -> Args {
     args.param_file = file.to_string();
     args.verb = verb;
     args.weights = weights;
+    args.weight_mult = weight_mult.parse().unwrap();
     args.iterations = iterations.parse().unwrap();
     let fl: u16 = fight_length.parse().unwrap();
     args.fight_length = fl as f32;
@@ -370,6 +386,7 @@ struct Args {
     iterations: u32,
     param_file: String,
     weights: bool,
+    weight_mult: u16,
     fight_length: f32
 }
 
@@ -379,6 +396,7 @@ fn default_args() -> Args {
         iterations: 1000,
         param_file: "".to_string(),
         weights: false,
+        weight_mult: 1,
         fight_length: 60.0
     };
     return args;
@@ -667,17 +685,19 @@ fn get_glancing_reduction(wep_skill: u16) -> f32 {
     if wep_skill == 305 { return 0.15; }
     else if wep_skill == 306 { return 0.11; }
     else if wep_skill == 307 { return 0.07; }
-    else if wep_skill >= 308 && wep_skill <= 315 { return 0.05; }
+    else if wep_skill >= 308 { return 0.05; }
     else { panic!("weapon skill not implemented"); }
 }
 
 fn get_dodge_chance(wep_skill: u16) -> f32 {
-    let dodge_chance = 0.05 + (315 - wep_skill) as f32 * 0.001;
+    let wep_skill_i16: i16 = wep_skill as i16;
+    let dodge_chance = 0.05 + (315 - wep_skill_i16) as f32 * 0.001;
     return dodge_chance;
 }
 
 fn get_yellow_miss_chance(wep_skill: u16) -> f32 {
-    let miss_chance = 0.05 + (315 - wep_skill) as f32 * 0.001;
+    let wep_skill_i16: i16 = wep_skill as i16;
+    let miss_chance = 0.05 + (315 - wep_skill_i16) as f32 * 0.001;
     return miss_chance;
 }
 
@@ -1006,104 +1026,124 @@ fn get_characters(args: &Args) -> (Vec<(Rogue, Weapon, Weapon)>, Vec<String>) {
     if args.weights {
         // one less agility
         char_tuple = read_params(&args.param_file);
-        char_tuple.0.agility -= 10;
-        characters.push(char_tuple);
-        descriptions.push("-10 agi".to_string());
+        if char_tuple.0.agility >= 10 * args.weight_mult {
+            char_tuple.0.agility -= 10 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("-{} agi", 10 * args.weight_mult);
+            descriptions.push(desc);
+        }
         
         // one more agility
         char_tuple = read_params(&args.param_file);
-        char_tuple.0.agility += 10;
+        char_tuple.0.agility += 10 * args.weight_mult;
         characters.push(char_tuple);
-        descriptions.push("+10 agi".to_string());
+        let desc = format!("+{} agi", 10 * args.weight_mult);
+        descriptions.push(desc);
         
         // ten less strength
         char_tuple = read_params(&args.param_file);
-        char_tuple.0.strength -= 10;
-        characters.push(char_tuple);
-        descriptions.push("-10 str".to_string());
+        if char_tuple.0.strength >= 10 * args.weight_mult {
+            char_tuple.0.strength -= 10 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("-{} str", 10 * args.weight_mult);
+            descriptions.push(desc);
+        }
         // ten more strength
         char_tuple = read_params(&args.param_file);
-        char_tuple.0.strength += 10;
+        char_tuple.0.strength += 10 * args.weight_mult;
         characters.push(char_tuple);
-        descriptions.push("+10 str".to_string());
+        let desc = format!("+{} str", 10 * args.weight_mult);
+        descriptions.push(desc);
          
         // ten less attack power
         char_tuple = read_params(&args.param_file);
-        if char_tuple.0.attack_power >= 10 {
-            char_tuple.0.attack_power -= 10;
+        if char_tuple.0.attack_power >= 10 * args.weight_mult {
+            char_tuple.0.attack_power -= 10 * args.weight_mult;
             characters.push(char_tuple);
-            descriptions.push("-10 atp".to_string());
+            let desc = format!("-{} atp", 10 * args.weight_mult);
+            descriptions.push(desc);
         }
         // ten more attack power
         char_tuple = read_params(&args.param_file);
-        char_tuple.0.attack_power += 10;
+        char_tuple.0.attack_power += 10 * args.weight_mult;
         characters.push(char_tuple);
-        descriptions.push("+10 atp".to_string());
+        let desc = format!("+{} atp", 10 * args.weight_mult);
+        descriptions.push(desc);
         
         // one less hit
         char_tuple = read_params(&args.param_file);
-        if char_tuple.0.hit >= 0.01 {
-            char_tuple.0.hit -= 0.01;
+        if char_tuple.0.hit >= 0.01 * args.weight_mult as f32 {
+            char_tuple.0.hit -= 0.01 * args.weight_mult as f32;
             characters.push(char_tuple);
-            descriptions.push("-1 hit".to_string());
+            let desc = format!("-{} hit", 0.01 * args.weight_mult as f32);
+            descriptions.push(desc);
         }
         // one more hit
         char_tuple = read_params(&args.param_file);
-        char_tuple.0.hit += 0.01;
+        char_tuple.0.hit += 0.01 * args.weight_mult as f32;
         characters.push(char_tuple);
-        descriptions.push("+1 hit".to_string());
+        let desc = format!("+{} hit", 0.01 * args.weight_mult as f32);
+        descriptions.push(desc);
 
         // one less crit
         char_tuple = read_params(&args.param_file);
-        if char_tuple.0.crit >= 0.01 {
-            char_tuple.0.crit -= 0.01;
+        if char_tuple.0.crit >= 0.01 * args.weight_mult as f32 {
+            char_tuple.0.crit -= 0.01 * args.weight_mult as f32;
             characters.push(char_tuple);
-            descriptions.push("-1 crit".to_string());
+            let desc = format!("-{} crit", 0.01 * args.weight_mult as f32);
+            descriptions.push(desc);
         }
         // one more crit
         char_tuple = read_params(&args.param_file);
-        char_tuple.0.crit += 0.01;
+        char_tuple.0.crit += 0.01 * args.weight_mult as f32;
         characters.push(char_tuple);
-        descriptions.push("+1 crit".to_string());
+        let desc = format!("+{} crit", 0.01 * args.weight_mult as f32);
+        descriptions.push(desc);
          
         // one less haste
         char_tuple = read_params(&args.param_file);
-        if char_tuple.0.haste >= 0.01 {
-            char_tuple.0.haste -= 0.01;
+        if char_tuple.0.haste >= 0.01  * args.weight_mult as f32{
+            char_tuple.0.haste -= 0.01 * args.weight_mult as f32;
             characters.push(char_tuple);
-            descriptions.push("-1 haste".to_string());
+            let desc = format!("-{} haste", 0.01 * args.weight_mult as f32);
+            descriptions.push(desc);
         }
         // one more haste
         char_tuple = read_params(&args.param_file);
-        char_tuple.0.haste += 0.01;
+        char_tuple.0.haste += 0.01 * args.weight_mult as f32;
         characters.push(char_tuple);
-        descriptions.push("+1 haste".to_string());
+        let desc = format!("+{} haste", 0.01 * args.weight_mult as f32);
+        descriptions.push(desc);
 
         // one less dagger skill
         char_tuple = read_params(&args.param_file);
-        if char_tuple.0.daggers_skill > 300 {
-            char_tuple.0.daggers_skill -= 1;
+        if char_tuple.0.daggers_skill >= 300 + 1 * args.weight_mult{
+            char_tuple.0.daggers_skill -= 1 * args.weight_mult;
             characters.push(char_tuple);
-            descriptions.push("-1 dgr_skill".to_string());
+            let desc = format!("-{} dgr skill", 1 * args.weight_mult);
+            descriptions.push(desc);
         }
         // one more dagger skill
         char_tuple = read_params(&args.param_file);
-        char_tuple.0.daggers_skill += 1;
+        char_tuple.0.daggers_skill += 1 * args.weight_mult;
         characters.push(char_tuple);
-        descriptions.push("+1 dgr_skill".to_string());
+        let desc = format!("+{} dgr skill", 1 * args.weight_mult);
+        descriptions.push(desc);
          
         // two less extra hit proc chance
         char_tuple = read_params(&args.param_file);
-        if char_tuple.0.extra_hit_proc_chance >= 0.02 {
-            char_tuple.0.extra_hit_proc_chance -= 0.02;
+        if char_tuple.0.extra_hit_proc_chance >= 0.02 * args.weight_mult as f32 {
+            char_tuple.0.extra_hit_proc_chance -= 0.02 * args.weight_mult as f32;
             characters.push(char_tuple);
-            descriptions.push("-2 hit proc".to_string());
+            let desc = format!("-{} hit proc", 0.02 * args.weight_mult as f32);
+            descriptions.push(desc);
         }
         // two more extra hit proc chance
         char_tuple = read_params(&args.param_file);
-        char_tuple.0.extra_hit_proc_chance += 0.02;
+        char_tuple.0.extra_hit_proc_chance += 0.02 * args.weight_mult as f32;
         characters.push(char_tuple);
-        descriptions.push("+2 hit proc".to_string());
+        let desc = format!("+{} hit proc", 0.02 * args.weight_mult as f32);
+        descriptions.push(desc);
     } 
     return (characters, descriptions);
 }
@@ -1397,3 +1437,15 @@ fn mean(numbers: &Vec<f32>) -> f32 {
     let avg = sum / numbers.len() as f64;
     return avg as f32;
 }
+
+fn std_dev(numbers: &Vec<f32>) -> f32 {
+
+    let mean = mean(numbers);
+    let mut tmp = 0.0;
+    for nr in numbers {
+        tmp += (nr - mean).powf(2.0);
+    }
+    let std_dev = (tmp / (numbers.len() - 1) as f32).sqrt();
+    return std_dev;
+}
+
