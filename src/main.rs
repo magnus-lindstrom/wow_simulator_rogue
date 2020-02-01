@@ -1,4 +1,6 @@
 /* TODO
+ * - Add option to face enemies lvl 60
+ * - Add option to go without raid buffs
  * - Add poisons, scale them vs armor reduction with proper resistances.
  *   - 20% chance to apply a poison, base stat.
  *   - 20% chance for a boss to resist the poison
@@ -45,7 +47,7 @@ fn main() {
 
         add_raid_buffs(&mut rogue);
 
-        calculate_hit_numbers(&mut rogue, &mut wep1, &mut wep2);
+        calculate_hit_numbers(&mut rogue, &mut wep1, &mut wep2, &args);
 
         // if not going for weights, print hit chances once
         if !args.weights { print_hit_chances(&rogue, wep1.is_dagger); }
@@ -205,15 +207,16 @@ fn main() {
             if description == "base" {
                 println!("\nAnalysis of stat weights based on char in file: {}", 
                          args.param_file);
+                println!("Enemy level: {}", args.enemy_lvl);
                 println!("Length of each fight: {}", 
                          args.fight_length);
                 println!("Nr of iterations per variation: {}\n", 
                          args.iterations);
-                println!("{:_<15}:{:>9.4} ±{:.1}", description, mean(&dps_vec),
+                println!("{:_<15}:{:>9.2} ±{:.1}", description, mean(&dps_vec),
                          std_dev(&dps_vec));
             } else {
                 let dps_diff = mean(&dps_vec) - chars_dps_vectors[0];
-                println!("{:_<15}:{:>+9.4} ±{:.1}", description, 
+                println!("{:_<15}:{:>+9.2} ±{:.1}", description, 
                          dps_diff, std_dev(&dps_vec));
             }
         }
@@ -237,25 +240,29 @@ fn get_arguments() -> Args {
         .version("0.1.0") 
         .author("Magnus Lindström <magnus.lindstrom@tuta.io>")
         .about("Compares items/specs for PvE raiding purposes. Combat Rogues.") 
-        .arg(Arg::with_name("file") 
+        .arg(Arg::with_name("Parameter file") 
              .required(true)
              .short("f") 
              .long("file").takes_value(true) 
              .help("Parameter file that contains all rogue traits."))
-        .arg(Arg::with_name("iterations") 
+        .arg(Arg::with_name("Nr of iterations") 
              .short("i") 
              .long("iterations").takes_value(true) 
-             .help("Number of iterations to average over."))
-        .arg(Arg::with_name("fight_length") 
+             .help("Number of iterations to average over. Default is 10 000"))
+        .arg(Arg::with_name("Fight length") 
              .short("t") 
              .long("time").takes_value(true) 
-             .help("Seconds of duration per fight."))
-        .arg(Arg::with_name("weights") 
+             .help("Seconds of duration per fight. Default is 60s."))
+        .arg(Arg::with_name("Enemy level") 
+             .short("e") 
+             .long("enemy_lvl").takes_value(true) 
+             .help("Lvl of the enemy. Default is 63."))
+        .arg(Arg::with_name("Weights") 
             .short("w") 
             .long("weights") 
             .takes_value(false) 
-            .help("Permute stats/talents slightly to get dps values."))
-        .arg(Arg::with_name("weight_mult") 
+            .help("Permute stats/talents slightly to get delta dps values."))
+        .arg(Arg::with_name("Weight multiplier") 
             .short("m") 
             .long("weight_mult") 
             .takes_value(true) 
@@ -267,12 +274,13 @@ fn get_arguments() -> Args {
             .help("Be verbose, print details about fights."))
         .get_matches();
 
-    let file = matches.value_of("file").unwrap();
-    let iterations = matches.value_of("iterations").unwrap_or("10_000");
-    let fight_length = matches.value_of("fight_length").unwrap_or("60");
-    let weights = matches.is_present("weights");
-    let weight_mult = matches.value_of("weight_mult").unwrap_or("1");
-    let verb = matches.is_present("verbose");
+    let file = matches.value_of("Parameter file").unwrap();
+    let iterations = matches.value_of("Nr of iterations").unwrap_or("10_000");
+    let fight_length = matches.value_of("Fight length").unwrap_or("60");
+    let enemy_lvl = matches.value_of("Enemy level").unwrap_or("63");
+    let weights = matches.is_present("Weights");
+    let weight_mult = matches.value_of("Weight mult").unwrap_or("1");
+    let verb = matches.is_present("Verbose");
 
 
     let mut args: Args = default_args();
@@ -280,6 +288,7 @@ fn get_arguments() -> Args {
     args.verb = verb;
     args.weights = weights;
     args.weight_mult = weight_mult.parse().unwrap();
+    args.enemy_lvl = enemy_lvl.parse().unwrap();
     args.iterations = iterations.parse().unwrap();
     let fl: u16 = fight_length.parse().unwrap();
     args.fight_length = fl as f32;
@@ -351,11 +360,11 @@ fn print_hit_chances(rogue: &Rogue, mh_is_dagger: bool) {
     println!("*** White hits summary ***");
     println!("miss chance: {:}", white_miss);
     println!("dodge chance: {:}", dodge);
-    println!("glancing chance: {:}", rogue.glancing);
+    println!("glancing chance: {:}", rogue.glancing_chance);
     println!("crit chance: {:}", crit);
     let mut tmp = white_miss;
     let mut tmp1 = tmp + dodge;
-    let mut tmp2 = tmp1 + rogue.glancing;
+    let mut tmp2 = tmp1 + rogue.glancing_chance;
     let     tmp3 = tmp2 + crit;
     println!("{:}-{:}-{:}-{:}\n", tmp, tmp1, tmp2, tmp3);
     
@@ -382,22 +391,24 @@ fn print_hit_chances(rogue: &Rogue, mh_is_dagger: bool) {
 }
 
 struct Args {
-    verb: bool,
+    enemy_lvl: i16,
+    fight_length: f32,
     iterations: u32,
     param_file: String,
-    weights: bool,
+    verb: bool,
     weight_mult: u16,
-    fight_length: f32
+    weights: bool
 }
 
 fn default_args() -> Args {
     let args = Args {
-        verb: false,
-        iterations: 1000,
+        enemy_lvl: 0,
+        fight_length: 0.0,
+        iterations: 0,
         param_file: "".to_string(),
-        weights: false,
-        weight_mult: 1,
-        fight_length: 60.0
+        verb: false,
+        weight_mult: 0,
+        weights: false
     };
     return args;
 }
@@ -469,7 +480,7 @@ fn determine_hit(rogue: &Rogue, is_dagger: bool, color: String,
             let mut percent_sum = rogue.white_miss_daggers 
                 + rogue.dodge_daggers;
             if roll < percent_sum { return "dodge".to_string(); }
-            percent_sum += rogue.glancing;
+            percent_sum += rogue.glancing_chance;
             if roll < percent_sum { return "glancing".to_string(); }
             percent_sum += rogue.crit 
                 + 0.01 * rogue.dagger_specialization as f32;
@@ -480,7 +491,7 @@ fn determine_hit(rogue: &Rogue, is_dagger: bool, color: String,
             let mut percent_sum = rogue.white_miss_swords 
                 + rogue.dodge_swords;
             if roll < percent_sum { return "dodge".to_string(); }
-            percent_sum += rogue.glancing;
+            percent_sum += rogue.glancing_chance;
             if roll < percent_sum { return "glancing".to_string(); }
             percent_sum += rogue.crit;
             if roll < percent_sum { return "crit".to_string(); }
@@ -681,28 +692,48 @@ fn roll_for_extra_hit(rogue: &mut Rogue, wep: &Weapon) -> bool {
     } else { return false; }
 }
 
-fn get_glancing_reduction(wep_skill: u16) -> f32 {
-    if wep_skill == 305 { return 0.15; }
-    else if wep_skill == 306 { return 0.11; }
-    else if wep_skill == 307 { return 0.07; }
-    else if wep_skill >= 308 { return 0.05; }
-    else { panic!("weapon skill not implemented"); }
+fn get_glancing_reduction(wep_skill: i16, enemy_lvl: i16) -> f32 {
+    let delta_skill = 5 * enemy_lvl - wep_skill;
+    if      delta_skill == 15 { return 0.35; }
+    else if delta_skill == 14 { return 0.31; }
+    else if delta_skill == 13 { return 0.27; }
+    else if delta_skill == 12 { return 0.23; }
+    else if delta_skill == 11 { return 0.19; }
+    else if delta_skill == 10 { return 0.15; }
+    else if delta_skill == 09 { return 0.11; }
+    else if delta_skill == 08 { return 0.07; }
+    else if delta_skill <= 07 { return 0.05; }
+    else { panic!("weapon skill-enemy defense not implemented"); }
 }
 
-fn get_dodge_chance(wep_skill: u16) -> f32 {
-    let wep_skill_i16: i16 = wep_skill as i16;
-    let dodge_chance = 0.05 + (315 - wep_skill_i16) as f32 * 0.001;
-    return dodge_chance;
+fn get_glancing_chance(enemy_lvl: i16) -> f32 {
+    if enemy_lvl == 60 { return 0.1; }
+    else if enemy_lvl == 61 { return 0.2; }
+    else if enemy_lvl == 62 { return 0.3; }
+    else if enemy_lvl == 63 { return 0.4; }
+    else { panic!("No reliable glancing info on levels below 60"); }
 }
 
-fn get_yellow_miss_chance(wep_skill: u16) -> f32 {
-    let wep_skill_i16: i16 = wep_skill as i16;
-    let miss_chance = 0.05 + (315 - wep_skill_i16) as f32 * 0.001;
-    return miss_chance;
+fn get_dodge_chance(wep_skill: i16, enemy_lvl: i16) -> f32 {
+    if enemy_lvl < 60 { return 0.05; }
+    else { return 0.05 + (5 * enemy_lvl - wep_skill) as f32 * 0.001; }
 }
 
-fn get_white_miss_chance(wep_skill: u16) -> f32 {
-    let yellow_miss_chance = get_yellow_miss_chance(wep_skill);
+fn get_yellow_miss_chance(wep_skill: i16, enemy_lvl: i16) -> f32 {
+    let delta_skill = 5 * enemy_lvl - wep_skill;
+    if delta_skill < 0 { return 0.05; }
+    else if delta_skill <= 10 && delta_skill >= 0 { 
+        return 0.05 + 0.001 * delta_skill as f32; 
+    } else if delta_skill == 11 { return 0.072; }
+    else if delta_skill == 12 { return 0.074; }
+    else if delta_skill == 13 { return 0.076; }
+    else if delta_skill == 14 { return 0.078; }
+    else if delta_skill == 15 { return 0.080; }
+    else { panic!("Weapon skill-enemy lvl combo not implemented"); }
+}
+
+fn get_white_miss_chance(wep_skill: i16, enemy_lvl: i16) -> f32 {
+    let yellow_miss_chance = get_yellow_miss_chance(wep_skill, enemy_lvl);
     let miss_chance = 0.8 * yellow_miss_chance + 0.2;
     return miss_chance;
 }
@@ -856,34 +887,33 @@ struct Rogue {
     hit: f32,
     haste: f32,
     nr_crusaders_active: f32,
-    swords_skill: u16,
-    daggers_skill: u16,
+    swords_skill: i16,
+    daggers_skill: i16,
     dodge_swords: f32,
     dodge_daggers: f32,
     white_miss_swords: f32,
     white_miss_daggers: f32,
     yellow_miss_swords: f32,
     yellow_miss_daggers: f32,
-    glancing: f32,
+    glancing_chance: f32,
     glancing_red_swords: f32,
     glancing_red_daggers: f32,
     extra_hit_proc_chance: f32,
     shadowcraft_six_bonus: bool,
-    imp_sin_strike: u8,
-    imp_backstab: u8,
-    precision: u8,
-    dw_specialization: u8,
-    sword_specialization: u8,
-    dagger_specialization: u8,
-    weapon_expertise: u8,
-    aggression: u8,
-    opportunity: u8,
-    improved_eviscerate: u8,
-    malice: u8,
-    ruthlessness: u8,
-    improved_slice_and_dice: u8,
-    relentless_strikes: u8,
-    lethality: u8,
+    imp_backstab: u16,
+    precision: u16,
+    dw_specialization: u16,
+    sword_specialization: u16,
+    dagger_specialization: u16,
+    weapon_expertise: u16,
+    aggression: u16,
+    opportunity: u16,
+    improved_eviscerate: u16,
+    malice: u16,
+    ruthlessness: u16,
+    improved_slice_and_dice: u16,
+    relentless_strikes: u16,
+    lethality: u16,
     combo_points: u16
 }
 
@@ -970,14 +1000,13 @@ fn init_rogue() -> Rogue {
         white_miss_daggers: 0.0,
         yellow_miss_swords: 0.0,
         yellow_miss_daggers: 0.0,
-        glancing: 0.40,
+        glancing_chance: 0.0,
         glancing_red_swords: 0.0,
         glancing_red_daggers: 0.0,
         swords_skill: 0,
         daggers_skill: 0,
         extra_hit_proc_chance: 0.0, // NOTE does not include thrash blade proc
         shadowcraft_six_bonus: false,
-        imp_sin_strike: 0,
         imp_backstab: 0,
         precision: 0,
         dw_specialization: 0,
@@ -1032,7 +1061,6 @@ fn get_characters(args: &Args) -> (Vec<(Rogue, Weapon, Weapon)>, Vec<String>) {
             let desc = format!("-{} agi", 10 * args.weight_mult);
             descriptions.push(desc);
         }
-        
         // one more agility
         char_tuple = read_params(&args.param_file);
         char_tuple.0.agility += 10 * args.weight_mult;
@@ -1117,15 +1145,15 @@ fn get_characters(args: &Args) -> (Vec<(Rogue, Weapon, Weapon)>, Vec<String>) {
 
         // one less dagger skill
         char_tuple = read_params(&args.param_file);
-        if char_tuple.0.daggers_skill >= 300 + 1 * args.weight_mult{
-            char_tuple.0.daggers_skill -= 1 * args.weight_mult;
+        if char_tuple.0.daggers_skill >= 300 + 1 * args.weight_mult as i16 {
+            char_tuple.0.daggers_skill -= 1 * args.weight_mult as i16;
             characters.push(char_tuple);
             let desc = format!("-{} dgr skill", 1 * args.weight_mult);
             descriptions.push(desc);
         }
         // one more dagger skill
         char_tuple = read_params(&args.param_file);
-        char_tuple.0.daggers_skill += 1 * args.weight_mult;
+        char_tuple.0.daggers_skill += 1 * args.weight_mult as i16;
         characters.push(char_tuple);
         let desc = format!("+{} dgr skill", 1 * args.weight_mult);
         descriptions.push(desc);
@@ -1144,13 +1172,253 @@ fn get_characters(args: &Args) -> (Vec<(Rogue, Weapon, Weapon)>, Vec<String>) {
         characters.push(char_tuple);
         let desc = format!("+{} hit proc", 0.02 * args.weight_mult as f32);
         descriptions.push(desc);
+
+        // TALENTS
+
+        // one less improved eviscerate
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.improved_eviscerate >= 1 * args.weight_mult {
+            char_tuple.0.improved_eviscerate -= 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("-{} imp evis", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+        // one more improved eviscerate
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.improved_eviscerate <= 3 - 1 * args.weight_mult {
+            char_tuple.0.improved_eviscerate += 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("+{} imp evis", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+
+        // one less malice
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.malice >= 1 * args.weight_mult {
+            char_tuple.0.malice -= 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("-{} malice", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+        // one more malice
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.malice <= 5 - 1 * args.weight_mult {
+            char_tuple.0.malice += 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("+{} malice", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+
+        // one less ruthlessness
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.ruthlessness >= 1 * args.weight_mult {
+            char_tuple.0.ruthlessness -= 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("-{} ruthlessness", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+        // one more ruthlessness
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.ruthlessness <= 3 - 1 * args.weight_mult {
+            char_tuple.0.ruthlessness += 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("+{} ruthlessness", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+
+        // one less imp slice and dice
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.improved_slice_and_dice >= 1 * args.weight_mult {
+            char_tuple.0.improved_slice_and_dice -= 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("-{} imp snd", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+        // one more imp slice and dice
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.improved_slice_and_dice <= 3 - 1 * args.weight_mult {
+            char_tuple.0.improved_slice_and_dice += 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("+{} imp snd", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+
+        // one less relentless strikes
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.relentless_strikes >= 1 * args.weight_mult {
+            char_tuple.0.relentless_strikes -= 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("-{} rel strikes", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+        // one more relentless strikes
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.relentless_strikes <= 1 - 1 * args.weight_mult {
+            char_tuple.0.relentless_strikes += 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("+{} rel strikes", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+
+        // one less lethality
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.lethality >= 1 * args.weight_mult {
+            char_tuple.0.lethality -= 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("-{} lethality", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+        // one more lethality
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.lethality <= 5 - 1 * args.weight_mult {
+            char_tuple.0.lethality += 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("+{} lethality", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+
+        // one less improved backstab
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.imp_backstab >= 1 * args.weight_mult {
+            char_tuple.0.imp_backstab -= 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("-{} imp bkstab", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+        // one more improved backstab
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.imp_backstab <= 3 - 1 * args.weight_mult {
+            char_tuple.0.imp_backstab += 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("+{} imp bkstab", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+
+        // one less precision
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.precision >= 1 * args.weight_mult {
+            char_tuple.0.precision -= 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("-{} precision", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+        // one more precision
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.precision <= 5 - 1 * args.weight_mult {
+            char_tuple.0.precision += 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("+{} precision", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+        
+        // one less dw_specialization
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.dw_specialization >= 1 * args.weight_mult {
+            char_tuple.0.dw_specialization -= 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("-{} dw spec", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+        // one more dw_specialization
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.dw_specialization <= 5 - 1 * args.weight_mult {
+            char_tuple.0.dw_specialization += 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("+{} dw spec", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+         
+        // one less sword_specialization
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.sword_specialization >= 1 * args.weight_mult {
+            char_tuple.0.sword_specialization -= 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("-{} sword spec", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+        // one more sword_specialization
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.sword_specialization <= 5 - 1 * args.weight_mult {
+            char_tuple.0.sword_specialization += 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("+{} sword spec", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+         
+        // one less dagger_specialization
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.dagger_specialization >= 1 * args.weight_mult {
+            char_tuple.0.dagger_specialization -= 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("-{} dagger spec", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+        // one more dagger_specialization
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.dagger_specialization <= 5 - 1 * args.weight_mult {
+            char_tuple.0.dagger_specialization += 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("+{} dagger spec", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+
+        // one less weapon expertise
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.weapon_expertise >= 1 * args.weight_mult {
+            char_tuple.0.weapon_expertise -= 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("-{} wep expert", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+        // one more weapon_expertise
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.weapon_expertise <= 2 - 1 * args.weight_mult {
+            char_tuple.0.weapon_expertise += 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("+{} wep expert", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+
+        // one less aggression
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.aggression >= 1 * args.weight_mult {
+            char_tuple.0.aggression -= 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("-{} aggression", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+        // one more aggression
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.aggression <= 3 - 1 * args.weight_mult {
+            char_tuple.0.aggression += 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("+{} aggression", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+
+        // one less opportunity
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.opportunity >= 1 * args.weight_mult {
+            char_tuple.0.opportunity -= 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("-{} opportunity", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
+        // one more opportunity
+        char_tuple = read_params(&args.param_file);
+        if char_tuple.0.opportunity <= 5 - 1 * args.weight_mult {
+            char_tuple.0.opportunity += 1 * args.weight_mult;
+            characters.push(char_tuple);
+            let desc = format!("+{} opportunity", 1 * args.weight_mult);
+            descriptions.push(desc);
+        }
     } 
     return (characters, descriptions);
 }
 
 fn read_params(param_file: &String) -> (Rogue, Weapon, Weapon) {
     
-    let mut param_field: u8 = 0; // to check what part the file is about
+    let mut param_field: u16 = 0; // to check what part the file is about
     let mut read_last = false;
     let mut rogue: Rogue = init_rogue();
     let mut wep1: Weapon = init_weapon();
@@ -1230,13 +1498,9 @@ fn param_adder(text: &str, rogue: &mut Rogue) {
     } else if words_vec[0] == "shadowcraft_six_bonus" { 
         rogue.shadowcraft_six_bonus = true;
     } 
+
     // now for talents
-    else if words_vec[0] == "imp_sin_strike" { 
-        match words_vec[1].parse() {
-            Ok(x) => rogue.imp_sin_strike = x,
-            Err(x) => panic!("Can't translate word to number. {}", x)
-        }
-    } else if words_vec[0] == "imp_backstab" { 
+    else if words_vec[0] == "imp_backstab" { 
         match words_vec[1].parse() {
             Ok(x) => rogue.imp_backstab = x,
             Err(x) => panic!("Can't translate word to number. {}", x)
@@ -1377,7 +1641,7 @@ fn get_agi_crit_chance(agi: u16) -> f32 {
 }
 
 fn calculate_hit_numbers(rogue: &mut Rogue, wep1: &mut Weapon, 
-                         wep2: &mut Weapon) {
+                         wep2: &mut Weapon, args: &Args) {
 
     if rogue.weapon_expertise == 1 { 
         rogue.swords_skill += 3; 
@@ -1398,37 +1662,71 @@ fn calculate_hit_numbers(rogue: &mut Rogue, wep1: &mut Weapon,
     }
     
     rogue.hit += rogue.precision as f32 * 0.01;
-    rogue.dodge_daggers = get_dodge_chance(rogue.daggers_skill);
-    rogue.dodge_swords = get_dodge_chance(rogue.swords_skill);
+    rogue.dodge_daggers = get_dodge_chance(rogue.daggers_skill, args.enemy_lvl);
+    rogue.dodge_swords = get_dodge_chance(rogue.swords_skill, args.enemy_lvl);
 
-    rogue.crit += get_agi_crit_chance(rogue.agility);
-    rogue.crit += 0.01 * rogue.malice as f32;
-    // 1.8 crit is removed from non-agi crit. Assumed here that the rogue
-    // has at least 2% crit gained directly from gear
-    // + 3% crit reduction vs bosses brings the crit down a total of 4.8
-    if rogue.crit < 0.048 { rogue.crit = 0.0; }
-    else { rogue.crit -= 0.048; }
+    // TODO fix crit rating
+    get_crit_rating(rogue, args.enemy_lvl);
 
-    rogue.white_miss_swords = get_white_miss_chance(rogue.swords_skill);
-    rogue.white_miss_daggers = get_white_miss_chance(rogue.daggers_skill);
+    rogue.white_miss_swords = get_white_miss_chance(rogue.swords_skill, 
+                                                    args.enemy_lvl);
+    rogue.white_miss_daggers = get_white_miss_chance(rogue.daggers_skill, 
+                                                     args.enemy_lvl);
     if rogue.hit > rogue.white_miss_swords { rogue.white_miss_swords = 0.0; }
     else { rogue.white_miss_swords -= rogue.hit; }
     if rogue.hit > rogue.white_miss_daggers { rogue.white_miss_daggers = 0.0; }
     else { rogue.white_miss_daggers -= rogue.hit; }
 
-    rogue.yellow_miss_swords = get_yellow_miss_chance(rogue.swords_skill);
-    rogue.yellow_miss_daggers = get_yellow_miss_chance(rogue.swords_skill);
-    if rogue.hit > rogue.yellow_miss_swords { rogue.yellow_miss_swords = 0.0; }
-    else { rogue.yellow_miss_swords -= rogue.hit; }
-    if rogue.hit > rogue.yellow_miss_daggers { 
-        rogue.yellow_miss_daggers = 0.0;
-    }
-    else { rogue.yellow_miss_daggers -= rogue.hit; }
+    rogue.yellow_miss_swords = get_yellow_miss_chance(rogue.swords_skill, 
+                                                      args.enemy_lvl);
+    rogue.yellow_miss_daggers = get_yellow_miss_chance(rogue.swords_skill, 
+                                                       args.enemy_lvl);
 
-    rogue.glancing_red_swords = get_glancing_reduction(rogue.swords_skill);
-    rogue.glancing_red_daggers = get_glancing_reduction(rogue.daggers_skill);
+    // if target defense minus wep skill is 11 or more, one percent 
+    // hit is negated
+    if 5 * args.enemy_lvl - rogue.swords_skill > 10 {
+        if rogue.hit - 0.01 > rogue.yellow_miss_swords { 
+            rogue.yellow_miss_swords = 0.0; 
+        } else { rogue.yellow_miss_swords -= rogue.hit - 0.01; }
+    } else {
+        if rogue.hit > rogue.yellow_miss_swords { 
+            rogue.yellow_miss_swords = 0.0; 
+        } else { rogue.yellow_miss_swords -= rogue.hit; }
+    }
+
+    if 5 * args.enemy_lvl - rogue.daggers_skill > 10 {
+        if rogue.hit - 0.01 > rogue.yellow_miss_daggers { 
+            rogue.yellow_miss_daggers = 0.0; 
+        } else { rogue.yellow_miss_daggers -= rogue.hit - 0.01; }
+    } else {
+        if rogue.hit > rogue.yellow_miss_daggers { 
+            rogue.yellow_miss_daggers = 0.0; 
+        } else { rogue.yellow_miss_daggers -= rogue.hit; }
+    }
+
+    rogue.glancing_red_swords = get_glancing_reduction(rogue.swords_skill,
+                                                       args.enemy_lvl);
+    rogue.glancing_red_daggers = get_glancing_reduction(rogue.daggers_skill,
+                                                        args.enemy_lvl);
+    rogue.glancing_chance = get_glancing_chance(args.enemy_lvl);
 }
  
+fn get_crit_rating(rogue: &mut Rogue, enemy_lvl: i16) {
+
+    rogue.crit += get_agi_crit_chance(rogue.agility);
+    rogue.crit += 0.01 * rogue.malice as f32;
+
+    // when facing a lvl 63, 1.8 crit is removed from non-agi crit,
+    // assuming that the rogue has
+    // at least 2% crit gained directly from gear
+    //
+    // + 1% crit reduction per lvl above player level brings the crit down 
+    // a maximum of 4.8
+    if enemy_lvl == 63 { rogue.crit -= 0.018; }
+    rogue.crit -= (enemy_lvl - 60) as f32 * 0.01;
+    if rogue.crit < 0.0 { rogue.crit = 0.0; }
+}
+
 fn mean(numbers: &Vec<f32>) -> f32 {
 
     let mut sum: f64 = 0.0;
