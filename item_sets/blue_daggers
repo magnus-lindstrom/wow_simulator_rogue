@@ -8,12 +8,12 @@
 # comments can be make within sections with the # character, following
 # information
 @@@@ stats gained from armor + weapons
-agility 354
-strength 144
-attack_power 128
-crit 0.06
-hit 0.05
-haste 0.0
+agility 365
+strength 156
+attack_power 100
+crit 0.05
+hit 0.06
+haste 0.03
 swords_skill 305
 daggers_skill 306
 extra_hit_proc_chance 0.02
@@ -73,7 +73,6 @@ ruthlessness 2
 improved_slice_and_dice 3
 relentless_strikes 0
 lethality 5
-imp_sin_strike 2
 imp_backstab 3
 precision 5
 dw_specialization 5

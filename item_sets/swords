@@ -66,7 +66,6 @@ nothing
 # name of talent, followed by nr of points spent on it
 #
 @@@@
-imp_sin_strike 2
 imp_backstab 0
 precision 5
 dw_specialization 5
