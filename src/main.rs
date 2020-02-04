@@ -52,7 +52,7 @@ fn main() {
         // if not going for weights, print hit chances once
         if !args.weights { print_hit_chances(&rogue, &mh, &oh); }
 
-        let mut dps_vec = Vec::new();
+        let mut stats = init_stat();
 
         for _i_run in 0..args.iterations {
 
@@ -73,8 +73,6 @@ fn main() {
             };
 
             let mut extra_attacks: i8 = 0;
-            let mut tot_dmg = 0.0;
-            let mut tot_poison_dmg = 0.0;
 
             while time_struct.fight_ends > 0.0 {
 
@@ -83,23 +81,25 @@ fn main() {
                 if time_struct.glob_cd_refresh <= 0.0 {
                     let (dmg, dmg_poison, extra_swing) = 
                         yellow_attack(&mut rogue, &mut buffs, &mh, 
-                                      &mut time_struct, args.verb);
+                                      &mut time_struct, &mut stats, args.verb);
                     if dmg > 0.0 { 
-                        tot_dmg += dmg; 
                         if mh.enchant == "crusader" { 
                             crusader_roll(&mut mh, args.verb); 
                         }
                         shadowcraft_roll(&mut rogue);
                         total_mh_hits += 1;
                     }
-                    if dmg_poison > 0.0 { tot_poison_dmg += dmg_poison; }
+                    if dmg_poison > 0.0 { 
+                        stats.sums.poison_dmg += dmg_poison;
+                    }
                     if extra_swing { extra_attacks += 1; }
                 }
                 // check if oh is ready for swing
                 if time_struct.oh_swing <= 0.0 {
                     let (dmg, dmg_poison, extra_swing) = 
                         white_attack(&mut rogue, &mut oh, 
-                                     time_struct.fight_ends, args.verb);
+                                     time_struct.fight_ends, &mut stats, 
+                                     args.verb);
                     if dmg > 0.0 { 
                         if oh.enchant == "crusader" { 
                             crusader_roll(&mut oh, args.verb); 
@@ -107,7 +107,9 @@ fn main() {
                         shadowcraft_roll(&mut rogue);
                         total_oh_hits += 1; 
                     }
-                    if dmg_poison > 0.0 { tot_poison_dmg += dmg_poison; }
+                    if dmg_poison > 0.0 { 
+                        stats.sums.poison_dmg += dmg_poison;
+                    }
 
                     // Reset swing timer
                     let mut haste_factor = 1.0;
@@ -116,7 +118,6 @@ fn main() {
                     if rogue.haste > 0.0 { haste_factor *= 1.0 + rogue.haste; }
                     time_struct.oh_swing = oh.speed / haste_factor;
 
-                    tot_dmg += dmg;
                     if extra_swing { extra_attacks += 1; }
                 }
                 // check if extra swings are lined up
@@ -125,7 +126,7 @@ fn main() {
                     total_extra_hits += 1;
                     let (dmg, dmg_poison, extra_swing) = 
                         white_attack(&mut rogue, &mut mh, time_struct.fight_ends,
-                                     args.verb);
+                                     &mut stats, args.verb);
                     if dmg > 0.0 { 
                         if mh.enchant == "crusader" { 
                             crusader_roll(&mut mh, args.verb); 
@@ -133,7 +134,9 @@ fn main() {
                         shadowcraft_roll(&mut rogue);
                         total_mh_hits += 1;
                     }
-                    if dmg_poison > 0.0 { tot_poison_dmg += dmg_poison; }
+                    if dmg_poison > 0.0 { 
+                        stats.sums.poison_dmg += dmg_poison;
+                    }
 
                     // Reset swing timer
                     let mut haste_factor = 1.0;
@@ -142,7 +145,6 @@ fn main() {
                     if rogue.haste > 0.0 { haste_factor *= 1.0 + rogue.haste; }
                     time_struct.mh_swing = mh.speed / haste_factor;
 
-                    tot_dmg += dmg;
                     if !extra_swing {
                         extra_attacks -= 1;
                     }
@@ -152,7 +154,7 @@ fn main() {
                 if time_struct.mh_swing <= 0.0 {
                     let (dmg, dmg_poison, extra_swing) = 
                         white_attack(&mut rogue, &mut mh, time_struct.fight_ends,
-                                     args.verb);
+                                     &mut stats, args.verb);
                     if dmg > 0.0 { 
                         if mh.enchant == "crusader" { 
                             crusader_roll(&mut mh, args.verb); 
@@ -160,7 +162,9 @@ fn main() {
                         shadowcraft_roll(&mut rogue);
                         total_mh_hits += 1; 
                     }
-                    if dmg_poison > 0.0 { tot_poison_dmg += dmg_poison; }
+                    if dmg_poison > 0.0 { 
+                        stats.sums.poison_dmg += dmg_poison;
+                    }
                     
                     // Reset swing timer
                     let mut haste_factor = 1.0;
@@ -171,34 +175,28 @@ fn main() {
 
 
                     if extra_swing { extra_attacks += 1; }
-                    tot_dmg += dmg;
                 }
                 subtract_times(&mut rogue, &mut time_struct, &mut buffs,
                                &mut mh, &mut oh, dt);
             }
-            //
-            // armor reduction
-            tot_dmg = armor_reduction(tot_dmg);
-            let all_dmg = tot_dmg + tot_poison_dmg;
+            reset_stats_counter(&mut stats, args.fight_length);
 
-            if args.verb {
-                println!("\nDps during {:} seconds was {:}.", args.fight_length, 
-                         all_dmg/args.fight_length);
-                println!("Total number of mh/of hits: {}/{}.", total_mh_hits, 
-                         total_oh_hits);
-                println!("Total number of extra hits: {}.", total_extra_hits);
-            }
-
-            // store dps of run
-            dps_vec.push(all_dmg/args.fight_length);
         }
 
-        chars_dps_vectors.push(mean(&dps_vec));
+        chars_dps_vectors.push(mean(&stats.dps));
 
         if !args.weights {
             println!("Average dps for {} over {} runs was {:}.", 
-                     args.param_file, args.iterations, mean(&dps_vec));
+                     args.param_file, args.iterations, 
+                     chars_dps_vectors.last().unwrap());
+            println!("White:      {:.3}", mean(&stats.ratios.white));
+            println!("Backstab:   {:.3}", mean(&stats.ratios.backstab));
+            println!("Poison:     {:.3}", mean(&stats.ratios.poison));
+            println!("Eviscerate: {:.3}", mean(&stats.ratios.eviscerate));
+            println!("Sin strike: {:.3}", mean(&stats.ratios.sinister));
         } else {
+            let mean_dps_std = 1.96 * std_dev(&stats.dps) 
+                / (args.iterations as f32).sqrt();
             if description == "base" {
                 println!("\nAnalysis of stat weights based on char in file: {}", 
                          args.param_file);
@@ -207,17 +205,45 @@ fn main() {
                          args.fight_length);
                 println!("Nr of iterations per variation: {}\n", 
                          args.iterations);
-                println!("{:_<15}:{:>9.1} ±{:.1} dps.", description, 
-                         mean(&dps_vec), std_dev(&dps_vec));
+                println!("{:_<15}:{:>9.3}  ±{:.3} dps.", description, 
+                         mean(&stats.dps), mean_dps_std);
             } else {
-                let mut dps_diff = mean(&dps_vec) - chars_dps_vectors[0];
+                let mut dps_diff = mean(&stats.dps) - chars_dps_vectors[0];
                 dps_diff = 100.0 * dps_diff / chars_dps_vectors[0];
-                let std_dev = 100.0 * std_dev(&dps_vec) / chars_dps_vectors[0];
-                println!("{:_<15}:{:>+9.1}% ±{:.1}%", description, 
-                         dps_diff, std_dev);
+                println!("{:_<15}:{:>+9.3}% ±{:.3}%", description, 
+                         dps_diff, 100.0 * mean_dps_std / chars_dps_vectors[0]);
             }
         }
     }
+}
+
+fn get_dmg_sum(stats: &Stats) -> f32 {
+    let dmg_sum = 
+        stats.sums.backstab_dmg
+        + stats.sums.eviscerate_dmg
+        + stats.sums.sinister_dmg
+        + stats.sums.white_dmg
+        + stats.sums.poison_dmg
+        ;
+    return dmg_sum;
+}
+
+fn reset_stats_counter(stats: &mut Stats, fight_length: f32) {
+    let dmg_sum = get_dmg_sum(stats);
+    stats.ratios.backstab.push(stats.sums.backstab_dmg / dmg_sum);
+    stats.ratios.eviscerate.push(stats.sums.eviscerate_dmg / dmg_sum);
+    stats.ratios.sinister.push(stats.sums.sinister_dmg / dmg_sum);
+    stats.ratios.white.push(stats.sums.white_dmg / dmg_sum);
+    stats.ratios.poison.push(stats.sums.poison_dmg / dmg_sum);
+
+    stats.dps.push(dmg_sum / fight_length);
+
+    stats.sums.backstab_dmg = 0.0;
+    stats.sums.sinister_dmg = 0.0;
+    stats.sums.eviscerate_dmg = 0.0;
+    stats.sums.white_dmg = 0.0;
+    stats.sums.poison_dmg = 0.0;
+    
 }
 
 fn check_for_crusader(rogue: &mut Rogue, mh: &Weapon, oh: &Weapon) {
@@ -281,7 +307,7 @@ fn get_arguments() -> Args {
     let fight_length = matches.value_of("Fight length").unwrap_or("60");
     let enemy_lvl = matches.value_of("Enemy level").unwrap_or("63");
     let weights = matches.is_present("Weights");
-    let weight_mult = matches.value_of("Weight mult").unwrap_or("1");
+    let weight_mult = matches.value_of("Weight multiplier").unwrap_or("1");
     let no_buffs = matches.is_present("No buffs");
     let verb = matches.is_present("Verbose");
 
@@ -510,6 +536,7 @@ fn backstab(rogue: &mut Rogue, wep: &Weapon,
         rogue.combo_points += 1;
     } else { panic!("Backstab can't be glancing hit."); }
     dmg *= 1.0 + 0.04 * rogue.opportunity as f32;
+    dmg = armor_reduction(dmg);
 
     if verb {
         announce_hit(dmg, "backstab".to_string(), hit_result, 
@@ -553,6 +580,7 @@ fn sinister_strike(rogue: &mut Rogue, wep: &Weapon,
     }
 
     dmg *= 1.0 + (0.02 * rogue.aggression as f32);
+    dmg = armor_reduction(dmg);
 
     return dmg;
 }
@@ -585,6 +613,7 @@ fn eviscerate(rogue: &mut Rogue, wep: &Weapon, time_struct: &TimeTilEvents,
     rogue.energy -= 35;
     dmg *= 1.0 + (0.02 * rogue.aggression as f32);
     dmg *= 1.0 + (0.05 * rogue.improved_eviscerate as f32);
+    dmg = armor_reduction(dmg);
     if verb {
         announce_hit(dmg, "evis".to_string(), hit_result, 
                      time_struct.fight_ends);
@@ -594,7 +623,7 @@ fn eviscerate(rogue: &mut Rogue, wep: &Weapon, time_struct: &TimeTilEvents,
 
 fn yellow_attack(rogue: &mut Rogue, mut buffs: &mut BuffsActive,
                  wep: &Weapon, 
-                 mut time_struct: &mut TimeTilEvents,
+                 mut time_struct: &mut TimeTilEvents, stats: &mut Stats,
                  verb: bool) -> (f32, f32, bool) {
     // returns dmg and a true bool if an extra attack was triggered
 
@@ -649,6 +678,7 @@ fn yellow_attack(rogue: &mut Rogue, mut buffs: &mut BuffsActive,
     } else if wep.is_sword && rogue.combo_points < 5 && can_sinister {
         dmg = sinister_strike(rogue, wep, &time_struct, verb);
         if dmg > 0.0 {
+            stats.sums.sinister_dmg += dmg;
             extra_hit = roll_for_extra_hit(rogue, wep);
             dmg_poison = poison_dmg(verb, time_struct.fight_ends);
         }
@@ -660,6 +690,7 @@ fn yellow_attack(rogue: &mut Rogue, mut buffs: &mut BuffsActive,
     } else if wep.is_dagger && rogue.combo_points < 5 && can_backstab {
         dmg = backstab(rogue, wep, &time_struct, verb);
         if dmg > 0.0 {
+            stats.sums.backstab_dmg += dmg;
             extra_hit = roll_for_extra_hit(rogue, wep);
             dmg_poison = poison_dmg(verb, time_struct.fight_ends);
         }
@@ -683,6 +714,7 @@ fn yellow_attack(rogue: &mut Rogue, mut buffs: &mut BuffsActive,
     } else if rogue.combo_points == 5 && snd_active && can_eviscerate { 
         dmg = eviscerate(rogue, wep, &time_struct, verb);
         if dmg > 0.0 {
+            stats.sums.eviscerate_dmg += dmg;
             extra_hit = roll_for_extra_hit(rogue, wep);
             dmg_poison = poison_dmg(verb, time_struct.fight_ends);
         }
@@ -856,8 +888,8 @@ fn get_evis_dmg(rogue: &mut Rogue) -> f32 {
     return dmg
 }
 
-fn white_attack(rogue: &mut Rogue, wep: &mut Weapon, 
-                time_left: f32, verb: bool) -> (f32, f32, bool) {
+fn white_attack(rogue: &mut Rogue, wep: &mut Weapon, time_left: f32, 
+                stats: &mut Stats, verb: bool) -> (f32, f32, bool) {
     // returns damage and a bool that is true if an extra swing procced
 
     let hit_result = determine_hit(&rogue, wep, "white".to_string(),
@@ -882,6 +914,8 @@ fn white_attack(rogue: &mut Rogue, wep: &mut Weapon,
     } 
     if hit_result == "glancing" { dmg *= 1.0 - wep.glancing_red; }
     else if hit_result == "crit" { dmg *= 2.0; }
+    dmg = armor_reduction(dmg);
+    stats.sums.white_dmg += dmg;
 
     if verb { announce_hit(dmg, announce_string, hit_result, time_left); }
     let extra_hit: bool = roll_for_extra_hit(rogue, wep);
@@ -905,7 +939,13 @@ fn poison_dmg(verb: bool, time_left: f32) -> f32 {
 }
 
 fn armor_reduction(dmg: f32) -> f32 {
-    let x = 0.1 * 3731.0 / (8.5 * 60.0 + 40.0);
+    let mut armor = 3731.0;
+    // 5 sunder armor stacks
+    armor -= 2250.0;
+    // CoR
+    armor -= 640.0;
+    armor = max_f32(armor, 0.0);
+    let x = 0.1 * armor / (8.5 * 60.0 + 40.0);
     let red = x / (1.0 + x);
     return dmg * (1.0 - red);
 }
@@ -997,6 +1037,62 @@ struct TimeTilEvents {
     oh_swing: f32,
     energy_refill: f32,
     fight_ends: f32
+}
+
+struct StatRatio {
+    backstab: Vec<f32>,
+    sinister: Vec<f32>,
+    eviscerate: Vec<f32>,
+    white: Vec<f32>,
+    poison: Vec<f32>
+}
+
+struct StatSum {
+    backstab_dmg: f32,
+    sinister_dmg: f32,
+    eviscerate_dmg: f32,
+    white_dmg: f32,
+    poison_dmg: f32
+}
+
+struct Stats {
+    sums: StatSum,
+    ratios: StatRatio,
+    dps: Vec<f32>
+}
+
+fn init_statratio() -> StatRatio {
+    let statratio = StatRatio{
+        backstab: Vec::new(),
+        sinister: Vec::new(),
+        eviscerate: Vec::new(),
+        white: Vec::new(),
+        poison: Vec::new()
+    };
+    return statratio;
+}
+
+fn init_statsum() -> StatSum {
+    let statsum = StatSum {
+        backstab_dmg: 0.0,
+        sinister_dmg: 0.0,
+        eviscerate_dmg: 0.0,
+        white_dmg: 0.0,
+        poison_dmg: 0.0
+    };
+    return statsum;
+}
+
+fn init_stat() -> Stats {
+
+    let statratio = init_statratio();
+    let statsum = init_statsum();
+    let stats = Stats {
+        sums: statsum,
+        ratios: statratio,
+        dps: Vec::new()
+    };
+    return stats;
 }
 
 fn deb<T: std::fmt::Debug>(x: T) {
@@ -1775,8 +1871,7 @@ fn subtract_hit_from_miss(rogue: &Rogue, mh: &mut Weapon, oh: &mut Weapon,
 fn set_crit_ratings(rogue: &mut Rogue, mh: &mut Weapon,
                     oh: &mut Weapon, enemy_lvl: i16) {
 
-    let mut common_crit = 0.05; // base crit chance
-    common_crit += rogue.crit; // crit directly from gear
+    let mut common_crit = rogue.crit; // crit directly from gear
     common_crit += 0.01 * rogue.agility as f32 / 29.0; // crit from agility
     common_crit += 0.01 * rogue.malice as f32; // talent
 
