@@ -52,25 +52,13 @@ fn main() {
         // if not going for weights, print hit chances once
         if !args.weights { print_hit_chances(&rogue, &mh, &oh); }
 
-        let mut stats = init_stat();
+        let mut stats = Stats::new();
 
         for _i_run in 0..args.iterations {
 
-            let mut buffs = BuffsActive {
-                blade_flurry: 0.0,
-                snd: 0.0,
-                adrenaline_rush: 0.0,
-                used_cds: false,
-                used_thistle_tea: false
-            };
+            let mut buffs = BuffsActive::new();
 
-            let mut time_struct = TimeTilEvents {
-                glob_cd_refresh: 0.0,
-                mh_swing: 0.0,
-                oh_swing: 0.0,
-                energy_refill: 1.0,
-                fight_ends: args.fight_length
-            };
+            let mut time_struct = TimeTilEvents::new(args.fight_length);
 
             let mut extra_attacks: i8 = 0;
 
@@ -179,7 +167,7 @@ fn main() {
                 subtract_times(&mut rogue, &mut time_struct, &mut buffs,
                                &mut mh, &mut oh, dt);
             }
-            reset_stats_counter(&mut stats, args.fight_length);
+            stats.get_dps(args.fight_length);
 
         }
 
@@ -215,35 +203,6 @@ fn main() {
             }
         }
     }
-}
-
-fn get_dmg_sum(stats: &Stats) -> f32 {
-    let dmg_sum = 
-        stats.sums.backstab_dmg
-        + stats.sums.eviscerate_dmg
-        + stats.sums.sinister_dmg
-        + stats.sums.white_dmg
-        + stats.sums.poison_dmg
-        ;
-    return dmg_sum;
-}
-
-fn reset_stats_counter(stats: &mut Stats, fight_length: f32) {
-    let dmg_sum = get_dmg_sum(stats);
-    stats.ratios.backstab.push(stats.sums.backstab_dmg / dmg_sum);
-    stats.ratios.eviscerate.push(stats.sums.eviscerate_dmg / dmg_sum);
-    stats.ratios.sinister.push(stats.sums.sinister_dmg / dmg_sum);
-    stats.ratios.white.push(stats.sums.white_dmg / dmg_sum);
-    stats.ratios.poison.push(stats.sums.poison_dmg / dmg_sum);
-
-    stats.dps.push(dmg_sum / fight_length);
-
-    stats.sums.backstab_dmg = 0.0;
-    stats.sums.sinister_dmg = 0.0;
-    stats.sums.eviscerate_dmg = 0.0;
-    stats.sums.white_dmg = 0.0;
-    stats.sums.poison_dmg = 0.0;
-    
 }
 
 fn check_for_crusader(rogue: &mut Rogue, mh: &Weapon, oh: &Weapon) {
@@ -991,36 +950,27 @@ struct Weapon {
     extra_hit_proc_chance: f32
 }
 
-#[derive(Copy, Clone)]
-struct Rogue {
-    energy: i8,
-    agility: u16,
-    strength: u16,
-    attack_power: u16, // IMPORTANT: just attack power given directly by gear
-    crit: f32,
-    hit: f32,
-    haste: f32,
-    nr_crusaders_active: f32,
-    swords_skill: i16,
-    daggers_skill: i16,
-    glancing_chance: f32,
-    extra_hit_proc_chance: f32,
-    shadowcraft_six_bonus: bool,
-    imp_backstab: u16,
-    precision: u16,
-    dw_specialization: u16,
-    sword_specialization: u16,
-    dagger_specialization: u16,
-    weapon_expertise: u16,
-    aggression: u16,
-    opportunity: u16,
-    improved_eviscerate: u16,
-    malice: u16,
-    ruthlessness: u16,
-    improved_slice_and_dice: u16,
-    relentless_strikes: u16,
-    lethality: u16,
-    combo_points: u16
+impl Weapon {
+    pub fn new() -> Weapon {
+        Weapon {
+            speed: 0.0,
+            max_dmg: 0,
+            min_dmg: 0,
+            mean_dmg: 0.0,
+            enchant: "none".to_string(),
+            crusader: 0.0,
+            is_offhand: false,
+            is_dagger: false,
+            is_sword: false,
+            crit: 0.0,
+            crit_backstab: 0.0,
+            dodge_chance: 0.0,
+            white_miss: 0.0,
+            yellow_miss: 0.0,
+            glancing_red: 0.0,
+            extra_hit_proc_chance: 0.0
+        }
+    }
 }
 
 struct BuffsActive {
@@ -1031,6 +981,18 @@ struct BuffsActive {
     used_thistle_tea: bool
 }
 
+impl BuffsActive {
+    pub fn new() -> BuffsActive {
+        BuffsActive {
+            blade_flurry: 0.0,
+            snd: 0.0,
+            adrenaline_rush: 0.0,
+            used_cds: false,
+            used_thistle_tea: false
+        }
+    }
+}
+
 struct TimeTilEvents {
     glob_cd_refresh: f32,
     mh_swing: f32,
@@ -1039,20 +1001,64 @@ struct TimeTilEvents {
     fight_ends: f32
 }
 
+impl TimeTilEvents {
+    pub fn new(fight_length: f32) -> TimeTilEvents {
+        TimeTilEvents {
+            glob_cd_refresh: 0.0,
+            mh_swing: 0.0,
+            oh_swing: 0.0,
+            energy_refill: 1.0,
+            fight_ends: fight_length
+        }
+    }
+}
+
 struct StatRatio {
     backstab: Vec<f32>,
-    sinister: Vec<f32>,
     eviscerate: Vec<f32>,
-    white: Vec<f32>,
-    poison: Vec<f32>
+    poison: Vec<f32>,
+    sinister: Vec<f32>,
+    white: Vec<f32>
+}
+
+impl StatRatio {
+    pub fn new() -> StatRatio {
+        StatRatio {
+            backstab: Vec::new(),
+            eviscerate: Vec::new(),
+            poison: Vec::new(),
+            sinister: Vec::new(),
+            white: Vec::new()
+        }
+    }
 }
 
 struct StatSum {
     backstab_dmg: f32,
-    sinister_dmg: f32,
     eviscerate_dmg: f32,
-    white_dmg: f32,
-    poison_dmg: f32
+    poison_dmg: f32,
+    sinister_dmg: f32,
+    white_dmg: f32
+}
+
+impl StatSum {
+    pub fn new() -> StatSum {
+        StatSum {
+            backstab_dmg: 0.0,
+            eviscerate_dmg: 0.0,
+            poison_dmg: 0.0,
+            sinister_dmg: 0.0,
+            white_dmg: 0.0
+        }
+    }
+
+    pub fn reset_counters(&mut self) {
+        self.backstab_dmg = 0.0;
+        self.eviscerate_dmg = 0.0;
+        self.poison_dmg = 0.0;
+        self.sinister_dmg = 0.0;
+        self.white_dmg = 0.0;
+    }
 }
 
 struct Stats {
@@ -1061,38 +1067,40 @@ struct Stats {
     dps: Vec<f32>
 }
 
-fn init_statratio() -> StatRatio {
-    let statratio = StatRatio{
-        backstab: Vec::new(),
-        sinister: Vec::new(),
-        eviscerate: Vec::new(),
-        white: Vec::new(),
-        poison: Vec::new()
-    };
-    return statratio;
-}
 
-fn init_statsum() -> StatSum {
-    let statsum = StatSum {
-        backstab_dmg: 0.0,
-        sinister_dmg: 0.0,
-        eviscerate_dmg: 0.0,
-        white_dmg: 0.0,
-        poison_dmg: 0.0
-    };
-    return statsum;
-}
+impl Stats {
+    pub fn new() -> Stats {
+        Stats {
+            sums: StatSum::new(),
+            ratios: StatRatio::new(),
+            dps: Vec::new()
+        }
+    }
 
-fn init_stat() -> Stats {
+    pub fn sum(&self) -> f32 {
+        let dmg_sum = 
+            self.sums.backstab_dmg
+            + self.sums.eviscerate_dmg
+            + self.sums.sinister_dmg
+            + self.sums.white_dmg
+            + self.sums.poison_dmg
+            ;
+        return dmg_sum;
+    }
 
-    let statratio = init_statratio();
-    let statsum = init_statsum();
-    let stats = Stats {
-        sums: statsum,
-        ratios: statratio,
-        dps: Vec::new()
-    };
-    return stats;
+    pub fn get_dps(&mut self, fight_length: f32) {
+        let dmg_sum = self.sum();
+
+        self.ratios.backstab.push(self.sums.backstab_dmg / dmg_sum);
+        self.ratios.eviscerate.push(self.sums.eviscerate_dmg / dmg_sum);
+        self.ratios.sinister.push(self.sums.sinister_dmg / dmg_sum);
+        self.ratios.white.push(self.sums.white_dmg / dmg_sum);
+        self.ratios.poison.push(self.sums.poison_dmg / dmg_sum);
+
+        self.dps.push(dmg_sum / fight_length);
+
+        self.sums.reset_counters();
+    }
 }
 
 fn deb<T: std::fmt::Debug>(x: T) {
@@ -1148,63 +1156,73 @@ fn subtract_times(mut rogue: &mut Rogue,
     buffs.snd -= dt;
 }
 
-fn init_rogue() -> Rogue {
-
-    let rogue = Rogue {
-        energy: 100,
-        agility: 0,
-        strength: 0,
-        attack_power: 0, // IMPORTANT: just attack power given directly by gear
-        crit: 0.0,
-        hit: 0.0,
-        haste: 0.0,
-        nr_crusaders_active: 0.0,
-        glancing_chance: 0.0,
-        swords_skill: 0,
-        daggers_skill: 0,
-        extra_hit_proc_chance: 0.0, // NOTE does not include thrash blade proc
-        shadowcraft_six_bonus: false,
-        imp_backstab: 0,
-        precision: 0,
-        dw_specialization: 0,
-        sword_specialization: 0,
-        dagger_specialization: 0,
-        weapon_expertise: 0,
-        aggression: 0,
-        opportunity: 0,
-        improved_eviscerate: 0,
-        malice: 0,
-        ruthlessness: 0,
-        improved_slice_and_dice: 0,
-        relentless_strikes: 0,
-        lethality: 0,
-        combo_points: 0
-    };
-    return rogue;
+#[derive(Copy, Clone)]
+struct Rogue {
+    energy: i8,
+    agility: u16,
+    strength: u16,
+    attack_power: u16, // IMPORTANT: just attack power given directly by gear
+    crit: f32,
+    hit: f32,
+    haste: f32,
+    nr_crusaders_active: f32,
+    swords_skill: i16,
+    daggers_skill: i16,
+    glancing_chance: f32,
+    extra_hit_proc_chance: f32,
+    shadowcraft_six_bonus: bool,
+    imp_backstab: u16,
+    precision: u16,
+    dw_specialization: u16,
+    sword_specialization: u16,
+    dagger_specialization: u16,
+    weapon_expertise: u16,
+    aggression: u16,
+    opportunity: u16,
+    improved_eviscerate: u16,
+    malice: u16,
+    ruthlessness: u16,
+    improved_slice_and_dice: u16,
+    relentless_strikes: u16,
+    lethality: u16,
+    combo_points: u16
 }
 
-fn init_weapon() -> Weapon {
-
-    let wep = Weapon {
-        speed: 0.0,
-        max_dmg: 0,
-        min_dmg: 0,
-        mean_dmg: 0.0,
-        enchant: "none".to_string(),
-        crusader: 0.0,
-        is_offhand: false,
-        is_dagger: false,
-        is_sword: false,
-        crit: 0.0,
-        crit_backstab: 0.0,
-        dodge_chance: 0.0,
-        white_miss: 0.0,
-        yellow_miss: 0.0,
-        glancing_red: 0.0,
-        extra_hit_proc_chance: 0.0
-    };
-    return wep;
+impl Rogue {
+    pub fn new() -> Rogue { 
+        Rogue{
+            energy: 100,
+            agility: 0,
+            strength: 0,
+            attack_power: 0, // attack power given directly by gear
+            crit: 0.0,
+            hit: 0.0,
+            haste: 0.0,
+            nr_crusaders_active: 0.0,
+            glancing_chance: 0.0,
+            swords_skill: 0,
+            daggers_skill: 0,
+            extra_hit_proc_chance: 0.0, // does not include thrash blade proc
+            shadowcraft_six_bonus: false,
+            imp_backstab: 0,
+            precision: 0,
+            dw_specialization: 0,
+            sword_specialization: 0,
+            dagger_specialization: 0,
+            weapon_expertise: 0,
+            aggression: 0,
+            opportunity: 0,
+            improved_eviscerate: 0,
+            malice: 0,
+            ruthlessness: 0,
+            improved_slice_and_dice: 0,
+            relentless_strikes: 0,
+            lethality: 0,
+            combo_points: 0
+            }
+    }
 }
+
 
 fn get_characters(args: &Args) -> (Vec<(Rogue, Weapon, Weapon)>, Vec<String>) {
 
@@ -1583,9 +1601,9 @@ fn read_params(param_file: &String) -> (Rogue, Weapon, Weapon) {
     
     let mut param_field: u16 = 0; // to check what part the file is about
     let mut read_last = false;
-    let mut rogue: Rogue = init_rogue();
-    let mut mh: Weapon = init_weapon();
-    let mut oh: Weapon = init_weapon();
+    let mut rogue = Rogue::new();
+    let mut mh = Weapon::new();
+    let mut oh = Weapon::new();
 
     let f = File::open(param_file).expect("Couldn't open param_file");
     let file = BufReader::new(&f);
