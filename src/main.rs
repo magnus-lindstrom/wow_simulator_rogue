@@ -1,13 +1,10 @@
 /* TODO
- * - Add option to face enemies lvl 60
- * - Add option to go without raid buffs
- * - Add poisons, scale them vs armor reduction with proper resistances.
+ *   - Bring in weapons
+ *   - Dynamic time steps
+ *   - Display everything in terms of atp
  *   - 20% chance to apply a poison, base stat.
  *   - 20% chance for a boss to resist the poison
  *   - 130 dmg with current best instant poison
- * - Implement the option to modify stats to gain insight on how important
- *   specific stats are at different levels
- *   - maybe print to file to plot with python?
  */
 extern crate rand;
 extern crate clap;
@@ -77,9 +74,7 @@ fn main() {
                         shadowcraft_roll(&mut rogue);
                         total_mh_hits += 1;
                     }
-                    if dmg_poison > 0.0 { 
-                        stats.sums.poison_dmg += dmg_poison;
-                    }
+                    stats.add_poison_dmg(dmg_poison);
                     if extra_swing { extra_attacks += 1; }
                 }
                 // check if oh is ready for swing
@@ -95,9 +90,7 @@ fn main() {
                         shadowcraft_roll(&mut rogue);
                         total_oh_hits += 1; 
                     }
-                    if dmg_poison > 0.0 { 
-                        stats.sums.poison_dmg += dmg_poison;
-                    }
+                    stats.add_poison_dmg(dmg_poison);
 
                     // Reset swing timer
                     let mut haste_factor = 1.0;
@@ -122,9 +115,7 @@ fn main() {
                         shadowcraft_roll(&mut rogue);
                         total_mh_hits += 1;
                     }
-                    if dmg_poison > 0.0 { 
-                        stats.sums.poison_dmg += dmg_poison;
-                    }
+                    stats.add_poison_dmg(dmg_poison);
 
                     // Reset swing timer
                     let mut haste_factor = 1.0;
@@ -150,9 +141,7 @@ fn main() {
                         shadowcraft_roll(&mut rogue);
                         total_mh_hits += 1; 
                     }
-                    if dmg_poison > 0.0 { 
-                        stats.sums.poison_dmg += dmg_poison;
-                    }
+                    stats.add_poison_dmg(dmg_poison);
                     
                     // Reset swing timer
                     let mut haste_factor = 1.0;
@@ -193,13 +182,15 @@ fn main() {
                          args.fight_length);
                 println!("Nr of iterations per variation: {}\n", 
                          args.iterations);
-                println!("{:_<15}:{:>9.3}  ±{:.3} dps.", description, 
-                         mean(&stats.dps), mean_dps_std);
+                println!(
+                    "{:_<15}:{:>9.3}  ±{:.3} dps  (±{:.3}dps in distribution)", 
+                    description, mean(&stats.dps), mean_dps_std, 
+                    std_dev(&stats.dps));
             } else {
                 let mut dps_diff = mean(&stats.dps) - chars_dps_vectors[0];
                 dps_diff = 100.0 * dps_diff / chars_dps_vectors[0];
                 println!("{:_<15}:{:>+9.3}% ±{:.3}%", description, 
-                         dps_diff, 100.0 * mean_dps_std / chars_dps_vectors[0]);
+                         dps_diff, 1.41 * 100.0 * mean_dps_std / chars_dps_vectors[0]);
             }
         }
     }
@@ -305,6 +296,13 @@ fn add_raid_buffs(rogue: &mut Rogue) {
     // motw
     rogue.agility += 12;
     rogue.strength += 12;
+    // trueshot aura
+    rogue.attack_power += 200;
+    // DM buff
+    rogue.attack_power += 200;
+    // Ony buff
+    rogue.attack_power += 140;
+    rogue.crit += 0.05;
     // bom
     rogue.attack_power += 185;
     // battle shout
@@ -903,6 +901,8 @@ fn armor_reduction(dmg: f32) -> f32 {
     armor -= 2250.0;
     // CoR
     armor -= 640.0;
+    // Faerie Fire
+    armor -= 505.0;
     armor = max_f32(armor, 0.0);
     let x = 0.1 * armor / (8.5 * 60.0 + 40.0);
     let red = x / (1.0 + x);
@@ -1018,7 +1018,8 @@ struct StatRatio {
     eviscerate: Vec<f32>,
     poison: Vec<f32>,
     sinister: Vec<f32>,
-    white: Vec<f32>
+    white_mh: Vec<f32>
+    white_oh: Vec<f32>
 }
 
 impl StatRatio {
@@ -1028,7 +1029,8 @@ impl StatRatio {
             eviscerate: Vec::new(),
             poison: Vec::new(),
             sinister: Vec::new(),
-            white: Vec::new()
+            white_mh: Vec::new()
+            white_oh: Vec::new()
         }
     }
 }
@@ -1038,7 +1040,8 @@ struct StatSum {
     eviscerate_dmg: f32,
     poison_dmg: f32,
     sinister_dmg: f32,
-    white_dmg: f32
+    white_mh_dmg: f32
+    white_oh_dmg: f32
 }
 
 impl StatSum {
@@ -1048,7 +1051,8 @@ impl StatSum {
             eviscerate_dmg: 0.0,
             poison_dmg: 0.0,
             sinister_dmg: 0.0,
-            white_dmg: 0.0
+            white_mh_dmg: 0.0
+            white_oh_dmg: 0.0
         }
     }
 
@@ -1057,11 +1061,52 @@ impl StatSum {
         self.eviscerate_dmg = 0.0;
         self.poison_dmg = 0.0;
         self.sinister_dmg = 0.0;
-        self.white_dmg = 0.0;
+        self.white_mh_dmg = 0.0;
+        self.white_oh_dmg = 0.0;
+    }
+}
+
+struct HitType {
+    hit,
+    crit,
+    glancing,
+    miss,
+    dodge
+}
+
+struct StatHit {
+    : f32,
+    eviscerate_dmg: f32,
+    poison_dmg: f32,
+    sinister_dmg: f32,
+    white_mh_dmg: f32
+    white_oh_dmg: f32
+}
+
+impl StatSum {
+    pub fn new() -> StatSum {
+        StatSum {
+            backstab_dmg: 0.0,
+            eviscerate_dmg: 0.0,
+            poison_dmg: 0.0,
+            sinister_dmg: 0.0,
+            white_mh_dmg: 0.0
+            white_oh_dmg: 0.0
+        }
+    }
+
+    pub fn reset_counters(&mut self) {
+        self.backstab_dmg = 0.0;
+        self.eviscerate_dmg = 0.0;
+        self.poison_dmg = 0.0;
+        self.sinister_dmg = 0.0;
+        self.white_mh_dmg = 0.0;
+        self.white_oh_dmg = 0.0;
     }
 }
 
 struct Stats {
+    hits: StatHit,
     sums: StatSum,
     ratios: StatRatio,
     dps: Vec<f32>
@@ -1082,10 +1127,30 @@ impl Stats {
             self.sums.backstab_dmg
             + self.sums.eviscerate_dmg
             + self.sums.sinister_dmg
-            + self.sums.white_dmg
+            + self.sums.white_mh_dmg
+            + self.sums.white_oh_dmg
             + self.sums.poison_dmg
             ;
         return dmg_sum;
+    }
+
+    pub fn add_white_mh_dmg(&mut self, dmg: f32) {
+        self.sums.white_mh_dmg += dmg;
+    }
+    pub fn add_white_oh_dmg(&mut self, dmg: f32) {
+        self.sums.white_oh_dmg += dmg;
+    }
+    pub fn add_eviscerate_dmg(&mut self, dmg: f32) {
+        self.sums.eviscerate_dmg += dmg;
+    }
+    pub fn add_backstab_dmg(&mut self, dmg: f32) {
+        self.sums.backstab_dmg += dmg;
+    }
+    pub fn add_sinister_dmg(&mut self, dmg: f32) {
+        self.sums.sinister_dmg += dmg;
+    }
+    pub fn add_poison_dmg(&mut self, dmg: f32) {
+        self.sums.poison += dmg;
     }
 
     pub fn get_dps(&mut self, fight_length: f32) {
