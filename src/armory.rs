@@ -1,19 +1,13 @@
-mod main
+use crate::Args;
+use crate::max_f32;
 
-
-fn get_item(name: String) -> Item {
-
-    if name == "bloodfang" {
-        item = Item::new("bloodfang_hood")
-    } else { panic!("Item not implemented {}.", name); }
-}
 
 enum ItemSet {
     Bloodfang,
     Nightslayer,
     Shadowcraft,
     Devilsaur,
-    none
+    None
 }
 
 enum ItemSlot {
@@ -30,7 +24,7 @@ enum ItemSlot {
     Ring,
     Trinket,
     Ranged,
-    none,
+    None,
 }
 
 enum WpnType {
@@ -38,7 +32,7 @@ enum WpnType {
     Dagger,
     Axe,
     Mace,
-    none,
+    None,
 }
 
 struct WpnSkill {
@@ -81,7 +75,7 @@ impl Item {
                 crit: 0.01,
                 haste: 0.0,
                 atk_proc: 0.0,
-                wpn_skill: WpnSkill::new(WpnType::none, 0),
+                wpn_skill: WpnSkill::new(WpnType::None, 0),
             }
         }
     }
@@ -135,13 +129,12 @@ enum Race {
     Gnome,
 }
 
-#[derive(Copy, Clone)]
-struct Rogue {
+pub struct Rogue {
     mh: Weapon,
     oh: Weapon,
-    item_set: Vec<armory::Item>,
+    item_set: Vec<Item>,
     stats: Stats,
-    talents: Talents,
+    pub talents: Talents,
     energy: i8,
     combo_points: i8
 }
@@ -159,61 +152,73 @@ impl Rogue {
             combo_points: 0,
         }
     }
+    
+    pub fn get_agility(self) -> u16 { self.stats.agility }
+    pub fn get_strength(self) -> u16 { self.stats.strength }
+    pub fn get_attack_power(self) -> u16 { self.stats.attack_power }
+    pub fn get_crit(self) -> f32 { self.stats.crit }
+    pub fn get_hit(self) -> f32 { self.stats.hit }
+    pub fn get_haste(self) -> f32 { self.stats.haste }
+    pub fn get_dagger_skill(self) -> u16 { self.stats.dagger_skill }
+    pub fn get_sword_skill(self) -> u16 { self.stats.sword_skill }
+    pub fn get_extra_hit_proc_chance(self) -> f32 { 
+        self.stats.extra_hit_proc_chance 
+    }
 
     fn calculate_stats(&mut self) {
         for item in self.item_set {
-            rogue.stats.agility += item.agility;
-            rogue.stats.strength += item.strength;
-            rogue.stats.attack_power += item.attack_power;
-            rogue.stats.crit += item.crit;
-            rogue.stats.hit += item.hit;
-            rogue.stats.haste += item.haste;
-            rogue.stats.dagger_skill += item.dagger_skill;
-            rogue.stats.sword_skill += item.sword_skill;
-            rogue.stats.extra_hit_proc_chance += item.extra_hit_proc_chance;
+            self.stats.agility += item.agility;
+            self.stats.strength += item.strength;
+            self.stats.attack_power += item.attack_power;
+            self.stats.crit += item.crit;
+            self.stats.hit += item.hit;
+            self.stats.haste += item.haste;
+            self.stats.dagger_skill += item.dagger_skill;
+            self.stats.sword_skill += item.sword_skill;
+            self.stats.extra_hit_proc_chance += item.extra_hit_proc_chance;
         }
-        rogue.stats.agility += mh.agility + oh.agility;
-        rogue.stats.strength += mh.strength + oh.strength;
-        rogue.stats.attack_power += mh.attack_power + oh.attack_power;
-        rogue.stats.crit += mh.crit + oh.crit;
-        rogue.stats.hit += mh.hit + oh.hit;
-        rogue.stats.haste += mh.haste + oh.haste;
-        rogue.stats.dagger_skill += mh.dagger_skill + oh.dagger_skill;
-        rogue.stats.sword_skill += mh.sword_skill + oh.sword_skill;
-        rogue.stats.extra_hit_proc_chance += (mh.extra_hit_proc_chance 
-                                              + oh.extra_hit_proc_chance);
+        self.stats.agility += self.mh.agility + self.oh.agility;
+        self.stats.strength += self.mh.strength + self.oh.strength;
+        self.stats.attack_power += self.mh.attack_power + self.oh.attack_power;
+        self.stats.crit += self.mh.crit + self.oh.crit;
+        self.stats.hit += self.mh.hit + self.oh.hit;
+        self.stats.haste += self.mh.haste + self.oh.haste;
+        self.stats.dagger_skill += self.mh.dagger_skill + self.oh.dagger_skill;
+        self.stats.sword_skill += self.mh.sword_skill + self.oh.sword_skill;
+        self.stats.extra_hit_proc_chance += self.mh.extra_hit_proc_chance 
+                                            + self.oh.extra_hit_proc_chance;
     }
     
     fn calculate_hit_numbers(&mut self, args: &Args) {
 
-        if rogue.weapon_expertise == 1 { 
+        if self.weapon_expertise == 1 { 
             self.sword_skill += 3; 
             self.dagger_skill += 3; 
         }
-        else if rogue.weapon_expertise == 2 { 
+        else if self.weapon_expertise == 2 { 
             self.sword_skill += 5; 
             self.dagger_skill += 5; 
         }
 
         if self.mh.wpn_type == WpnType::Sword {
-            mh.extra_hit_proc_chance += 
-                0.01 * rogue.sword_specialization as f32;
+            self.mh.extra_hit_proc_chance += 
+                0.01 * self.talents.sword_specialization as f32;
         }
         if self.oh.wpn_type == WpnType::Sword {
-            oh.extra_hit_proc_chance += 
-                0.01 * rogue.sword_specialization as f32;
+            self.oh.extra_hit_proc_chance += 
+                0.01 * self.talents.sword_specialization as f32;
         }
         
-        rogue.stats.hit += rogue.precision as f32 * 0.01;
+        self.stats.hit += self.precision as f32 * 0.01;
 
         self.set_crit_ratings(args.enemy_lvl);
 
-        set_yellow_miss_chance(args.enemy_lvl);
-        set_white_miss_chance();
-        subtract_hit_from_miss(args);
-        set_glancing_reduction(args.enemy_lvl);
-        set_glancing_chance(args.enemy_lvl);
-        set_dodge_chance(args.enemy_lvl);
+        self.set_yellow_miss_chance(args.enemy_lvl);
+        self.set_white_miss_chance();
+        self.subtract_hit_from_miss(args);
+        self.set_glancing_reduction(args.enemy_lvl);
+        self.set_glancing_chance(args.enemy_lvl);
+        self.set_dodge_chance(args.enemy_lvl);
     }
 
     fn set_dodge_chance(&mut self, enemy_lvl: i16) {
@@ -224,19 +229,19 @@ impl Rogue {
             // MH
             let mh_wep_skill: i16;
             if self.mh.wpn_type == WpnType::Dagger { 
-                mh_wep_skill = rogue.dagger_skill; 
+                mh_wep_skill = self.dagger_skill; 
             }
-            else { mh_wep_skill = rogue.sword_skill; }
-            self.mh.dodge_chance = (0.05 + (5 * enemy_lvl - mh_wep_skill) as f32 
-                                    * 0.001); 
+            else { mh_wep_skill = self.sword_skill; }
+            self.mh.dodge_chance = 0.05 + (5 * enemy_lvl - mh_wep_skill) as f32 
+                                   * 0.001; 
             // OH
             let oh_wep_skill: i16;
             if self.oh.wpn_type == WpnType::Dagger { 
-                oh_wep_skill = rogue.dagger_skill; 
+                oh_wep_skill = self.dagger_skill; 
             }
-            else { oh_wep_skill = rogue.sword_skill; }
-            self.oh.dodge_chance = (0.05 + (5 * enemy_lvl - oh_wep_skill) as f32 
-                                    * 0.001); 
+            else { oh_wep_skill = self.sword_skill; }
+            self.oh.dodge_chance = 0.05 + (5 * enemy_lvl - oh_wep_skill) as f32 
+                                   * 0.001; 
         }
     }
 
@@ -256,7 +261,7 @@ impl Rogue {
         if self.mh.wpn_type == WpnType::Dagger { 
             delta_skill = 5 * enemy_lvl - self.dagger_skill; 
         } else if self.mh.wpn_type == WpnType::Sword { 
-            delta_skill = 5 * enemy_lvl - self.swords_skill; 
+            delta_skill = 5 * enemy_lvl - self.sword_skill; 
         } else { panic!("Weapon type not implemented."); }
 
         if      delta_skill == 15 { self.mh.glancing_red = 0.35; }
@@ -274,7 +279,7 @@ impl Rogue {
         if self.oh.wpn_type == WpnType::Dagger { 
             delta_skill = 5 * enemy_lvl - self.dagger_skill; 
         } else if self.oh.wpn_type == WpnType::Sword { 
-            delta_skill = 5 * enemy_lvl - self.swords_skill; 
+            delta_skill = 5 * enemy_lvl - self.sword_skill; 
         } else { panic!("Weapon type not implemented."); }
 
         if      delta_skill == 15 { self.oh.glancing_red = 0.35; }
@@ -294,37 +299,39 @@ impl Rogue {
         // MH
         let wep_skill: i16;
         if self.mh.wpn_type == WpnType::Dagger { 
-            wep_skill = rogue.daggers_skill; 
+            wep_skill = self.dagger_skill; 
         }
-        else { wep_skill = rogue.swords_skill; }
+        else { wep_skill = self.sword_skill; }
 
         // if target defense minus wep skill is 11 or more, one percent 
         // hit is negated
         if 5 * args.enemy_lvl - wep_skill > 10 {
-            mh.yellow_miss = max_f32( 0.0, mh.yellow_miss - (rogue.hit - 0.01) );
-            mh.white_miss = max_f32( 0.0, mh.white_miss - (rogue.hit - 0.01) );
+           self.mh.yellow_miss = max_f32(
+               0.0, self.mh.yellow_miss - (self.hit - 0.01) );
+           self.mh.white_miss = max_f32(
+               0.0, self.mh.white_miss - (self.hit - 0.01) );
         } else {
-            mh.yellow_miss = max_f32(0.0, mh.yellow_miss - rogue.hit);
-            mh.white_miss = max_f32(0.0, mh.white_miss - rogue.hit);
+           self.mh.yellow_miss = max_f32(0.0, self.mh.yellow_miss - self.hit);
+           self.mh.white_miss = max_f32(0.0, self.mh.white_miss - self.hit);
         }
 
         // OH
         let wep_skill: i16;
-        if oh.is_dagger { wep_skill = rogue.daggers_skill; }
-        else { wep_skill = rogue.swords_skill; }
+        if self.oh.is_dagger { wep_skill = self.dagger_skill; }
+        else { wep_skill = self.sword_skill; }
 
         // if target defense minus wep skill is 11 or more, one percent 
         // hit is negated
         if 5 * args.enemy_lvl - wep_skill > 10 {
-            oh.yellow_miss = main::max_f32(
+            self.oh.yellow_miss = max_f32(
                 0.0, self.oh.yellow_miss - (self.stats.hit - 0.01)
                 );
-            oh.white_miss = main::max_f32(
+            self.oh.white_miss = max_f32(
                 0.0, self.oh.white_miss - (self.stats.hit - 0.01) 
                 );
         } else {
-            oh.yellow_miss = main::max_f32(0.0, self.oh.yellow_miss - self.hit);
-            oh.white_miss = main::max_f32(0.0, self.oh.white_miss - self.hit);
+            self.oh.yellow_miss = max_f32(0.0, self.oh.yellow_miss - self.hit);
+            self.oh.white_miss = max_f32(0.0, self.oh.white_miss - self.hit);
         }
 
     }
@@ -374,9 +381,9 @@ impl Rogue {
         // MH 
         let mut delta_skill: i16;
         if self.oh.wpn_type == WpnType::Dagger {
-            delta_skill = 5 * enemy_lvl - rogue.daggers_skill;
+            delta_skill = 5 * enemy_lvl - self.dagger_skill;
         } else {
-            delta_skill = 5 * enemy_lvl - rogue.swords_skill;
+            delta_skill = 5 * enemy_lvl - self.sword_skill;
         }
         if delta_skill < 0 { self.mh.yellow_miss = 0.05; }
         else if delta_skill <= 10 && delta_skill >= 0 { 
@@ -390,7 +397,7 @@ impl Rogue {
     }
 }
 
-struct Stats {
+pub struct Stats {
     agility: u16,
     strength: u16,
     attack_power: u16,
@@ -434,7 +441,7 @@ impl Stats {
     }
 }
 
-struct Weapon {
+pub struct Weapon {
     speed: f32,
     max_dmg: u16,
     min_dmg: u16,
@@ -465,8 +472,8 @@ impl Weapon {
             enchant: "none".to_string(),
             crusader: 0.0,
             is_offhand: false,
-            wpn_type: WpnType::none,
-            wpn_skill: WpnSkill::new(WpnType::none, 0),
+            wpn_type: WpnType::None,
+            wpn_skill: WpnSkill::new(WpnType::None, 0),
             crit: 0.0,
             crit_backstab: 0.0,
             dodge_chance: 0.0,
@@ -477,16 +484,18 @@ impl Weapon {
         }
     }
 
+    pub fn get_speed(self) -> f32 { self.speed }
+
     pub fn new(name: String) -> Weapon {
-        let mut wep = clean_wep();
+        let mut wep = Weapon::clean_wep();
         if name == "gutgore_ripper" {
-            wep.speed: 1.8;
+            wep.speed = 1.8;
             wep.min_dmg = 63;
             wep.max_dmg = 119;
             wep.wpn_type = WpnType::Dagger;
                 
         } else if name == "distracting_dagger" {
-            wep.speed: 1.3;
+            wep.speed = 1.3;
             wep.min_dmg = 42;
             wep.max_dmg = 64;
             wep.wpn_type = WpnType::Dagger;

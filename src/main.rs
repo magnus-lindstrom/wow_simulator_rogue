@@ -6,11 +6,12 @@
  *   - 20% chance for a boss to resist the poison
  *   - 130 dmg with current best instant poison
  */
+mod armory;
+
 extern crate rand;
 extern crate clap;
 
-mod armory;
-
+use crate::armory::{Rogue, Weapon, Item, Stats};
 use std::fs::File;
 use std::fmt;
 use std::io::{BufRead, BufReader};
@@ -23,8 +24,6 @@ fn main() {
 
     let dt = 0.01;
 
-    let item = armory::Item::new();
-
     let args = get_arguments();
 
     let mut rogue: Rogue;
@@ -32,9 +31,9 @@ fn main() {
     let mut oh: Weapon;
 
     // get the different rogues that will be looped through
-    let rogues = get_characters(&args);
-    let rogues = rogue.0;
-    let descriptions = rogue.1;
+    let characters = get_characters(&args);
+    let rogues = characters.0;
+    let descriptions = characters.1;
     let mut chars_dps_vectors = Vec::new();
 
     for (description, rogue) in descriptions.iter().zip(rogues.iter()) {
@@ -75,7 +74,7 @@ fn main() {
                     let mut haste_factor = 1.0;
                     if buffs.snd > 0.0 { haste_factor *= 1.3; } 
                     if buffs.blade_flurry > 0.0 { haste_factor *= 1.2; } 
-                    if rogue.haste > 0.0 { haste_factor *= 1.0 + rogue.haste; }
+                    if rogue.get_haste() > 0.0 { haste_factor *= 1.0 + rogue.get_haste(); }
                     time_struct.oh_swing = oh.speed / haste_factor;
 
                     if extra_swing { extra_attacks += 1; }
@@ -91,7 +90,7 @@ fn main() {
                     let mut haste_factor = 1.0;
                     if buffs.snd > 0.0 { haste_factor *= 1.3; } 
                     if buffs.blade_flurry > 0.0 { haste_factor *= 1.2; } 
-                    if rogue.haste > 0.0 { haste_factor *= 1.0 + rogue.haste; }
+                    if rogue.get_haste() > 0.0 { haste_factor *= 1.0 + rogue.get_haste(); }
                     time_struct.mh_swing = mh.speed / haste_factor;
 
                     if !extra_swing {
@@ -109,7 +108,7 @@ fn main() {
                     let mut haste_factor = 1.0;
                     if buffs.snd > 0.0 { haste_factor *= 1.3; } 
                     if buffs.blade_flurry > 0.0 { haste_factor *= 1.2; } 
-                    if rogue.haste > 0.0 { haste_factor *= 1.0 + rogue.haste; }
+                    if rogue.get_haste() > 0.0 { haste_factor *= 1.0 + rogue.get_haste(); }
                     time_struct.mh_swing = mh.speed / haste_factor;
 
 
@@ -128,9 +127,6 @@ fn main() {
                          description.to_string());
     }
 }
-
-fn equip_armor(args: &Args) -> armory::Item {
-
 
 fn print_statistics(statistics: &Stats, args: &Args, 
                     chars_dps_vectors: &Vec<f32>, description: String) {
@@ -237,7 +233,7 @@ fn get_arguments() -> Args {
     let no_buffs = matches.is_present("No buffs");
     let verb = matches.is_present("Verbose");
 
-    let mut args: Args = default_args();
+    let mut args = Args::default_args();
     args.param_file = file.to_string();
     args.verb = verb;
     args.no_buffs = no_buffs;
@@ -357,7 +353,7 @@ fn print_hit_chances(rogue: &Rogue, mh: &Weapon, oh: &Weapon) {
     
 }
 
-struct Args {
+pub struct Args {
     no_buffs: bool,
     enemy_lvl: i16,
     fight_length: f32,
@@ -368,18 +364,19 @@ struct Args {
     weights: bool
 }
 
-fn default_args() -> Args {
-    let args = Args {
-        no_buffs: false,
-        enemy_lvl: 0,
-        fight_length: 0.0,
-        iterations: 0,
-        param_file: "".to_string(),
-        verb: false,
-        weight_mult: 0,
-        weights: false
-    };
-    return args;
+impl Args {
+    fn default_args() -> Args {
+        Args {
+            no_buffs: false,
+            enemy_lvl: 0,
+            fight_length: 0.0,
+            iterations: 0,
+            param_file: "".to_string(),
+            verb: false,
+            weight_mult: 0,
+            weights: false
+        }
+    }
 }
 
 fn announce_hit(dmg: f32, attack_type: String, hit_type: HitType, time: f32) {
@@ -1107,121 +1104,121 @@ fn get_characters(args: &Args) -> (Vec<Rogue>, Vec<String>) {
     if args.weights {
         // one less agility
         rogues = read_params(&args.param_file);
-        if rogues.0.agility >= 8 * args.weight_mult {
-            rogues.0.agility -= 8 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.agility >= 8 * args.weight_mult {
+            rogues.stats.agility -= 8 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("-{} agi", 8 * args.weight_mult);
             descriptions.push(desc);
         }
         // one more agility
         rogues = read_params(&args.param_file);
-        rogues.0.agility += 8 * args.weight_mult;
-        characters.push(rogues);
+        rogues.stats.agility += 8 * args.weight_mult;
+        rogues.push(rogues);
         let desc = format!("+{} agi", 8 * args.weight_mult);
         descriptions.push(desc);
         
         // ten less strength
         rogues = read_params(&args.param_file);
-        if rogues.0.strength >= 8 * args.weight_mult {
-            rogues.0.strength -= 8 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.strength >= 8 * args.weight_mult {
+            rogues.stats.strength -= 8 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("-{} str", 8 * args.weight_mult);
             descriptions.push(desc);
         }
         // ten more strength
         rogues = read_params(&args.param_file);
-        rogues.0.strength += 8 * args.weight_mult;
-        characters.push(rogues);
+        rogues.stats.strength += 8 * args.weight_mult;
+        rogues.push(rogues);
         let desc = format!("+{} str", 8 * args.weight_mult);
         descriptions.push(desc);
          
         // ten less attack power
         rogues = read_params(&args.param_file);
-        if rogues.0.attack_power >= 8 * args.weight_mult {
-            rogues.0.attack_power -= 8 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.attack_power >= 8 * args.weight_mult {
+            rogues.stats.attack_power -= 8 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("-{} atp", 8 * args.weight_mult);
             descriptions.push(desc);
         }
         // ten more attack power
         rogues = read_params(&args.param_file);
-        rogues.0.attack_power += 8 * args.weight_mult;
-        characters.push(rogues);
+        rogues.stats.attack_power += 8 * args.weight_mult;
+        rogues.push(rogues);
         let desc = format!("+{} atp", 8 * args.weight_mult);
         descriptions.push(desc);
         
         // one less hit
         rogues = read_params(&args.param_file);
-        if rogues.0.hit >= 0.01 * args.weight_mult as f32 {
-            rogues.0.hit -= 0.01 * args.weight_mult as f32;
-            characters.push(rogues);
+        if rogues.stats.hit >= 0.01 * args.weight_mult as f32 {
+            rogues.stats.hit -= 0.01 * args.weight_mult as f32;
+            rogues.push(rogues);
             let desc = format!("-{} hit", 0.01 * args.weight_mult as f32);
             descriptions.push(desc);
         }
         // one more hit
         rogues = read_params(&args.param_file);
-        rogues.0.hit += 0.01 * args.weight_mult as f32;
-        characters.push(rogues);
+        rogues.stats.hit += 0.01 * args.weight_mult as f32;
+        rogues.push(rogues);
         let desc = format!("+{} hit", 0.01 * args.weight_mult as f32);
         descriptions.push(desc);
 
         // one less crit
         rogues = read_params(&args.param_file);
-        if rogues.0.crit >= 0.01 * args.weight_mult as f32 {
-            rogues.0.crit -= 0.01 * args.weight_mult as f32;
-            characters.push(rogues);
+        if rogues.stats.crit >= 0.01 * args.weight_mult as f32 {
+            rogues.stats.crit -= 0.01 * args.weight_mult as f32;
+            rogues.push(rogues);
             let desc = format!("-{} crit", 0.01 * args.weight_mult as f32);
             descriptions.push(desc);
         }
         // one more crit
         rogues = read_params(&args.param_file);
-        rogues.0.crit += 0.01 * args.weight_mult as f32;
-        characters.push(rogues);
+        rogues.stats.crit += 0.01 * args.weight_mult as f32;
+        rogues.push(rogues);
         let desc = format!("+{} crit", 0.01 * args.weight_mult as f32);
         descriptions.push(desc);
          
         // one less haste
         rogues = read_params(&args.param_file);
-        if rogues.0.haste >= 0.01  * args.weight_mult as f32{
-            rogues.0.haste -= 0.01 * args.weight_mult as f32;
-            characters.push(rogues);
+        if rogues.stats.haste >= 0.01  * args.weight_mult as f32{
+            rogues.stats.haste -= 0.01 * args.weight_mult as f32;
+            rogues.push(rogues);
             let desc = format!("-{} haste", 0.01 * args.weight_mult as f32);
             descriptions.push(desc);
         }
         // one more haste
         rogues = read_params(&args.param_file);
-        rogues.0.haste += 0.01 * args.weight_mult as f32;
-        characters.push(rogues);
+        rogues.stats.haste += 0.01 * args.weight_mult as f32;
+        rogues.push(rogues);
         let desc = format!("+{} haste", 0.01 * args.weight_mult as f32);
         descriptions.push(desc);
 
         // one less dagger skill
         rogues = read_params(&args.param_file);
-        if rogues.0.daggers_skill >= 300 + 1 * args.weight_mult as i16 {
-            rogues.0.daggers_skill -= 1 * args.weight_mult as i16;
-            characters.push(rogues);
+        if rogues.stats.daggers_skill >= 300 + 1 * args.weight_mult as i16 {
+            rogues.stats.daggers_skill -= 1 * args.weight_mult as i16;
+            rogues.push(rogues);
             let desc = format!("-{} dgr skill", 1 * args.weight_mult);
             descriptions.push(desc);
         }
         // one more dagger skill
         rogues = read_params(&args.param_file);
-        rogues.0.daggers_skill += 1 * args.weight_mult as i16;
-        characters.push(rogues);
+        rogues.stats.daggers_skill += 1 * args.weight_mult as i16;
+        rogues.push(rogues);
         let desc = format!("+{} dgr skill", 1 * args.weight_mult);
         descriptions.push(desc);
          
         // two less extra hit proc chance
         rogues = read_params(&args.param_file);
-        if rogues.0.extra_hit_proc_chance >= 0.02 * args.weight_mult as f32 {
-            rogues.0.extra_hit_proc_chance -= 0.02 * args.weight_mult as f32;
-            characters.push(rogues);
+        if rogues.stats.extra_hit_proc_chance >= 0.02 * args.weight_mult as f32 {
+            rogues.stats.extra_hit_proc_chance -= 0.02 * args.weight_mult as f32;
+            rogues.push(rogues);
             let desc = format!("-{} hit proc", 0.02 * args.weight_mult as f32);
             descriptions.push(desc);
         }
         // two more extra hit proc chance
         rogues = read_params(&args.param_file);
-        rogues.0.extra_hit_proc_chance += 0.02 * args.weight_mult as f32;
-        characters.push(rogues);
+        rogues.stats.extra_hit_proc_chance += 0.02 * args.weight_mult as f32;
+        rogues.push(rogues);
         let desc = format!("+{} hit proc", 0.02 * args.weight_mult as f32);
         descriptions.push(desc);
 
@@ -1229,243 +1226,243 @@ fn get_characters(args: &Args) -> (Vec<Rogue>, Vec<String>) {
 
         // one less improved eviscerate
         rogues = read_params(&args.param_file);
-        if rogues.0.improved_eviscerate >= 1 * args.weight_mult {
-            rogues.0.improved_eviscerate -= 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.stats.proved_eviscerate >= 1 * args.weight_mult {
+            rogues.stats.improved_eviscerate -= 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("-{} imp evis", 1 * args.weight_mult);
             descriptions.push(desc);
         }
         // one more improved eviscerate
         rogues = read_params(&args.param_file);
-        if rogues.0.improved_eviscerate <= 3 - 1 * args.weight_mult {
-            rogues.0.improved_eviscerate += 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.improved_eviscerate <= 3 - 1 * args.weight_mult {
+            rogues.stats.improved_eviscerate += 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("+{} imp evis", 1 * args.weight_mult);
             descriptions.push(desc);
         }
 
         // one less malice
         rogues = read_params(&args.param_file);
-        if rogues.0.malice >= 1 * args.weight_mult {
-            rogues.0.malice -= 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.malice >= 1 * args.weight_mult {
+            rogues.stats.malice -= 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("-{} malice", 1 * args.weight_mult);
             descriptions.push(desc);
         }
         // one more malice
         rogues = read_params(&args.param_file);
-        if rogues.0.malice <= 5 - 1 * args.weight_mult {
-            rogues.0.malice += 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.malice <= 5 - 1 * args.weight_mult {
+            rogues.stats.malice += 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("+{} malice", 1 * args.weight_mult);
             descriptions.push(desc);
         }
 
         // one less ruthlessness
         rogues = read_params(&args.param_file);
-        if rogues.0.ruthlessness >= 1 * args.weight_mult {
-            rogues.0.ruthlessness -= 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.ruthlessness >= 1 * args.weight_mult {
+            rogues.stats.ruthlessness -= 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("-{} ruthlessness", 1 * args.weight_mult);
             descriptions.push(desc);
         }
         // one more ruthlessness
         rogues = read_params(&args.param_file);
-        if rogues.0.ruthlessness <= 3 - 1 * args.weight_mult {
-            rogues.0.ruthlessness += 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.ruthlessness <= 3 - 1 * args.weight_mult {
+            rogues.stats.ruthlessness += 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("+{} ruthlessness", 1 * args.weight_mult);
             descriptions.push(desc);
         }
 
         // one less imp slice and dice
         rogues = read_params(&args.param_file);
-        if rogues.0.improved_slice_and_dice >= 1 * args.weight_mult {
-            rogues.0.improved_slice_and_dice -= 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.improved_slice_and_dice >= 1 * args.weight_mult {
+            rogues.stats.improved_slice_and_dice -= 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("-{} imp snd", 1 * args.weight_mult);
             descriptions.push(desc);
         }
         // one more imp slice and dice
         rogues = read_params(&args.param_file);
-        if rogues.0.improved_slice_and_dice <= 3 - 1 * args.weight_mult {
-            rogues.0.improved_slice_and_dice += 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.improved_slice_and_dice <= 3 - 1 * args.weight_mult {
+            rogues.stats.improved_slice_and_dice += 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("+{} imp snd", 1 * args.weight_mult);
             descriptions.push(desc);
         }
 
         // one less relentless strikes
         rogues = read_params(&args.param_file);
-        if rogues.0.relentless_strikes >= 1 * args.weight_mult {
-            rogues.0.relentless_strikes -= 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.relentless_strikes >= 1 * args.weight_mult {
+            rogues.stats.relentless_strikes -= 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("-{} rel strikes", 1 * args.weight_mult);
             descriptions.push(desc);
         }
         // one more relentless strikes
         rogues = read_params(&args.param_file);
-        if rogues.0.relentless_strikes <= 1 - 1 * args.weight_mult {
-            rogues.0.relentless_strikes += 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.relentless_strikes <= 1 - 1 * args.weight_mult {
+            rogues.stats.relentless_strikes += 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("+{} rel strikes", 1 * args.weight_mult);
             descriptions.push(desc);
         }
 
         // one less lethality
         rogues = read_params(&args.param_file);
-        if rogues.0.lethality >= 1 * args.weight_mult {
-            rogues.0.lethality -= 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.lethality >= 1 * args.weight_mult {
+            rogues.stats.lethality -= 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("-{} lethality", 1 * args.weight_mult);
             descriptions.push(desc);
         }
         // one more lethality
         rogues = read_params(&args.param_file);
-        if rogues.0.lethality <= 5 - 1 * args.weight_mult {
-            rogues.0.lethality += 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.lethality <= 5 - 1 * args.weight_mult {
+            rogues.stats.lethality += 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("+{} lethality", 1 * args.weight_mult);
             descriptions.push(desc);
         }
 
         // one less improved backstab
         rogues = read_params(&args.param_file);
-        if rogues.0.imp_backstab >= 1 * args.weight_mult {
-            rogues.0.imp_backstab -= 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.imp_backstab >= 1 * args.weight_mult {
+            rogues.stats.imp_backstab -= 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("-{} imp bkstab", 1 * args.weight_mult);
             descriptions.push(desc);
         }
         // one more improved backstab
         rogues = read_params(&args.param_file);
-        if rogues.0.imp_backstab <= 3 - 1 * args.weight_mult {
-            rogues.0.imp_backstab += 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.imp_backstab <= 3 - 1 * args.weight_mult {
+            rogues.stats.imp_backstab += 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("+{} imp bkstab", 1 * args.weight_mult);
             descriptions.push(desc);
         }
 
         // one less precision
         rogues = read_params(&args.param_file);
-        if rogues.0.precision >= 1 * args.weight_mult {
-            rogues.0.precision -= 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.precision >= 1 * args.weight_mult {
+            rogues.stats.precision -= 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("-{} precision", 1 * args.weight_mult);
             descriptions.push(desc);
         }
         // one more precision
         rogues = read_params(&args.param_file);
-        if rogues.0.precision <= 5 - 1 * args.weight_mult {
-            rogues.0.precision += 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.precision <= 5 - 1 * args.weight_mult {
+            rogues.stats.precision += 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("+{} precision", 1 * args.weight_mult);
             descriptions.push(desc);
         }
         
         // one less dw_specialization
         rogues = read_params(&args.param_file);
-        if rogues.0.dw_specialization >= 1 * args.weight_mult {
-            rogues.0.dw_specialization -= 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.dw_specialization >= 1 * args.weight_mult {
+            rogues.stats.dw_specialization -= 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("-{} dw spec", 1 * args.weight_mult);
             descriptions.push(desc);
         }
         // one more dw_specialization
         rogues = read_params(&args.param_file);
-        if rogues.0.dw_specialization <= 5 - 1 * args.weight_mult {
-            rogues.0.dw_specialization += 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.dw_specialization <= 5 - 1 * args.weight_mult {
+            rogues.stats.dw_specialization += 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("+{} dw spec", 1 * args.weight_mult);
             descriptions.push(desc);
         }
          
         // one less sword_specialization
         rogues = read_params(&args.param_file);
-        if rogues.0.sword_specialization >= 1 * args.weight_mult {
-            rogues.0.sword_specialization -= 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.sword_specialization >= 1 * args.weight_mult {
+            rogues.stats.sword_specialization -= 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("-{} sword spec", 1 * args.weight_mult);
             descriptions.push(desc);
         }
         // one more sword_specialization
         rogues = read_params(&args.param_file);
-        if rogues.0.sword_specialization <= 5 - 1 * args.weight_mult {
-            rogues.0.sword_specialization += 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.sword_specialization <= 5 - 1 * args.weight_mult {
+            rogues.stats.sword_specialization += 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("+{} sword spec", 1 * args.weight_mult);
             descriptions.push(desc);
         }
          
         // one less dagger_specialization
         rogues = read_params(&args.param_file);
-        if rogues.0.dagger_specialization >= 1 * args.weight_mult {
-            rogues.0.dagger_specialization -= 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.dagger_specialization >= 1 * args.weight_mult {
+            rogues.stats.dagger_specialization -= 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("-{} dagger spec", 1 * args.weight_mult);
             descriptions.push(desc);
         }
         // one more dagger_specialization
         rogues = read_params(&args.param_file);
-        if rogues.0.dagger_specialization <= 5 - 1 * args.weight_mult {
-            rogues.0.dagger_specialization += 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.dagger_specialization <= 5 - 1 * args.weight_mult {
+            rogues.stats.dagger_specialization += 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("+{} dagger spec", 1 * args.weight_mult);
             descriptions.push(desc);
         }
 
         // one less weapon expertise
         rogues = read_params(&args.param_file);
-        if rogues.0.weapon_expertise >= 1 * args.weight_mult {
-            rogues.0.weapon_expertise -= 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.weapon_expertise >= 1 * args.weight_mult {
+            rogues.stats.weapon_expertise -= 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("-{} wep expert", 1 * args.weight_mult);
             descriptions.push(desc);
         }
         // one more weapon_expertise
         rogues = read_params(&args.param_file);
-        if rogues.0.weapon_expertise <= 2 - 1 * args.weight_mult {
-            rogues.0.weapon_expertise += 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.weapon_expertise <= 2 - 1 * args.weight_mult {
+            rogues.stats.weapon_expertise += 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("+{} wep expert", 1 * args.weight_mult);
             descriptions.push(desc);
         }
 
         // one less aggression
         rogues = read_params(&args.param_file);
-        if rogues.0.aggression >= 1 * args.weight_mult {
-            rogues.0.aggression -= 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.aggression >= 1 * args.weight_mult {
+            rogues.stats.aggression -= 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("-{} aggression", 1 * args.weight_mult);
             descriptions.push(desc);
         }
         // one more aggression
         rogues = read_params(&args.param_file);
-        if rogues.0.aggression <= 3 - 1 * args.weight_mult {
-            rogues.0.aggression += 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.aggression <= 3 - 1 * args.weight_mult {
+            rogues.stats.aggression += 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("+{} aggression", 1 * args.weight_mult);
             descriptions.push(desc);
         }
 
         // one less opportunity
         rogues = read_params(&args.param_file);
-        if rogues.0.opportunity >= 1 * args.weight_mult {
-            rogues.0.opportunity -= 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.opportunity >= 1 * args.weight_mult {
+            rogues.stats.opportunity -= 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("-{} opportunity", 1 * args.weight_mult);
             descriptions.push(desc);
         }
         // one more opportunity
         rogues = read_params(&args.param_file);
-        if rogues.0.opportunity <= 5 - 1 * args.weight_mult {
-            rogues.0.opportunity += 1 * args.weight_mult;
-            characters.push(rogues);
+        if rogues.stats.opportunity <= 5 - 1 * args.weight_mult {
+            rogues.stats.opportunity += 1 * args.weight_mult;
+            rogues.push(rogues);
             let desc = format!("+{} opportunity", 1 * args.weight_mult);
             descriptions.push(desc);
         }
     } 
-    return (characters, descriptions);
+    return (rogues, descriptions);
 }
 
 fn read_params(param_file: &String) -> Rogue {
@@ -1501,57 +1498,8 @@ fn param_adder(text: &str, rogue: &mut Rogue) {
 
     let words = text.split_whitespace();
     let words_vec = words.collect::<Vec<&str>>();
-    if words_vec[0] == "agility" {
-        match words_vec[1].parse() {
-            Ok(x) => rogue.agility = x,
-            Err(x) => panic!("Can't translate word to number. {}", x)
-        }
-    } else if words_vec[0] == "strength" { 
-        match words_vec[1].parse() {
-            Ok(x) => rogue.strength = x,
-            Err(x) => panic!("Can't translate word to number. {}", x)
-        }
-    } else if words_vec[0] == "crit" { 
-        match words_vec[1].parse() {
-            Ok(x) => rogue.crit = x,
-            Err(x) => panic!("Can't translate word to number. {}", x)
-        }
-    } else if words_vec[0] == "hit" { 
-        match words_vec[1].parse() {
-            Ok(x) => rogue.hit = x,
-            Err(x) => panic!("Can't translate word to number. {}", x)
-        }
-    } else if words_vec[0] == "haste" { 
-        match words_vec[1].parse() {
-            Ok(x) => rogue.haste = x,
-            Err(x) => panic!("Can't translate word to number. {}", x)
-        }
-    } else if words_vec[0] == "swords_skill" { 
-        match words_vec[1].parse() {
-            Ok(x) => rogue.swords_skill = x,
-            Err(x) => panic!("Can't translate word to number. {}", x)
-        }
-    } else if words_vec[0] == "daggers_skill" { 
-        match words_vec[1].parse() {
-            Ok(x) => rogue.daggers_skill = x,
-            Err(x) => panic!("Can't translate word to number. {}", x)
-        }
-    } else if words_vec[0] == "attack_power" { 
-        match words_vec[1].parse() {
-            Ok(x) => rogue.attack_power = x,
-            Err(x) => panic!("Can't translate word to number. {}", x)
-        }
-    } else if words_vec[0] == "extra_hit_proc_chance" { 
-        match words_vec[1].parse() {
-            Ok(x) => rogue.extra_hit_proc_chance = x,
-            Err(x) => panic!("Can't translate word to number. {}", x)
-        }
-    } else if words_vec[0] == "shadowcraft_six_bonus" { 
-        rogue.shadowcraft_six_bonus = true;
-    } 
 
-    // now for talents
-    else if words_vec[0] == "imp_backstab" { 
+    if words_vec[0] == "imp_backstab" { 
         match words_vec[1].parse() {
             Ok(x) => rogue.imp_backstab = x,
             Err(x) => panic!("Can't translate word to number. {}", x)
@@ -1621,7 +1569,6 @@ fn param_adder(text: &str, rogue: &mut Rogue) {
             Ok(x) => rogue.lethality = x,
             Err(x) => panic!("Can't translate word to number. {}", x)
         }
-    } else if words_vec[0] == "nothing" {
     } else {
         panic!("Unrecognized keyword in params file: {}", words_vec[0]);
     }
