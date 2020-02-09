@@ -1,10 +1,13 @@
 /* TODO
- *   - Bring in weapons
- *   - Dynamic time steps
- *   - Display everything in terms of atp
- *   - 20% chance to apply a poison, base stat.
- *   - 20% chance for a boss to resist the poison
- *   - 130 dmg with current best instant poison
+ * - things taken out that will be reimplemented
+ *   - weapon enchants
+ *   - crusader proccs
+ *
+ * - Dynamic time steps
+ * - Display everything in terms of atp
+ * - 20% chance to apply a poison, base stat.
+ * - 20% chance for a boss to resist the poison
+ * - 130 dmg with current best instant poison
  */
 mod armory;
 
@@ -38,7 +41,7 @@ fn main() {
 
     for (description, rogue) in descriptions.iter().zip(rogues.iter()) {
 
-        if !args.no_buffs { add_raid_buffs(&mut rogue); }
+        if !args.no_buffs { rogue.add_raid_buffs(); }
 
         // if not going for weights, print hit chances once
         if !args.weights { print_hit_chances(&rogue, &mh, &oh); }
@@ -46,8 +49,6 @@ fn main() {
         let mut statistics = Statistics::new();
 
         for _i_run in 0..args.iterations {
-
-            let mut buffs = BuffsActive::new();
 
             let mut time_struct = TimeTilEvents::new(args.fight_length);
 
@@ -75,7 +76,7 @@ fn main() {
                     if buffs.snd > 0.0 { haste_factor *= 1.3; } 
                     if buffs.blade_flurry > 0.0 { haste_factor *= 1.2; } 
                     if rogue.get_haste() > 0.0 { haste_factor *= 1.0 + rogue.get_haste(); }
-                    time_struct.oh_swing = oh.speed / haste_factor;
+                    time_struct.oh_swing = oh.get_speed() / haste_factor;
 
                     if extra_swing { extra_attacks += 1; }
                 }
@@ -91,7 +92,7 @@ fn main() {
                     if buffs.snd > 0.0 { haste_factor *= 1.3; } 
                     if buffs.blade_flurry > 0.0 { haste_factor *= 1.2; } 
                     if rogue.get_haste() > 0.0 { haste_factor *= 1.0 + rogue.get_haste(); }
-                    time_struct.mh_swing = mh.speed / haste_factor;
+                    time_struct.mh_swing = mh.get_speed() / haste_factor;
 
                     if !extra_swing {
                         extra_attacks -= 1;
@@ -109,7 +110,7 @@ fn main() {
                     if buffs.snd > 0.0 { haste_factor *= 1.3; } 
                     if buffs.blade_flurry > 0.0 { haste_factor *= 1.2; } 
                     if rogue.get_haste() > 0.0 { haste_factor *= 1.0 + rogue.get_haste(); }
-                    time_struct.mh_swing = mh.speed / haste_factor;
+                    time_struct.mh_swing = mh.get_speed() / haste_factor;
 
 
                     if extra_swing { extra_attacks += 1; }
@@ -128,7 +129,7 @@ fn main() {
     }
 }
 
-fn print_statistics(statistics: &Stats, args: &Args, 
+fn print_statistics(statistics: &Statistics, args: &Args, 
                     chars_dps_vectors: &Vec<f32>, description: String) {
 
     if !args.weights {
@@ -255,42 +256,13 @@ fn get_arguments() -> Args {
 
 fn crusader_roll(wep: &mut Weapon, verb: bool) {
     let die = roll_die();
-    if die < wep.speed / 40.0 {
+    if die < wep.get_speed() / 40.0 {
         wep.crusader = 15.0;
         if verb { 
             if wep.is_offhand { println!("Crusader OH procc."); }
             else { println!("Crusader MH procc."); }
         }
     }
-}
-
-fn add_raid_buffs(rogue: &mut Rogue) {
-    // motw
-    rogue.stats.agility += 12;
-    rogue.stats.strength += 12;
-    // trueshot aura
-    rogue.stats.attack_power += 200;
-    // DM buff
-    rogue.stats.attack_power += 200;
-    // Ony buff
-    rogue.stats.attack_power += 140;
-    rogue.stats.crit += 0.05;
-    // bom
-    rogue.stats.attack_power += 185;
-    // battle shout
-    rogue.stats.attack_power += 241;
-    // juju power
-    rogue.stats.strength += 30;
-    // juju might
-    rogue.stats.attack_power += 40;
-    // mongoose
-    rogue.stats.agility += 25;
-    rogue.stats.crit += 0.02;
-    // grilled squid
-    rogue.stats.agility += 10;
-    // bok
-    rogue.stats.agility = (rogue.stats.agility as f32 * 1.1) as u16;
-    rogue.stats.strength = (rogue.stats.strength as f32 * 1.1) as u16;
 }
 
 fn shadowcraft_roll(rogue: &mut Rogue) {
@@ -669,7 +641,7 @@ fn get_wep_dmg(wep: &Weapon, rogue: &Rogue) -> f32 {
 
     let mut attack_power = get_total_attack_power(&rogue);
     attack_power += rogue.nr_crusaders_active * 100.0;
-    let dmg = wep.mean_dmg + attack_power * wep.speed / 14.0;
+    let dmg = wep.mean_dmg + attack_power * wep.get_speed() / 14.0;
     return dmg;
 }
 
@@ -808,26 +780,6 @@ fn copy_wep(wep: &Weapon) -> Weapon {
         extra_hit_proc_chance: wep.extra_hit_proc_chance
     };
     return copy;
-}
-
-struct BuffsActive {
-    blade_flurry: f32,
-    snd: f32,
-    adrenaline_rush: f32,
-    used_cds: bool,
-    used_thistle_tea: bool
-}
-
-impl BuffsActive {
-    pub fn new() -> BuffsActive {
-        BuffsActive {
-            blade_flurry: 0.0,
-            snd: 0.0,
-            adrenaline_rush: 0.0,
-            used_cds: false,
-            used_thistle_tea: false
-        }
-    }
 }
 
 struct TimeTilEvents {
@@ -1572,63 +1524,6 @@ fn param_adder(text: &str, rogue: &mut Rogue) {
     } else {
         panic!("Unrecognized keyword in params file: {}", words_vec[0]);
     }
-}
-
-fn weapon_adder(text: &str, wep: &mut Weapon) {
-
-    let words = text.split_whitespace();
-    let words_vec = words.collect::<Vec<&str>>();
-
-    if words_vec[0] == "speed" {
-        match words_vec[1].parse() {
-            Ok(x) => wep.speed = x,
-            Err(x) => panic!("Can't translate word to number. {}", x)
-        }
-    } else if words_vec[0] == "min_dmg" { 
-        match words_vec[1].parse() {
-            Ok(x) => wep.min_dmg = x,
-            Err(x) => panic!("Can't translate word to number. {}", x)
-        }
-    } else if words_vec[0] == "max_dmg" { 
-        match words_vec[1].parse() {
-            Ok(x) => wep.max_dmg = x,
-            Err(x) => panic!("Can't translate word to number. {}", x)
-        }
-    } else if words_vec[0] == "enchant" { 
-        match words_vec[1].parse() {
-            Ok(x) => wep.enchant = x,
-            Err(x) => panic!("Can't translate word to number. {}", x)
-        }
-    } else if words_vec[0] == "is_offhand" { 
-        match words_vec[1].parse() {
-            Ok(x) => wep.is_offhand = x,
-            Err(x) => panic!("Can't translate word to number. {}", x)
-        }
-    } else if words_vec[0] == "is_dagger" { 
-        match words_vec[1].parse() {
-            Ok(x) => wep.is_dagger = x,
-            Err(x) => panic!("Can't translate word to number. {}", x)
-        }
-    } else if words_vec[0] == "is_sword" { 
-        match words_vec[1].parse() {
-            Ok(x) => wep.is_sword = x,
-            Err(x) => panic!("Can't translate word to number. {}", x)
-        }
-    } else if words_vec[0] == "extra_hit_proc_chance" { 
-        match words_vec[1].parse() {
-            Ok(x) => wep.extra_hit_proc_chance = x,
-            Err(x) => panic!("Can't translate word to number. {}", x)
-        }
-    } else {
-        panic!("Unrecognized keyword in params file: {}", words_vec[0]);
-    }
-
-    if wep.enchant == "greater_striking" {
-        wep.mean_dmg = 4.0 + (wep.min_dmg + wep.max_dmg) as f32 / 2.0;
-    } else if wep.enchant == "superior_striking" {
-        wep.mean_dmg = 5.0 + (wep.min_dmg + wep.max_dmg) as f32 / 2.0;
-    } else { wep.mean_dmg = (wep.min_dmg + wep.max_dmg) as f32 / 2.0; }
-
 }
 
 fn subtract_hit_from_miss(rogue: &Rogue, mh: &mut Weapon, oh: &mut Weapon, 

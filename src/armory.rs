@@ -129,14 +129,97 @@ enum Race {
     Gnome,
 }
 
+struct CDs {
+    blade_flurry: f32,
+    snd: f32,
+    adrenaline_rush: f32,
+    used_cds: bool,
+    used_thistle_tea: bool
+}
+    
+impl CDs {
+    pub fn new() -> CDs {
+        CDs {
+            blade_flurry: 0.0,
+            snd: 0.0,
+            adrenaline_rush: 0.0,
+            used_cds: false,
+            used_thistle_tea: false
+        }
+    }
+}
+
+struct Crusader {
+    mh_crus: f32,
+    oh_crus: f32
+}
+
+impl Crusader {
+    pub fn new() -> Crusader {
+        Crusader {
+            mh_crus: 0.0,
+            oh_crus: 0.0
+        }
+    }
+}
+
+struct RaidBuffs {
+    motw: bool,
+    trueshot_aura: bool,
+    dire_maul_buffs: bool,
+    ony_buff: bool,
+    bom: bool,
+    battle_shout: bool,
+    juju_power: bool,
+    juju_might: bool,
+    mongoose: bool,
+    grilled_squid: bool,
+    bok: bool
+}
+
+impl RaidBuffs {
+    pub fn all_buffs() -> RaidBuffs {
+        RaidBuffs {
+            motw: true,
+            trueshot_aura: true,
+            dire_maul_buffs: true,
+            ony_buff: true,
+            bom: true,
+            battle_shout: true,
+            juju_power: true,
+            juju_might: true,
+            mongoose: true,
+            grilled_squid: true,
+            bok: true
+        }
+    }
+}
+
+struct Buffs {
+    cds: CDs,
+    raid_buffs: RaidBuffs,
+    crusader: Crusader
+}
+
+impl Buffs {
+    pub fn new() -> Buffs {
+        Buffs {
+            cds: CDs::new(),
+            raid_buffs: RaidBuffs::get_all(),
+            crusader: Crusader::new()
+        }
+    }
+}
+
 pub struct Rogue {
     mh: Weapon,
     oh: Weapon,
     item_set: Vec<Item>,
     stats: Stats,
+    buffs: Buffs,
     pub talents: Talents,
     energy: i8,
-    combo_points: i8
+    combo_points: i8,
 }
 
 impl Rogue {
@@ -147,6 +230,7 @@ impl Rogue {
             oh: Weapon::new(),
             item_set: Vec::new(),
             stats: Stats::new_base(race),
+            buffs: Buffs::new(),
             talents: Talents::new(),
             energy: 100,
             combo_points: 0,
@@ -163,6 +247,82 @@ impl Rogue {
     pub fn get_sword_skill(self) -> u16 { self.stats.sword_skill }
     pub fn get_extra_hit_proc_chance(self) -> f32 { 
         self.stats.extra_hit_proc_chance 
+    }
+
+    fn print_hit_chances(self) {
+
+        println!("*** MH: White hits summary ***");
+        println!("miss chance: {:}", self.mh.white_miss);
+        println!("dodge chance: {:}", self.mh.dodge_chance);
+        println!("glancing chance: {:}", rogue.glancing_chance);
+        println!("crit chance: {:}", self.mh.crit);
+        let mut tmp = self.mh.white_miss;
+        let mut tmp1 = tmp + self.mh.dodge_chance;
+        let mut tmp2 = tmp1 + self.glancing_chance;
+        let mut tmp3 = tmp2 + self.mh.crit;
+        println!("hit chance: {:}", 1.0 - tmp3);
+        println!("{:}-{:}-{:}-{:}\n", tmp, tmp1, tmp2, tmp3);
+        
+        println!("*** MH: Yellow hits summary ***");
+        println!("miss chance: {:}", self.mh.yellow_miss);
+        println!("dodge chance: {:}", self.mh.dodge_chance);
+        println!("crit chance: {:}", self.mh.crit);
+        tmp = self.mh.yellow_miss;
+        tmp1 = tmp + self.mh.dodge_chance;
+        tmp2 = tmp1 + self.mh.crit;
+        println!("hit chance: {:}", 1.0 - tmp2);
+        println!("{:}-{:}-{:}\n", tmp, tmp1, tmp2);
+
+        if self.mh.is_dagger {
+            println!("*** MH: Backstab summary ***");
+            println!("miss chance: {:}", self.mh.yellow_miss);
+            println!("dodge chance: {:}", self.mh.dodge_chance);
+            println!("crit chance: {:}", self.mh.crit_backstab);
+            tmp = self.mh.yellow_miss;
+            tmp1 = tmp + self.mh.dodge_chance;
+            tmp2 = tmp1 + self.mh.crit_backstab;
+            println!("hit chance: {:}", 1.0 - tmp2);
+            println!("{:}-{:}-{:}\n", tmp, tmp1, tmp2);
+        }
+
+        println!("*** OH: White hits summary ***");
+        println!("miss chance: {:}", self.oh.white_miss);
+        println!("dodge chance: {:}", self.oh.dodge_chance);
+        println!("glancing chance: {:}", rogue.glancing_chance);
+        println!("crit chance: {:}", self.oh.crit);
+        tmp = self.oh.white_miss;
+        tmp1 = tmp + self.oh.dodge_chance;
+        tmp2 = tmp1 + rogue.glancing_chance;
+        tmp3 = tmp2 + self.oh.crit;
+        println!("hit chance: {:}", 1.0 - tmp3);
+        println!("{:}-{:}-{:}-{:}\n", tmp, tmp1, tmp2, tmp3);
+        
+    }
+
+    fn add_raid_buffs(&mut self) {
+        if self.buffs.raid_buffs.motw { 
+            self.stats.agility += 12; 
+            self.stats.strength += 12; 
+        }
+        if self.buffs.raid_buffs.trueshot_aura { self.stats.attack_power += 200; }
+        if self.buffs.raid_buffs.dm_buffs { self.stats.attack_power += 200; }
+        if self.buffs.raid_buffs.ony_buff { 
+            self.stats.attack_power += 140; 
+            self.stats.crit += 0.05; 
+        }
+        if self.buffs.raid_buffs.bom { self.stats.attack_power += 185; }
+        if self.buffs.raid_buffs.battle_shout { self.stats.attack_power += 241; }
+        if self.buffs.raid_buffs.juju_power { self.stats.strength += 30; }
+        if self.buffs.raid_buffs.juju_might { self.stats.attack_power += 40; }
+        if self.buffs.raid_buffs.mongoose { 
+            self.stats.agility += 25; 
+            self.stats.crit += 0.02; 
+        }
+        if self.buffs.raid_buffs.grilled_squid { self.stats.agility += 10; }
+        if self.buffs.raid_buffs.bok { 
+            self.stats.agility = (self.stats.agility as f32 * 1.1) as u16; 
+            self.stats.strength = (self.stats.strength as f32 * 1.1) as u16; 
+        }
     }
 
     fn calculate_stats(&mut self) {
@@ -485,6 +645,7 @@ impl Weapon {
     }
 
     pub fn get_speed(self) -> f32 { self.speed }
+    pub fn crusader_active(self) -> bool {self.crusader > 0.0 }
 
     pub fn new(name: String) -> Weapon {
         let mut wep = Weapon::clean_wep();
