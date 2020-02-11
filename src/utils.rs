@@ -10,15 +10,15 @@ pub fn max_f32(x: f32, y: f32) -> f32 {
 }
 
 pub struct Args {
-    dt: f32,
-    no_buffs: bool,
-    enemy_lvl: i32,
-    fight_length: f32,
-    iterations: i32,
-    param_file: String,
-    verb: bool,
-    weight_mult: i32,
-    weights: bool
+    pub dt: f32,
+    pub no_buffs: bool,
+    pub enemy_lvl: i32,
+    pub fight_length: f32,
+    pub iterations: i32,
+    pub param_file: String,
+    pub verb: bool,
+    pub weight_mult: i32,
+    pub weights: bool
 }
 
 impl Args {
@@ -118,7 +118,7 @@ pub fn get_arguments() -> Args {
 
 }
 
-fn read_params(param_file: &String) -> armory::Character {
+pub fn read_params(param_file: &String) -> armory::Character {
     
     // todo: weapons not being added
     let mut param_field: u16 = 0; // to check what part the file is about
@@ -132,7 +132,9 @@ fn read_params(param_file: &String) -> armory::Character {
         let first_char = l.chars().next().unwrap();
         if first_char != '#' && first_char != '@' {
             read_last = true;
-            if param_field == 0 { character.add_armor(l); }
+            if param_field == 0 { 
+                character.add_armor(l); 
+            }
             else if param_field == 1 { 
                 character.set_mh(l);
             } else if param_field == 2 { 

@@ -23,7 +23,7 @@ use rand::distributions::{Distribution, Uniform};
 fn main() {
 
     let args = utils::get_arguments();
-    let character = armory::Character::new(armory::Race::Human);
+    let character = utils::read_params(&args.param_file);
     println!("character: {:?}", character);
 
 }

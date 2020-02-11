@@ -159,11 +159,9 @@ impl Character {
     }
 
     pub fn set_mh(&mut self, wep_name: String) {
-        println!("{}", wep_name);
         self.mh = Weapon::new(wep_name)
     }
     pub fn set_oh(&mut self, wep_name: String) {
-        println!("{}", wep_name);
         self.oh = Weapon::new(wep_name)
     }
 
