@@ -1,5 +1,5 @@
-use crate::Args;
-use crate::max_f32;
+use crate::utils::Args;
+use crate::utils::max_f32;
 
 
 enum ItemSet {
@@ -27,6 +27,7 @@ enum ItemSlot {
     None,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 enum WpnType {
     Sword,
     Dagger,
@@ -36,7 +37,7 @@ enum WpnType {
 }
 
 struct WpnSkill {
-    weapon: WpnType,
+    weapon_type: WpnType,
     value: i16
 }
 
@@ -76,8 +77,9 @@ impl Item {
                 haste: 0.0,
                 atk_proc: 0.0,
                 wpn_skill: WpnSkill::new(WpnType::None, 0),
+                set: ItemSet::None
             }
-        }
+        } else { panic!("{} not implemented yet.", name); }
     }
 }
 
@@ -205,7 +207,7 @@ impl Buffs {
     pub fn new() -> Buffs {
         Buffs {
             cds: CDs::new(),
-            raid_buffs: RaidBuffs::get_all(),
+            raid_buffs: RaidBuffs::all_buffs(),
             crusader: Crusader::new()
         }
     }
@@ -226,8 +228,8 @@ impl Rogue {
     pub fn new(race: Race) -> Rogue { 
 
         Rogue{
-            mh: Weapon::new(),
-            oh: Weapon::new(),
+            mh: Weapon::new("gutgore_ripper".to_string()),
+            oh: Weapon::new("distracting_dagger".to_string()),
             item_set: Vec::new(),
             stats: Stats::new_base(race),
             buffs: Buffs::new(),
@@ -254,7 +256,7 @@ impl Rogue {
         println!("*** MH: White hits summary ***");
         println!("miss chance: {:}", self.mh.white_miss);
         println!("dodge chance: {:}", self.mh.dodge_chance);
-        println!("glancing chance: {:}", rogue.glancing_chance);
+        println!("glancing chance: {:}", self.glancing_chance);
         println!("crit chance: {:}", self.mh.crit);
         let mut tmp = self.mh.white_miss;
         let mut tmp1 = tmp + self.mh.dodge_chance;
@@ -288,11 +290,11 @@ impl Rogue {
         println!("*** OH: White hits summary ***");
         println!("miss chance: {:}", self.oh.white_miss);
         println!("dodge chance: {:}", self.oh.dodge_chance);
-        println!("glancing chance: {:}", rogue.glancing_chance);
+        println!("glancing chance: {:}", self.glancing_chance);
         println!("crit chance: {:}", self.oh.crit);
         tmp = self.oh.white_miss;
         tmp1 = tmp + self.oh.dodge_chance;
-        tmp2 = tmp1 + rogue.glancing_chance;
+        tmp2 = tmp1 + self.glancing_chance;
         tmp3 = tmp2 + self.oh.crit;
         println!("hit chance: {:}", 1.0 - tmp3);
         println!("{:}-{:}-{:}-{:}\n", tmp, tmp1, tmp2, tmp3);

@@ -10,6 +10,7 @@
  * - 130 dmg with current best instant poison
  */
 mod armory;
+mod utils;
 
 extern crate rand;
 extern crate clap;
@@ -20,114 +21,121 @@ use std::fmt;
 use std::io::{BufRead, BufReader};
 use std::f32;
 use rand::distributions::{Distribution, Uniform};
-use clap::{Arg, App};
 
 
 fn main() {
 
     let dt = 0.01;
 
-    let args = get_arguments();
-
-    let mut rogue: Rogue;
-    let mut mh: Weapon;
-    let mut oh: Weapon;
-
-    // get the different rogues that will be looped through
-    let characters = get_characters(&args);
-    let rogues = characters.0;
-    let descriptions = characters.1;
-    let mut chars_dps_vectors = Vec::new();
-
-    for (description, rogue) in descriptions.iter().zip(rogues.iter()) {
-
-        if !args.no_buffs { rogue.add_raid_buffs(); }
-
-        // if not going for weights, print hit chances once
-        if !args.weights { print_hit_chances(&rogue, &mh, &oh); }
-
-        let mut statistics = Statistics::new();
-
-        for _i_run in 0..args.iterations {
-
-            let mut time_struct = TimeTilEvents::new(args.fight_length);
-
-            let mut extra_attacks: i8 = 0;
-
-            while time_struct.fight_ends > 0.0 {
-
-                check_for_crusader(&mut rogue, &mh, &oh);
-
-                if time_struct.glob_cd_refresh <= 0.0 {
-                    let extra_swing =
-                        yellow_attack(&mut rogue, &mut buffs, &mut mh, 
-                                      &mut time_struct, &mut statistics, &args);
-                    if extra_swing { extra_attacks += 1; }
-                }
-                // check if oh is ready for swing
-                if time_struct.oh_swing <= 0.0 {
-                    let extra_swing =
-                        white_attack(&mut rogue, &mut oh, &mut statistics,
-                                     time_struct.fight_ends, 
-                                     &args);
-
-                    // Reset swing timer
-                    let mut haste_factor = 1.0;
-                    if buffs.snd > 0.0 { haste_factor *= 1.3; } 
-                    if buffs.blade_flurry > 0.0 { haste_factor *= 1.2; } 
-                    if rogue.get_haste() > 0.0 { haste_factor *= 1.0 + rogue.get_haste(); }
-                    time_struct.oh_swing = oh.get_speed() / haste_factor;
-
-                    if extra_swing { extra_attacks += 1; }
-                }
-                // check if extra swings are lined up
-                while extra_attacks > 0 {
-                    if args.verb { println!("Extra swing!"); }
-                    let extra_swing =
-                        white_attack(&mut rogue, &mut mh, &mut statistics, 
-                                     time_struct.fight_ends, &args);
-
-                    // Reset swing timer
-                    let mut haste_factor = 1.0;
-                    if buffs.snd > 0.0 { haste_factor *= 1.3; } 
-                    if buffs.blade_flurry > 0.0 { haste_factor *= 1.2; } 
-                    if rogue.get_haste() > 0.0 { haste_factor *= 1.0 + rogue.get_haste(); }
-                    time_struct.mh_swing = mh.get_speed() / haste_factor;
-
-                    if !extra_swing {
-                        extra_attacks -= 1;
-                    }
-                }
-
-                // check if mh is ready for swing
-                if time_struct.mh_swing <= 0.0 {
-                    let extra_swing = 
-                        white_attack(&mut rogue, &mut mh, &mut statistics, 
-                                     time_struct.fight_ends, &args);
-                    
-                    // Reset swing timer
-                    let mut haste_factor = 1.0;
-                    if buffs.snd > 0.0 { haste_factor *= 1.3; } 
-                    if buffs.blade_flurry > 0.0 { haste_factor *= 1.2; } 
-                    if rogue.get_haste() > 0.0 { haste_factor *= 1.0 + rogue.get_haste(); }
-                    time_struct.mh_swing = mh.get_speed() / haste_factor;
-
-
-                    if extra_swing { extra_attacks += 1; }
-                }
-                subtract_times(&mut rogue, &mut time_struct, &mut buffs,
-                               &mut mh, &mut oh, dt);
-            }
-            statistics.get_dps(args.fight_length);
-
-        }
-
-        chars_dps_vectors.push(mean(&statistics.dps));
-
-        print_statistics(&statistics, &args, &chars_dps_vectors, 
-                         description.to_string());
-    }
 }
+
+
+/*
+// fn main() {
+// 
+//     let dt = 0.01;
+// 
+//     let args = get_arguments();
+// 
+//     let mut rogue: Rogue;
+//     let mut mh: Weapon;
+//     let mut oh: Weapon;
+// 
+//     // get the different rogues that will be looped through
+//     let characters = get_characters(&args);
+//     let rogues = characters.0;
+//     let descriptions = characters.1;
+//     let mut chars_dps_vectors = Vec::new();
+// 
+//     for (description, rogue) in descriptions.iter().zip(rogues.iter()) {
+// 
+//         if !args.no_buffs { rogue.add_raid_buffs(); }
+// 
+//         // if not going for weights, print hit chances once
+//         if !args.weights { print_hit_chances(&rogue, &mh, &oh); }
+// 
+//         let mut statistics = Statistics::new();
+// 
+//         for _i_run in 0..args.iterations {
+// 
+//             let mut time_struct = TimeTilEvents::new(args.fight_length);
+// 
+//             let mut extra_attacks: i8 = 0;
+// 
+//             while time_struct.fight_ends > 0.0 {
+// 
+//                 check_for_crusader(&mut rogue, &mh, &oh);
+// 
+//                 if time_struct.glob_cd_refresh <= 0.0 {
+//                     let extra_swing =
+//                         yellow_attack(&mut rogue, &mut buffs, &mut mh, 
+//                                       &mut time_struct, &mut statistics, &args);
+//                     if extra_swing { extra_attacks += 1; }
+//                 }
+//                 // check if oh is ready for swing
+//                 if time_struct.oh_swing <= 0.0 {
+//                     let extra_swing =
+//                         white_attack(&mut rogue, &mut oh, &mut statistics,
+//                                      time_struct.fight_ends, 
+//                                      &args);
+// 
+//                     // Reset swing timer
+//                     let mut haste_factor = 1.0;
+//                     if buffs.snd > 0.0 { haste_factor *= 1.3; } 
+//                     if buffs.blade_flurry > 0.0 { haste_factor *= 1.2; } 
+//                     if rogue.get_haste() > 0.0 { haste_factor *= 1.0 + rogue.get_haste(); }
+//                     time_struct.oh_swing = oh.get_speed() / haste_factor;
+// 
+//                     if extra_swing { extra_attacks += 1; }
+//                 }
+//                 // check if extra swings are lined up
+//                 while extra_attacks > 0 {
+//                     if args.verb { println!("Extra swing!"); }
+//                     let extra_swing =
+//                         white_attack(&mut rogue, &mut mh, &mut statistics, 
+//                                      time_struct.fight_ends, &args);
+// 
+//                     // Reset swing timer
+//                     let mut haste_factor = 1.0;
+//                     if buffs.snd > 0.0 { haste_factor *= 1.3; } 
+//                     if buffs.blade_flurry > 0.0 { haste_factor *= 1.2; } 
+//                     if rogue.get_haste() > 0.0 { haste_factor *= 1.0 + rogue.get_haste(); }
+//                     time_struct.mh_swing = mh.get_speed() / haste_factor;
+// 
+//                     if !extra_swing {
+//                         extra_attacks -= 1;
+//                     }
+//                 }
+// 
+//                 // check if mh is ready for swing
+//                 if time_struct.mh_swing <= 0.0 {
+//                     let extra_swing = 
+//                         white_attack(&mut rogue, &mut mh, &mut statistics, 
+//                                      time_struct.fight_ends, &args);
+//                     
+//                     // Reset swing timer
+//                     let mut haste_factor = 1.0;
+//                     if buffs.snd > 0.0 { haste_factor *= 1.3; } 
+//                     if buffs.blade_flurry > 0.0 { haste_factor *= 1.2; } 
+//                     if rogue.get_haste() > 0.0 { haste_factor *= 1.0 + rogue.get_haste(); }
+//                     time_struct.mh_swing = mh.get_speed() / haste_factor;
+// 
+// 
+//                     if extra_swing { extra_attacks += 1; }
+//                 }
+//                 subtract_times(&mut rogue, &mut time_struct, &mut buffs,
+//                                &mut mh, &mut oh, dt);
+//             }
+//             statistics.get_dps(args.fight_length);
+// 
+//         }
+// 
+//         chars_dps_vectors.push(mean(&statistics.dps));
+// 
+//         print_statistics(&statistics, &args, &chars_dps_vectors, 
+//                          description.to_string());
+//     }
+// }
 
 fn print_statistics(statistics: &Statistics, args: &Args, 
                     chars_dps_vectors: &Vec<f32>, description: String) {
@@ -323,32 +331,6 @@ fn print_hit_chances(rogue: &Rogue, mh: &Weapon, oh: &Weapon) {
     println!("hit chance: {:}", 1.0 - tmp3);
     println!("{:}-{:}-{:}-{:}\n", tmp, tmp1, tmp2, tmp3);
     
-}
-
-pub struct Args {
-    no_buffs: bool,
-    enemy_lvl: i16,
-    fight_length: f32,
-    iterations: u32,
-    param_file: String,
-    verb: bool,
-    weight_mult: u16,
-    weights: bool
-}
-
-impl Args {
-    fn default_args() -> Args {
-        Args {
-            no_buffs: false,
-            enemy_lvl: 0,
-            fight_length: 0.0,
-            iterations: 0,
-            param_file: "".to_string(),
-            verb: false,
-            weight_mult: 0,
-            weights: false
-        }
-    }
 }
 
 fn announce_hit(dmg: f32, attack_type: String, hit_type: HitType, time: f32) {
@@ -1581,7 +1563,4 @@ fn std_dev(numbers: &Vec<f32>) -> f32 {
     return std_dev;
 }
 
-fn max_f32(x: f32, y: f32) -> f32 {
-    if x >= y { return x; }
-    else { return y; }
-}
+*/
