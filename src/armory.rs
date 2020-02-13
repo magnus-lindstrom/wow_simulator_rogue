@@ -18,7 +18,7 @@ pub enum Race {
     None
 }
 
-#[derive(Debug,Serialize,Deserialize)]
+#[derive(Clone,Copy,Debug,Serialize,Deserialize)]
 struct PrimStats {
     agility: i32,
     strength: i32,
@@ -49,7 +49,7 @@ impl PrimStats {
     }
 }
 
-#[derive(Debug,Serialize,Deserialize)]
+#[derive(Clone,Copy,Debug,Serialize,Deserialize)]
 struct SecStats {
     crit: f32,
     hit: f32,
@@ -75,17 +75,6 @@ impl SecStats {
             }
         } else { panic!("Race not implemented"); }
     }
-}
-
-#[derive(Debug,Serialize,Deserialize)]
-pub struct Weapon {
-    name: String,
-    prim_stats: PrimStats,
-    sec_stats: SecStats,
-    swing_speed: f32,
-    min_dmg: f32,
-    max_dmg: f32,
-    mean_dmg: f32
 }
 
 #[derive(Debug,Serialize,Deserialize)]
@@ -125,39 +114,44 @@ impl ItemCollection {
     }
 }
 
+#[derive(Debug,Serialize,Deserialize)]
+pub struct Weapon {
+    name: String,
+    prim_stats: PrimStats,
+    sec_stats: SecStats,
+    swing_speed: f32,
+    min_dmg: f32,
+    max_dmg: f32,
+    mean_dmg: f32
+}
 
 impl Weapon {
-    fn new(name: String) -> Weapon {
-        let mut wep: Weapon;
-        if name == "gutgore_ripper" {
-            let prim_stats = PrimStats::new(Race::None);
-            let sec_stats = SecStats::new(Race::None);
-            wep = Weapon {
-                name: name,
-                prim_stats: prim_stats,
-                sec_stats: sec_stats,
-                swing_speed: 1.8,
-                min_dmg: 63.0,
-                max_dmg: 119.0,
-                mean_dmg: 0.0
-            };
-        } else if name == "" {
-            let prim_stats = PrimStats::new(Race::None);
-            let sec_stats = SecStats::new(Race::None);
-            wep = Weapon {
-                name: name,
-                prim_stats: prim_stats,
-                sec_stats: sec_stats,
-                swing_speed: 0.0,
-                min_dmg: 0.0,
-                max_dmg: 0.0,
-                mean_dmg: 0.0
-            };
+    fn new() -> Weapon {
+        Weapon {
+            name: "".to_string(),
+            prim_stats: PrimStats::new(Race::None),
+            sec_stats: SecStats::new(Race::None),
+            swing_speed: 0.0,
+            min_dmg: 0.0,
+            max_dmg: 0.0,
+            mean_dmg: 0.0
+        }
+    }
 
-        }else { panic!("Weapon not implemented: {}"); }
+    fn copy(&self) -> Weapon {
+        Weapon {
+            name: self.name.to_string(),
+            prim_stats: self.prim_stats.clone(),
+            sec_stats: self.sec_stats.clone(),
+            swing_speed: self.swing_speed,
+            min_dmg: self.min_dmg,
+            max_dmg: self.max_dmg,
+            mean_dmg: self.mean_dmg
+        }
+    }
 
-        wep.mean_dmg = (wep.min_dmg + wep.max_dmg) / 2.0;
-        return wep;
+    fn set_mean_dmg(&mut self) {
+        self.mean_dmg = (self.min_dmg + self.max_dmg) / 2.0;
     }
 }
         
@@ -170,19 +164,12 @@ pub struct Armor {
 }
 
 impl Armor {
-    fn new(name: String) -> Armor {
-        let mut armor: Armor;
-        if name == "bloodfang_hood" {
-            let prim_stats = PrimStats::new(Race::None);
-            let sec_stats = SecStats::new(Race::None);
-            armor = Armor {
-                name: name.to_string(),
-                prim_stats: prim_stats,
-                sec_stats: sec_stats
-            };
-        } else { panic!("Armor piece not implemented: {}", name); }
-
-        return armor;
+    fn copy(&self) -> Armor {
+        Armor {
+            name: self.name.to_string(),
+            prim_stats: self.prim_stats.clone(),
+            sec_stats: self.sec_stats.clone()
+        }
     }
 }
 
@@ -226,22 +213,31 @@ impl Character {
             race: race,
             prim_stats: PrimStats::new(race),
             sec_stats: SecStats::new(race),
-            mh: Weapon::new("".to_string()),
-            oh: Weapon::new("".to_string()),
+            mh: Weapon::new(),
+            oh: Weapon::new(),
             armor: Vec::new()
         }
     }
 
     fn assemble_character(char_spec: CharacterSpecification) -> Character {
         let mut character = Character::new(Race::Human);
+
+        let item_collection: ItemCollection = 
+            ItemCollection::initialize_item_collection();
+
         for armor_name in &char_spec.armor_names {
-            let armor = Armor::new(armor_name.to_string());
-            character.armor.push(armor);
+            let armor = item_collection.armor.get(&armor_name.to_string()).
+                unwrap();
+            character.armor.push(armor.copy());
         }
-        let mh = Weapon::new(char_spec.mh_name);
-        character.mh = mh;
-        let oh = Weapon::new(char_spec.oh_name);
-        character.oh = oh;
+        let mh = item_collection.weapons.get(&char_spec.mh_name.to_string())
+            .unwrap();
+        character.mh = mh.copy();
+        character.mh.set_mean_dmg();
+        let oh = item_collection.weapons.get(&char_spec.oh_name.to_string())
+            .unwrap();
+        character.oh = oh.copy();
+        character.oh.set_mean_dmg();
 
         return character;
     }

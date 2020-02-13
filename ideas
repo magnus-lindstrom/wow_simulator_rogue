@@ -1,0 +1,5 @@
+- Split src/items into src/weapons.yaml and src/armor.yaml
+- Make a struct that can be any kind of procc on hit chance, like
+  crusader, damage, dot, etc. Use an enum with values for each type of
+  thing, that also tells how much dmg it does, for example. One enum
+  value could be a struct maybe?

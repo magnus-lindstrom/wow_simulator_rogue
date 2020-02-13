@@ -31,9 +31,7 @@ fn main() {
 
     let args = utils::get_arguments();
     let character = Character::get_character(&args);
-    let item_collection: ItemCollection = 
-        ItemCollection::initialize_item_collection();
 
-    println!("{:?}", item_collection.armor.get("bloodfang_hood").unwrap());
+    println!("{:?}", character);
 
 }
