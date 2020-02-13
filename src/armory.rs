@@ -6,7 +6,7 @@ use std::fs;
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
 
-const ITEM_COLLECTION_PATH: &str = "src/item_collection";
+const ITEM_COLLECTION_PATH: &str = "item_sets/item_collection";
 
 
 #[derive(Clone,Copy,Debug,PartialEq,Serialize,Deserialize)]
@@ -97,10 +97,10 @@ pub struct ItemCollection {
 impl ItemCollection {
     pub fn initialize_item_collection() -> ItemCollection {
 
-        let item_col_string = fs::read_to_string("item_sets/item_collection")
+        let item_col_string = fs::read_to_string(ITEM_COLLECTION_PATH)
                 .expect("Something went wrong reading items from file.");
         let item_col: ItemCollection = serde_yaml::from_str(
-            &read_map_string).unwrap();
+            &item_col_string).unwrap();
         /*
         let mut armor_map: HashMap<String,Armor> = HashMap::new();
         let mut weapon_map: HashMap<String,Weapon> = HashMap::new();

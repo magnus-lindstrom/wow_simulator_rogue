@@ -34,6 +34,6 @@ fn main() {
     let item_collection: ItemCollection = 
         ItemCollection::initialize_item_collection();
 
-    println!("{:?}", item_collection.armor.get("bloodfang_hood"));
+    println!("{:?}", item_collection.armor.get("bloodfang_hood").unwrap());
 
 }
