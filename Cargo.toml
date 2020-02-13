@@ -9,6 +9,8 @@ edition = "2018"
 [dependencies]
 rand = "0.5"
 clap = "2.33.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.8"
 
 [profile.dev]
 opt-level = 3

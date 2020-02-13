@@ -1,0 +1,18 @@
+---
+gutgore_ripper:
+  prim_stats:
+    agility: 0
+    strength: 0
+    stamina: 0
+    sword_skill: 0
+    dagger_skill: 0
+  sec_stats:
+    crit: 0.0
+    hit: 0.0
+    haste: 0.0
+    attack_power: 0
+  swing_speed: 1.7999999523162842
+  min_dmg: 63.0
+  max_dmg: 119.0
+  mean_dmg: 91.0
+

@@ -14,16 +14,29 @@ mod utils;
 
 extern crate rand;
 extern crate clap;
+extern crate serde;
+extern crate serde_yaml;
 
+use armory::{Character};
 use std::fmt;
+use std::collections::HashMap;
 use std::f32;
 use rand::distributions::{Distribution, Uniform};
+use std::fs::File;
+use std::io::Write;
 
 
 fn main() {
 
     let args = utils::get_arguments();
-    let character = utils::read_params(&args.param_file);
-    println!("character: {:?}", character);
+    let character = Character::get_character(&args);
+    let mut map = HashMap::new();
+    map.insert("hej", 5);
+    map.insert("bajs", 8);
+
+    let map_string = serde_yaml::to_string(&map).unwrap();
+
+    let mut file = File::create("foo.bajs").unwrap();
+    file.write_all(map_string.as_bytes()).unwrap();    
 
 }

@@ -1,4 +1,14 @@
-#[derive(Clone,Copy,Debug,PartialEq)]
+extern crate serde;
+extern crate serde_yaml;
+
+use crate::utils::{Args};
+use std::fs;
+use serde::{Serialize, Deserialize};
+
+const ITEM_COLLECTION_PATH: &str = "src/item_collection";
+
+
+#[derive(Clone,Copy,Debug,PartialEq,Serialize,Deserialize)]
 pub enum Race {
     Human,
     NightElf,
@@ -7,7 +17,7 @@ pub enum Race {
     None
 }
 
-#[derive(Debug)]
+#[derive(Debug,Serialize,Deserialize)]
 struct PrimStats {
     agility: i32,
     strength: i32,
@@ -38,7 +48,7 @@ impl PrimStats {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug,Serialize,Deserialize)]
 struct SecStats {
     crit: f32,
     hit: f32,
@@ -66,8 +76,9 @@ impl SecStats {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug,Serialize,Deserialize)]
 pub struct Weapon {
+    name: String,
     prim_stats: PrimStats,
     sec_stats: SecStats,
     swing_speed: f32,
@@ -76,6 +87,37 @@ pub struct Weapon {
     mean_dmg: f32
 }
 
+#[derive(Debug,Serialize,Deserialize)]
+struct ItemCollection {
+    armor: HashMap,
+    weapons: HashMap
+}
+
+impl ItemCollection {
+    fn initialize_item_collection() -> ItemCollection {
+        let mut armor_map: HashMap<String,Armor> = HashMap::new();
+        let mut weapon_map: HashMap<String,Weapon> = HashMap::new();
+        
+        let bf_hood = Armor::new("bloodfang_hood");
+        let gutgore = Weapon::new("gutgore_ripper");
+
+        armor_map.insert("bloodfang_hood", bf_hood);
+        weapon_map.insert("gutgore_ripper", bf_hood);
+
+        let item_collection: ItemCollection = ItemCollection {
+            armor: armor_map,
+            weapons: weapon_map
+        }
+
+        let item_collection_string = fs::read_to_string(ITEM_COLLECTION_PATH)
+            .expect("Something went wrong reading item file.");
+        let item_collection: ItemCollection = serde_yaml::from_str(
+            &item_collection_string).unwrap();
+        return item_collection;
+    }
+}
+
+
 impl Weapon {
     fn new(name: String) -> Weapon {
         let mut wep: Weapon;
@@ -83,6 +125,7 @@ impl Weapon {
             let prim_stats = PrimStats::new(Race::None);
             let sec_stats = SecStats::new(Race::None);
             wep = Weapon {
+                name: name,
                 prim_stats: prim_stats,
                 sec_stats: sec_stats,
                 swing_speed: 1.8,
@@ -94,6 +137,7 @@ impl Weapon {
             let prim_stats = PrimStats::new(Race::None);
             let sec_stats = SecStats::new(Race::None);
             wep = Weapon {
+                name: name,
                 prim_stats: prim_stats,
                 sec_stats: sec_stats,
                 swing_speed: 0.0,
@@ -109,20 +153,22 @@ impl Weapon {
     }
 }
         
-#[derive(Debug)]
+#[derive(Debug,Serialize,Deserialize)]
 pub struct Armor {
     // todo: add item slots and sets
+    name: String,
     prim_stats: PrimStats,
     sec_stats: SecStats
 }
 
 impl Armor {
-    fn new(name: String) -> Armor {
+    fn new(name: &String) -> Armor {
         let mut armor: Armor;
         if name == "bloodfang_hood" {
             let prim_stats = PrimStats::new(Race::None);
             let sec_stats = SecStats::new(Race::None);
             armor = Armor {
+                name: name.to_string(),
                 prim_stats: prim_stats,
                 sec_stats: sec_stats
             };
@@ -132,7 +178,25 @@ impl Armor {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug,Serialize,Deserialize)]
+struct CharacterSpecification {
+    mh_name: String,
+    oh_name: String,
+    armor_names: Vec<String>
+}
+
+impl CharacterSpecification {
+    pub fn read_from_file(args: &Args) -> CharacterSpecification {
+
+        let character_spec_string = fs::read_to_string(&args.param_file)
+            .expect("Something went wrong reading file.");
+        let character_spec: CharacterSpecification = serde_yaml::from_str(
+            &character_spec_string).unwrap();
+        return character_spec;
+    }
+}
+
+#[derive(Debug,Serialize,Deserialize)]
 pub struct Character {
     race: Race,
     prim_stats: PrimStats,
@@ -143,7 +207,13 @@ pub struct Character {
 }
 
 impl Character {
-    pub fn new(race: Race) -> Character {
+    pub fn get_character(args: &Args) -> Character {
+        let char_spec = CharacterSpecification::read_from_file(args);
+        let character: Character = Character::assemble_character(char_spec);
+        return character;
+    }
+
+    fn new(race: Race) -> Character {
         Character {
             race: race,
             prim_stats: PrimStats::new(race),
@@ -154,15 +224,18 @@ impl Character {
         }
     }
 
-    pub fn add_armor(&mut self, armor_name: String) {
-        self.armor.push(Armor::new(armor_name));
-    }
+    fn assemble_character(char_spec: CharacterSpecification) -> Character {
+        let mut character = Character::new(Race::Human);
+        for armor_names in &char_spec.armor_names {
+            let armor = Armor::new(armor_names);
+            character.armor.push(Armor::new(armor_names));
+        }
+        let mh = Weapon::new(char_spec.mh_name);
+        character.mh = mh;
+        let oh = Weapon::new(char_spec.oh_name);
+        character.oh = oh;
 
-    pub fn set_mh(&mut self, wep_name: String) {
-        self.mh = Weapon::new(wep_name)
-    }
-    pub fn set_oh(&mut self, wep_name: String) {
-        self.oh = Weapon::new(wep_name)
+        return character;
     }
 
 }

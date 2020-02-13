@@ -1,7 +1,11 @@
-use crate::armory;
+use crate::armory::{Character};
 use clap::{Arg, App};
 use std::fs::File;
+use std::fs;
 use std::io::{BufRead, BufReader};
+
+extern crate serde;
+extern crate serde_yaml;
 
 
 pub fn max_f32(x: f32, y: f32) -> f32 {
@@ -115,39 +119,9 @@ pub fn get_arguments() -> Args {
     }
 
     return args;
-
 }
 
-pub fn read_params(param_file: &String) -> armory::Character {
+
+
     
-    // todo: weapons not being added
-    let mut param_field: u16 = 0; // to check what part the file is about
-    let mut read_last = false;
-    let mut character = armory::Character::new(armory::Race::Human);
-
-    let f = File::open(param_file).expect("Couldn't open param_file");
-    let file = BufReader::new(&f);
-    for line in file.lines() {
-        let l = line.unwrap();
-        let first_char = l.chars().next().unwrap();
-        if first_char != '#' && first_char != '@' {
-            read_last = true;
-            if param_field == 0 { 
-                character.add_armor(l); 
-            }
-            else if param_field == 1 { 
-                character.set_mh(l);
-            } else if param_field == 2 { 
-                character.set_oh(l); 
-            } 
-            continue;
-        }
-
-        if read_last {
-            param_field += 1;
-        }
-        read_last = false;
-    }
-    character
-}
 
