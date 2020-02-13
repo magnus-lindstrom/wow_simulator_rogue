@@ -3,6 +3,7 @@ extern crate serde_yaml;
 
 use crate::utils::{Args};
 use std::fs;
+use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
 
 const ITEM_COLLECTION_PATH: &str = "src/item_collection";
@@ -88,32 +89,39 @@ pub struct Weapon {
 }
 
 #[derive(Debug,Serialize,Deserialize)]
-struct ItemCollection {
-    armor: HashMap,
-    weapons: HashMap
+pub struct ItemCollection {
+    pub armor: HashMap<String,Armor>,
+    pub weapons: HashMap<String,Weapon>
 }
 
 impl ItemCollection {
-    fn initialize_item_collection() -> ItemCollection {
+    pub fn initialize_item_collection() -> ItemCollection {
+
+        let item_col_string = fs::read_to_string("item_sets/item_collection")
+                .expect("Something went wrong reading items from file.");
+        let item_col: ItemCollection = serde_yaml::from_str(
+            &read_map_string).unwrap();
+        /*
         let mut armor_map: HashMap<String,Armor> = HashMap::new();
         let mut weapon_map: HashMap<String,Weapon> = HashMap::new();
         
-        let bf_hood = Armor::new("bloodfang_hood");
-        let gutgore = Weapon::new("gutgore_ripper");
+        let bf_hood = Armor::new("bloodfang_hood".to_string());
+        let gutgore = Weapon::new("gutgore_ripper".to_string());
 
-        armor_map.insert("bloodfang_hood", bf_hood);
-        weapon_map.insert("gutgore_ripper", bf_hood);
+        armor_map.insert("bloodfang_hood".to_string(), bf_hood);
+        weapon_map.insert("gutgore_ripper".to_string(), gutgore);
 
         let item_collection: ItemCollection = ItemCollection {
             armor: armor_map,
             weapons: weapon_map
-        }
+        };
+        */
 
-        let item_collection_string = fs::read_to_string(ITEM_COLLECTION_PATH)
-            .expect("Something went wrong reading item file.");
-        let item_collection: ItemCollection = serde_yaml::from_str(
-            &item_collection_string).unwrap();
-        return item_collection;
+        // let item_collection_string = fs::read_to_string(ITEM_COLLECTION_PATH)
+            // .expect("Something went wrong reading item file.");
+        // let item_collection: ItemCollection = serde_yaml::from_str(
+            // &item_collection_string).unwrap();
+        return item_col;
     }
 }
 
@@ -162,7 +170,7 @@ pub struct Armor {
 }
 
 impl Armor {
-    fn new(name: &String) -> Armor {
+    fn new(name: String) -> Armor {
         let mut armor: Armor;
         if name == "bloodfang_hood" {
             let prim_stats = PrimStats::new(Race::None);
@@ -226,9 +234,9 @@ impl Character {
 
     fn assemble_character(char_spec: CharacterSpecification) -> Character {
         let mut character = Character::new(Race::Human);
-        for armor_names in &char_spec.armor_names {
-            let armor = Armor::new(armor_names);
-            character.armor.push(Armor::new(armor_names));
+        for armor_name in &char_spec.armor_names {
+            let armor = Armor::new(armor_name.to_string());
+            character.armor.push(armor);
         }
         let mh = Weapon::new(char_spec.mh_name);
         character.mh = mh;
