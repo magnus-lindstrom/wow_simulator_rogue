@@ -6,7 +6,7 @@ use std::fs;
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
 
-const ITEM_COLLECTION_PATH: &str = "item_sets/item_collection";
+const ITEM_COLLECTION_PATH: &str = "src/items";
 
 
 #[derive(Clone,Copy,Debug,PartialEq,Serialize,Deserialize)]
