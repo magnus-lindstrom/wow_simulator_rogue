@@ -6,7 +6,8 @@ use std::fs;
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
 
-const ITEM_COLLECTION_PATH: &str = "src/items";
+const ARMOR_COLLECTION_PATH: &str = "src/items_armor";
+const WEAPON_COLLECTION_PATH: &str = "src/items_weapons";
 
 
 #[derive(Clone,Copy,Debug,PartialEq,Serialize,Deserialize)]
@@ -23,6 +24,10 @@ struct PrimStats {
     agility: i32,
     strength: i32,
     stamina: i32,
+    arcane_resistance: i32,
+    fire_resistance: i32,
+    frost_resistance: i32,
+    shadow_resistance: i32,
     sword_skill: i32,
     dagger_skill: i32
 }
@@ -34,6 +39,10 @@ impl PrimStats {
                 agility: 130,
                 strength: 80,
                 stamina: 75,
+                arcane_resistance: 0,
+                fire_resistance: 0,
+                frost_resistance: 0,
+                shadow_resistance: 0,
                 sword_skill: 305,
                 dagger_skill: 300
             }
@@ -42,6 +51,10 @@ impl PrimStats {
                 agility: 0,
                 strength: 0,
                 stamina: 0,
+                arcane_resistance: 0,
+                fire_resistance: 0,
+                frost_resistance: 0,
+                shadow_resistance: 0,
                 sword_skill: 0,
                 dagger_skill: 0
             }
@@ -86,10 +99,17 @@ pub struct ItemCollection {
 impl ItemCollection {
     pub fn initialize_item_collection() -> ItemCollection {
 
-        let item_col_string = fs::read_to_string(ITEM_COLLECTION_PATH)
+        let equipment_string = fs::read_to_string(ARMOR_COLLECTION_PATH)
                 .expect("Something went wrong reading items from file.");
-        let item_col: ItemCollection = serde_yaml::from_str(
-            &item_col_string).unwrap();
+        let equipment: HashMap<String,Armor> = serde_yaml::from_str(
+            &equipment_string).unwrap();
+
+        let weapons_string = fs::read_to_string(WEAPON_COLLECTION_PATH)
+                .expect("Something went wrong reading items from file.");
+        let weapons: HashMap<String,Weapon> = serde_yaml::from_str(
+            &weapons_string).unwrap();
+
+        return ItemCollection { armor: equipment, weapons: weapons };
         /*
         let mut armor_map: HashMap<String,Armor> = HashMap::new();
         let mut weapon_map: HashMap<String,Weapon> = HashMap::new();
@@ -110,7 +130,7 @@ impl ItemCollection {
             // .expect("Something went wrong reading item file.");
         // let item_collection: ItemCollection = serde_yaml::from_str(
             // &item_collection_string).unwrap();
-        return item_col;
+        // return item_col;
     }
 }
 

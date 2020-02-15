@@ -1,0 +1,43 @@
+---
+distracting_dagger:
+  name: distracting_dagger
+  prim_stats:
+    agility: 0
+    strength: 0
+    stamina: 0
+    arcane_resistance: 0
+    fire_resistance: 0
+    frost_resistance: 0
+    shadow_resistance: 0
+    sword_skill: 0
+    dagger_skill: 6
+  sec_stats:
+    crit: 0.0
+    hit: 0.0
+    haste: 0.0
+    attack_power: 0
+  swing_speed: 1.3
+  min_dmg: 42.0
+  max_dmg: 64.0
+  mean_dmg: 0.0
+gutgore_ripper:
+  name: gutgore_ripper
+  prim_stats:
+    agility: 0
+    strength: 0
+    stamina: 0
+    arcane_resistance: 0
+    fire_resistance: 0
+    frost_resistance: 0
+    shadow_resistance: 0
+    sword_skill: 0
+    dagger_skill: 0
+  sec_stats:
+    crit: 0.0
+    hit: 0.0
+    haste: 0.0
+    attack_power: 0
+  swing_speed: 1.8
+  min_dmg: 63.0
+  max_dmg: 119.0
+  mean_dmg: 0.0
