@@ -1,6 +1,7 @@
 ---
 distracting_dagger:
   name: distracting_dagger
+  weapon_type: Dagger
   prim_stats:
     agility: 0
     strength: 0
@@ -22,6 +23,7 @@ distracting_dagger:
   mean_dmg: 0.0
 gutgore_ripper:
   name: gutgore_ripper
+  weapon_type: Dagger
   prim_stats:
     agility: 0
     strength: 0

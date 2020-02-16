@@ -11,6 +11,7 @@
  */
 mod armory;
 mod utils;
+mod simulator;
 
 extern crate rand;
 extern crate clap;
@@ -18,6 +19,7 @@ extern crate serde;
 extern crate serde_yaml;
 
 use armory::{Character,ItemCollection};
+use simulator::{Simulator};
 use std::fmt;
 use std::collections::HashMap;
 use std::f32;
@@ -30,8 +32,13 @@ use std::io::Write;
 fn main() {
 
     let args = utils::get_arguments();
-    let character = Character::get_character(&args);
+    let character = Character::create_character(&args);
+    let mut simulator: Simulator = Simulator::new();
+    simulator.apply_input_arguments(&args);
+    simulator.configure_with_character(&character);
 
-    println!("{:?}", character);
+    println!("args: {:?}\n", args);
+    println!("character: {:?}\n", character);
+    println!("simulator: {:?}\n", simulator);
 
 }

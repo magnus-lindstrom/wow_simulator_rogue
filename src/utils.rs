@@ -13,9 +13,9 @@ pub fn max_f32(x: f32, y: f32) -> f32 {
     else { return y; }
 }
 
+#[derive(Debug)]
 pub struct Args {
     pub dt: f32,
-    pub no_buffs: bool,
     pub enemy_lvl: i32,
     pub fight_length: f32,
     pub iterations: i32,
@@ -29,7 +29,6 @@ impl Args {
     fn default_args() -> Args {
         Args {
             dt: 0.0,
-            no_buffs: false,
             enemy_lvl: 0,
             fight_length: 0.0,
             iterations: 0,
@@ -79,11 +78,6 @@ pub fn get_arguments() -> Args {
             .long("weight_mult") 
             .takes_value(true) 
             .help("Change degree of permutation by a factor."))
-        .arg(Arg::with_name("No buffs") 
-            .short("n") 
-            .long("no_buffs") 
-            .takes_value(false) 
-            .help("Run without buffs to rogue."))
         .arg(Arg::with_name("Verbose") 
             .short("v") 
             .long("verbose") 
@@ -98,14 +92,12 @@ pub fn get_arguments() -> Args {
     let enemy_lvl = matches.value_of("Enemy level").unwrap_or("63");
     let weights = matches.is_present("Weights");
     let weight_mult = matches.value_of("Weight multiplier").unwrap_or("1");
-    let no_buffs = matches.is_present("No buffs");
     let verb = matches.is_present("Verbose");
 
     let mut args = Args::default_args();
     args.dt = dt.parse().unwrap();
     args.param_file = file.to_string();
     args.verb = verb;
-    args.no_buffs = no_buffs;
     args.weights = weights;
     args.weight_mult = weight_mult.parse().unwrap();
     args.enemy_lvl = enemy_lvl.parse().unwrap();
@@ -120,8 +112,3 @@ pub fn get_arguments() -> Args {
 
     return args;
 }
-
-
-
-    
-
