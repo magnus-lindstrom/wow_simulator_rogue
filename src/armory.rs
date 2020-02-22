@@ -178,7 +178,7 @@ pub struct Weapon {
     weapon_type: WeaponType,
     prim_stats: PrimStats,
     sec_stats: SecStats,
-    swing_speed: f32,
+    swing_interval: f32,
     min_dmg: f32,
     max_dmg: f32,
     mean_dmg: f32
@@ -191,7 +191,7 @@ impl Weapon {
             weapon_type: WeaponType::None,
             prim_stats: PrimStats::new(Race::None),
             sec_stats: SecStats::new(Race::None),
-            swing_speed: 0.0,
+            swing_interval: 0.0,
             min_dmg: 0.0,
             max_dmg: 0.0,
             mean_dmg: 0.0
@@ -204,7 +204,7 @@ impl Weapon {
             weapon_type: self.weapon_type.clone(),
             prim_stats: self.prim_stats.clone(),
             sec_stats: self.sec_stats.clone(),
-            swing_speed: self.swing_speed,
+            swing_interval: self.swing_interval,
             min_dmg: self.min_dmg,
             max_dmg: self.max_dmg,
             mean_dmg: self.mean_dmg
@@ -219,8 +219,8 @@ impl Weapon {
         return self.mean_dmg;
     }
 
-    pub fn get_swing_speed(&self) -> f32 {
-        return self.swing_speed;
+    pub fn get_swing_interval(&self) -> f32 {
+        return self.swing_interval;
     }
 
     pub fn get_weapon_type(&self) -> WeaponType {

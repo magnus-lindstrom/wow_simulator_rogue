@@ -1,14 +1,25 @@
-use crate::armory::{Character};
 use clap::{Arg, App};
-use std::fs::File;
-use std::fs;
-use std::io::{BufRead, BufReader};
+use rand::distributions::{Distribution, Uniform};
 
 extern crate serde;
 extern crate serde_yaml;
 
 
+pub fn deb<T: std::fmt::Debug>(x: T) {
+    println!("{:?}", x);
+}
+
 pub fn max_f32(x: f32, y: f32) -> f32 {
+    if x >= y { return x; }
+    else { return y; }
+}
+
+pub fn min_i32(x: i32, y: i32) -> i32 {
+    if x <= y { return x; }
+    else { return y; }
+}
+
+pub fn max_i32(x: i32, y: i32) -> i32 {
     if x >= y { return x; }
     else { return y; }
 }
@@ -20,7 +31,7 @@ pub struct Args {
     pub fight_length: f32,
     pub iterations: i32,
     pub param_file: String,
-    pub verb: bool,
+    pub verb: i32,
     pub weight_mult: i32,
     pub weights: bool
 }
@@ -33,7 +44,7 @@ impl Args {
             fight_length: 0.0,
             iterations: 0,
             param_file: "".to_string(),
-            verb: false,
+            verb: 0,
             weight_mult: 0,
             weights: false
         }
@@ -81,6 +92,7 @@ pub fn get_arguments() -> Args {
         .arg(Arg::with_name("Verbose") 
             .short("v") 
             .long("verbose") 
+            .multiple(true)
             .takes_value(false) 
             .help("Be verbose, print details about fights."))
         .get_matches();
@@ -92,12 +104,12 @@ pub fn get_arguments() -> Args {
     let enemy_lvl = matches.value_of("Enemy level").unwrap_or("63");
     let weights = matches.is_present("Weights");
     let weight_mult = matches.value_of("Weight multiplier").unwrap_or("1");
-    let verb = matches.is_present("Verbose");
+    let verb = matches.occurrences_of("Verbose");
 
     let mut args = Args::default_args();
     args.dt = dt.parse().unwrap();
     args.param_file = file.to_string();
-    args.verb = verb;
+    args.verb = verb as i32;
     args.weights = weights;
     args.weight_mult = weight_mult.parse().unwrap();
     args.enemy_lvl = enemy_lvl.parse().unwrap();
@@ -111,4 +123,14 @@ pub fn get_arguments() -> Args {
     }
 
     return args;
+}
+
+pub fn roll_die() -> f32 {
+    // rolls a die between [0, 1)
+    
+    let mut rng = rand::thread_rng();
+    let roll_range = Uniform::from(100..10_000); // not including upper bound
+    let roll = roll_range.sample(&mut rng);
+    let roll: f32 = (roll as f32) / 10_000.0;
+    return roll;
 }

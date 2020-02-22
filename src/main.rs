@@ -18,15 +18,11 @@ extern crate clap;
 extern crate serde;
 extern crate serde_yaml;
 
-use armory::{Character,ItemCollection};
+#[macro_use]
+extern crate enum_display_derive;
+
+use armory::{Character};
 use simulator::{Simulator};
-use std::fmt;
-use std::collections::HashMap;
-use std::f32;
-use rand::distributions::{Distribution, Uniform};
-use std::fs;
-use std::fs::File;
-use std::io::Write;
 
 
 fn main() {
@@ -37,8 +33,12 @@ fn main() {
     simulator.apply_input_arguments(&args);
     simulator.configure_with_character(&character);
 
-    println!("args: {:?}\n", args);
-    println!("character: {:?}\n", character);
+    for i_iter in 0..args.iterations {
+        simulator.simulate();
+    }
+
+    // println!("args: {:?}\n", args);
+    // println!("character: {:?}\n", character);
     println!("simulator: {:?}\n", simulator);
 
 }
