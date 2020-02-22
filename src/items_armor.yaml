@@ -1,4 +1,5 @@
 ---
+# head
 bloodfang_hood:
   name: bloodfang_hood
   prim_stats:
@@ -16,6 +17,133 @@ bloodfang_hood:
     hit: 0.0
     haste: 0.0
     attack_power: 0
+# neck
+onyxia_tooth_pendant:
+  name: onyxia_tooth_pendant
+  prim_stats:
+    agility: 12
+    strength: 0
+    stamina: 9
+    arcane_resistance: 0
+    fire_resistance: 10
+    frost_resistance: 0
+    shadow_resistance: 0
+    sword_skill: 0
+    dagger_skill: 0
+  sec_stats:
+    crit: 0.01
+    hit: 0.0
+    haste: 0.0
+    attack_power: 0
+# shoulders
+nightslayer_shoulder_pads:
+  name: nightslayer_shoulder_pads
+  prim_stats:
+    agility: 26
+    strength: 3
+    stamina: 12
+    arcane_resistance: 0
+    fire_resistance: 0
+    frost_resistance: 0
+    shadow_resistance: 7
+    sword_skill: 0
+    dagger_skill: 0
+  sec_stats:
+    crit: 0.0
+    hit: 0.01
+    haste: 0.0
+    attack_power: 0
+# back
+cape_of_the_black_baron:
+  name: cape_of_the_black_baron
+  prim_stats:
+    agility: 15
+    strength: 0
+    stamina: 0
+    arcane_resistance: 0
+    fire_resistance: 0
+    frost_resistance: 0
+    shadow_resistance: 0
+    sword_skill: 0
+    dagger_skill: 0
+  sec_stats:
+    crit: 0.0
+    hit: 0.0
+    haste: 0.0
+    attack_power: 20
+# chest
+nightslayer_chestpiece:
+  name: nightslayer_chestpiece
+  prim_stats:
+    agility: 29
+    strength: 10
+    stamina: 20
+    arcane_resistance: 0
+    fire_resistance: 10
+    frost_resistance: 0
+    shadow_resistance: 0
+    sword_skill: 0
+    dagger_skill: 0
+  sec_stats:
+    crit: 0.01
+    hit: 0.0
+    haste: 0.0
+    attack_power: 0
+# bracers
+nightslayer_bracelets:
+  name: nightslayer_bracelets
+  prim_stats:
+    agility: 20
+    strength: 0
+    stamina: 15
+    arcane_resistance: 0
+    fire_resistance: 0
+    frost_resistance: 0
+    shadow_resistance: 0
+    sword_skill: 0
+    dagger_skill: 0
+  sec_stats:
+    crit: 0.0
+    hit: 0.0
+    haste: 0.0
+    attack_power: 0
+# hands
+nightslayer_gloves:
+  name: nightslayer_gloves
+  prim_stats:
+    agility: 18
+    strength: 12
+    stamina: 17
+    arcane_resistance: 0
+    fire_resistance: 7
+    frost_resistance: 0
+    shadow_resistance: 0
+    sword_skill: 0
+    dagger_skill: 0
+  sec_stats:
+    crit: 0.0
+    hit: 0.01
+    haste: 0.0
+    attack_power: 0
+# waist
+nightslayer_belt:
+  name: nightslayer_belt
+  prim_stats:
+    agility: 17
+    strength: 9
+    stamina: 18
+    arcane_resistance: 0
+    fire_resistance: 7
+    frost_resistance: 0
+    shadow_resistance: 0
+    sword_skill: 0
+    dagger_skill: 0
+  sec_stats:
+    crit: 0.01
+    hit: 0.0
+    haste: 0.0
+    attack_power: 0
+# pants
 bloodfang_pants:
   name: bloodfang_pants
   prim_stats:
@@ -30,6 +158,94 @@ bloodfang_pants:
     dagger_skill: 0
   sec_stats:
     crit: 0.01
+    hit: 0.0
+    haste: 0.0
+    attack_power: 0
+# boots
+shadowcraft_boots:
+  name: shadowcraft_boots
+  prim_stats:
+    agility: 21
+    strength: 0
+    stamina: 9
+    arcane_resistance: 0
+    fire_resistance: 0
+    frost_resistance: 0
+    shadow_resistance: 0
+    sword_skill: 0
+    dagger_skill: 0
+  sec_stats:
+    crit: 0.0
+    hit: 0.0
+    haste: 0.0
+    attack_power: 0
+# ring
+master_dragonslayers_ring:
+  name: master_dragonslayers_ring
+  prim_stats:
+    agility: 0
+    strength: 0
+    stamina: 14
+    arcane_resistance: 0
+    fire_resistance: 0
+    frost_resistance: 0
+    shadow_resistance: 0
+    sword_skill: 0
+    dagger_skill: 0
+  sec_stats:
+    crit: 0.0
+    hit: 0.01
+    haste: 0.0
+    attack_power: 48
+tarnished_elven_ring:
+  name: tarnished_elven_ring
+  prim_stats:
+    agility: 15
+    strength: 0
+    stamina: 0
+    arcane_resistance: 0
+    fire_resistance: 0
+    frost_resistance: 0
+    shadow_resistance: 0
+    sword_skill: 0
+    dagger_skill: 0
+  sec_stats:
+    crit: 0.0
+    hit: 0.01
+    haste: 0.0
+    attack_power: 0
+# trinket
+royal_seal_of_eldre_thalas:
+  name: royal_seal_of_eldre_thalas
+  prim_stats:
+    agility: 0
+    strength: 0
+    stamina: 0
+    arcane_resistance: 0
+    fire_resistance: 10
+    frost_resistance: 0
+    shadow_resistance: 0
+    sword_skill: 0
+    dagger_skill: 0
+  sec_stats:
+    crit: 0.0
+    hit: 0.02
+    haste: 0.0
+    attack_power: 0
+blackhands_breadth:
+  name: blackhands_breadth
+  prim_stats:
+    agility: 0
+    strength: 0
+    stamina: 0
+    arcane_resistance: 0
+    fire_resistance: 0
+    frost_resistance: 0
+    shadow_resistance: 0
+    sword_skill: 0
+    dagger_skill: 0
+  sec_stats:
+    crit: 0.02
     hit: 0.0
     haste: 0.0
     attack_power: 0

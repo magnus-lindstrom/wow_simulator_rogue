@@ -12,6 +12,7 @@
 mod armory;
 mod utils;
 mod simulator;
+mod stats;
 
 extern crate rand;
 extern crate clap;
@@ -35,6 +36,7 @@ fn main() {
 
     for i_iter in 0..args.iterations {
         simulator.simulate();
+        simulator.print_stats();
     }
 
     // println!("args: {:?}\n", args);

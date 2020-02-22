@@ -1,7 +1,19 @@
 ---
 armor_names:
   - bloodfang_hood
+  - onyxia_tooth_pendant
+  - nightslayer_shoulder_pads
+  - cape_of_the_black_baron
+  - nightslayer_chestpiece
+  - nightslayer_gloves
+  - nightslayer_belt
+  - bloodfang_pants
+  - shadowcraft_boots
+  - master_dragonslayers_ring
+  - tarnished_elven_ring
+  - royal_seal_of_eldre_thalas
+  - blackhands_breadth
 mh_name:
   gutgore_ripper
 oh_name:
-  gutgore_ripper
+  distracting_dagger

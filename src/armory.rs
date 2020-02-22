@@ -141,27 +141,6 @@ impl ItemCollection {
             &weapons_string).unwrap();
 
         return ItemCollection { armor: equipment, weapons: weapons };
-        /*
-        let mut armor_map: HashMap<String,Armor> = HashMap::new();
-        let mut weapon_map: HashMap<String,Weapon> = HashMap::new();
-        
-        let bf_hood = Armor::new("bloodfang_hood".to_string());
-        let gutgore = Weapon::new("gutgore_ripper".to_string());
-
-        armor_map.insert("bloodfang_hood".to_string(), bf_hood);
-        weapon_map.insert("gutgore_ripper".to_string(), gutgore);
-
-        let item_collection: ItemCollection = ItemCollection {
-            armor: armor_map,
-            weapons: weapon_map
-        };
-        */
-
-        // let item_collection_string = fs::read_to_string(ITEM_COLLECTION_PATH)
-            // .expect("Something went wrong reading item file.");
-        // let item_collection: ItemCollection = serde_yaml::from_str(
-            // &item_collection_string).unwrap();
-        // return item_col;
     }
 }
 
@@ -407,15 +386,17 @@ impl Character {
 
         for armor_name in &char_spec.armor_names {
             let armor = item_collection.armor.get(&armor_name.to_string()).
-                unwrap();
+                expect(&format!("Could not find {} in item file.", armor_name));
             self.armor.push(armor.copy());
         }
-        let mh = item_collection.weapons.get(&char_spec.mh_name.to_string())
-            .unwrap();
+        let mh = item_collection.weapons.get(&char_spec.mh_name.to_string()).
+            expect(&format!("Could not find {} in item file.", 
+                            &char_spec.mh_name.to_string()));
         self.mh = mh.copy();
         self.mh.set_mean_dmg();
-        let oh = item_collection.weapons.get(&char_spec.oh_name.to_string())
-            .unwrap();
+        let oh = item_collection.weapons.get(&char_spec.oh_name.to_string()).
+            expect(&format!("Could not find {} in item file.", 
+                            &char_spec.oh_name.to_string()));
         self.oh = oh.copy();
         self.oh.set_mean_dmg();
     }

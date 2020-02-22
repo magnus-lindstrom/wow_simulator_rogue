@@ -1,15 +1,19 @@
 ---
-improved_backstab: 0
-precision: 0
-dw_specialization: 0
-sword_specialization: 0
-dagger_specialization: 0
-weapon_expertise: 0
-aggression: 0
-opportunity: 0
+# assassination
 improved_eviscerate: 0
-malice: 0
-ruthlessness: 0
-improved_slice_and_dice: 0
-relentless_strikes: 0
-lethality: 0
+malice: 5 
+ruthlessness: 2 # TODO
+improved_slice_and_dice: 3 # TODO
+relentless_strikes: 0 # TODO
+lethality: 5 # TODO
+# combat
+improved_sinister_strike: 2 # TODO
+improved_backstab: 3
+precision: 5 # TODO
+dagger_specialization: 5 # TODO
+dw_specialization: 5 # TODO
+sword_specialization: 0 # TODO
+weapon_expertise: 2 # TODO
+aggression: 2 # TODO
+# subtlety
+opportunity: 5 # TODO
