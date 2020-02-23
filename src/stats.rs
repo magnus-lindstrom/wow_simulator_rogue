@@ -55,8 +55,13 @@ impl CurrentStats {
         self.eviscerate.add(hit_type);
     }
 
+    fn print_dps(&self) {
+        println!("Dps: {:.2}\n", self.dmg / self.fight_length);
+    }
+
     pub fn print_stats(&mut self) {
-        println!("\n*** Summary of hits over {:.0}s ***\n", self.fight_length);
+        println!("\n*** Damage summary over {:.0}s ***\n", self.fight_length);
+        self.print_dps();
         self.backstab.print_with_name("Backstab");
         self.sinister_strike.print_with_name("Sinister strike");
         self.eviscerate.print_with_name("Eviscerate");

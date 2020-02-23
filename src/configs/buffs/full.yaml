@@ -6,5 +6,5 @@ juju_power: true
 juju_might: true
 mongoose: true
 grilled_squid: true
-songflower_serenade: false
+songflower_serenade: true
 bok: true

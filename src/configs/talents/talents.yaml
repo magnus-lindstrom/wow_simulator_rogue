@@ -10,10 +10,10 @@ lethality: 5
 improved_sinister_strike: 2
 improved_backstab: 3
 precision: 5 
-dagger_specialization: 5 # TODO
-dw_specialization: 5 # TODO
+dagger_specialization: 5
+dual_wield_specialization: 5
 sword_specialization: 0 # TODO
-weapon_expertise: 2 # TODO
-aggression: 2 # TODO
+weapon_expertise: 2
+aggression: 2
 # subtlety
-opportunity: 5 # TODO
+opportunity: 5

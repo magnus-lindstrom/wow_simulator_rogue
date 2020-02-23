@@ -1,0 +1,17 @@
+---
+armor_enchants:
+  # head
+  - arcanum_of_rapidity
+  # chest
+  - greater_stats
+  # bracer
+  - superior_strength
+  # gloves
+  - greater_agility
+  # legs
+  - arcanum_of_rapidity
+  # feet
+mh_enchant: superior_striking
+oh_enchant: greater_striking
+
+

@@ -48,6 +48,76 @@ impl Simulator {
         self.mh.enemy_lvl = args.enemy_lvl;
         self.oh.enemy_lvl = args.enemy_lvl;
     }
+    
+    fn set_glancing_reduction(&mut self, character: &Character) {
+        // Main hand
+        let mut skill_delta: i32;
+        if self.mh.get_weapon_type() == WeaponType::Dagger {
+            skill_delta = 5 * self.mh.enemy_lvl 
+                - character.prim_stats.dagger_skill;
+        } else if character.mh.get_weapon_type() == WeaponType::Sword {
+            skill_delta = 5 * self.mh.enemy_lvl 
+                - character.prim_stats.sword_skill;
+        } else { panic!("Weapon type not initialized or implemented yet!"); }
+
+        // weapon expertise
+        if self.mh.get_weapon_type() == WeaponType::Dagger 
+            || self.mh.get_weapon_type() == WeaponType::Sword {
+                skill_delta -= match character.talents.weapon_expertise {
+                    0 => 0,
+                    1 => 3,
+                    2 => 5,
+                    _ => panic!("Invalid value of weapon expertise.")
+                };
+        }
+
+        self.modifiers.hit.glancing_mh = match skill_delta {
+            15 => 1.0 - 0.35,
+            14 => 1.0 - 0.31,
+            13 => 1.0 - 0.27,
+            12 => 1.0 - 0.23,
+            11 => 1.0 - 0.19,
+            10 => 1.0 - 0.15,
+            9  => 1.0 - 0.11,
+            8  => 1.0 - 0.07,
+            -300..=7 =>  1.0 - 0.05,
+            _ => panic!("Skill delta not implemented")
+        };
+
+        // Off hand
+        let mut skill_delta: i32;
+        if self.oh.get_weapon_type() == WeaponType::Dagger {
+            skill_delta = 5 * self.oh.enemy_lvl 
+                - character.prim_stats.dagger_skill;
+        } else if character.oh.get_weapon_type() == WeaponType::Sword {
+            skill_delta = 5 * self.oh.enemy_lvl 
+                - character.prim_stats.sword_skill;
+        } else { panic!("Weapon type not initialized yet!"); }
+
+        // weapon expertise
+        if self.oh.get_weapon_type() == WeaponType::Dagger 
+            || self.oh.get_weapon_type() == WeaponType::Sword {
+                skill_delta -= match character.talents.weapon_expertise {
+                    0 => 0,
+                    1 => 3,
+                    2 => 5,
+                    _ => panic!("Invalid value of weapon expertise.")
+                };
+        }
+
+        self.modifiers.hit.glancing_oh = match skill_delta {
+            15 => 1.0 - 0.35,
+            14 => 1.0 - 0.31,
+            13 => 1.0 - 0.27,
+            12 => 1.0 - 0.23,
+            11 => 1.0 - 0.19,
+            10 => 1.0 - 0.15,
+            9  => 1.0 - 0.11,
+            8  => 1.0 - 0.07,
+            -300..=7 =>  1.0 - 0.05,
+            _ => panic!("Skill delta not implemented")
+        };
+    }
 
     pub fn configure_with_character(&mut self, character: &Character) {
         self.timekeep.set_mh_swing_interval(&character.mh);
@@ -60,6 +130,8 @@ impl Simulator {
         self.oh.set_weapon_type_and_normalized_speed(&character.oh);
         self.oh.set_off_hand();
         self.oh.set_mechanics_from_character(character);
+
+        self.set_glancing_reduction(character);
 
         self.incorporate_talents(character);
 
@@ -115,6 +187,36 @@ impl Simulator {
         // precision
         self.mh.add_hit(0.01 * character.talents.precision as f32);
         self.oh.add_hit(0.01 * character.talents.precision as f32);
+
+        // dagger specialization
+        if self.mh.weapon_type == WeaponType::Dagger {
+            self.mh.add_crit(
+                0.01 * character.talents.dagger_specialization as f32);
+        }
+        if self.oh.weapon_type == WeaponType::Dagger {
+            self.oh.add_crit(
+                0.01 * character.talents.dagger_specialization as f32);
+        }
+        
+        // dual wield specialization
+        self.modifiers.hit.oh *= 
+            1.0 + 0.1 * character.talents.dual_wield_specialization as f32;
+        
+        // sword specialization
+        if character.talents.sword_specialization > 0 {
+            panic!("Sword specialization not implemented yet.");
+        }
+
+        // aggression
+        self.modifiers.hit.eviscerate *= 
+            1.0 + 0.02 * character.talents.aggression as f32;
+        self.modifiers.hit.sinister_strike *= 
+            1.0 + 0.02 * character.talents.aggression as f32;
+        
+        // subtlety
+        // opportunity
+        self.modifiers.hit.backstab *= 
+            1.0 + 0.04 * character.talents.opportunity as f32;
     }
 
 
@@ -281,7 +383,7 @@ impl Simulator {
             dmg = self.mh.mean_dmg;
 
             if hit == Hit::Glancing {
-                dmg *= self.modifiers.hit.glancing;
+                dmg *= self.modifiers.hit.glancing_mh;
             } else if hit == Hit::Crit {
                 dmg *= 2.0;
             }
@@ -308,7 +410,7 @@ impl Simulator {
             dmg *= self.modifiers.hit.oh;
 
             if hit == Hit::Glancing {
-                dmg *= self.modifiers.hit.glancing;
+                dmg *= self.modifiers.hit.glancing_oh;
             } else if hit == Hit::Crit {
                 dmg *= 2.0;
             }
@@ -342,6 +444,8 @@ impl Simulator {
         if self.verb > 2 {
             println!("\nSimulator object at the end of simulation:\n{:?}",
                      self);
+            self.mh.print_hit_tables();
+            self.oh.print_hit_tables();
         }
     }
 
@@ -456,7 +560,7 @@ impl TimeKeeper {
     fn reset_mh_swing_timer(&mut self) {
         self.timers.mh_swing = self.mh_swing_interval;
         if self.verb > 1 {
-            let msg = format!("{:.1}: Reset MH swing timer to {:.0}s.", 
+            let msg = format!("{:.1}: Reset MH swing timer to {:.2}s.", 
                               self.timers.time_left, self.timers.mh_swing);
             println!("{}", msg);
         }
@@ -465,7 +569,7 @@ impl TimeKeeper {
     fn reset_oh_swing_timer(&mut self) {
         self.timers.oh_swing = self.oh_swing_interval;
         if self.verb > 1 {
-            let msg = format!("{:.1}: Reset OH swing timer to {:.0}s.", 
+            let msg = format!("{:.1}: Reset OH swing timer to {:.2}s.", 
                               self.timers.time_left, self.timers.oh_swing);
             println!("{}", msg);
         }
@@ -544,6 +648,8 @@ impl WepSimulator {
         self.set_normalized_speed();
     }
 
+    fn get_weapon_type(&self) -> WeaponType { return self.weapon_type; }
+
     fn set_normalized_speed(&mut self) {
         if self.weapon_type == WeaponType::Dagger { self.normalized_speed = 1.7; }
         else if self.weapon_type == WeaponType::Sword { 
@@ -610,24 +716,45 @@ impl WepSimulator {
         } else { panic!("Weapon type not implemented!"); }
 
         // miss chance
+        let hit_chance = self.get_effective_hit_chance_from_hit_and_skill_delta(
+            character.sec_stats.hit, skill_delta);
         let mut miss_chance = get_miss_from_level_delta(skill_delta);
-        miss_chance = subtract_hit_from_miss(character.sec_stats.hit, 
-                                                  miss_chance);
+        miss_chance = miss_chance - hit_chance;
         self.hit_table_yellow.miss_value = miss_chance;
 
         // dodge chance
-        let dodge_value = miss_chance + 0.05 + 0.001 * (skill_delta) as f32;
+        let dodge_chance = 0.05 + 0.001 * (skill_delta) as f32;
+        let dodge_value = miss_chance + dodge_chance;
         self.hit_table_yellow.dodge_value = dodge_value;
 
         // crit chance
-        let mut crit_value = dodge_value + character.sec_stats.crit;
-        crit_value -= 0.01 * (self.enemy_lvl - 60) as f32;
-        if self.enemy_lvl == 63 { crit_value -= 0.018; }
+        let mut crit_chance = character.sec_stats.crit;
+        crit_chance = max_f32( 0.0, 
+            crit_chance - 0.01 * (self.enemy_lvl - 60) as f32 );
+        if self.enemy_lvl == 63 { 
+            crit_chance = max_f32( 0.0, crit_chance - 0.018 );
+        }
+        let crit_value = dodge_value + crit_chance;
         self.hit_table_yellow.crit_value = crit_value;
     }
     
     fn set_backstab_hit_table(&mut self, character: &Character) {
         self.hit_table_backstab = self.hit_table_yellow.clone();
+    }
+
+    fn get_effective_hit_chance_from_hit_and_skill_delta(
+        &self, hit: f32, skill_delta: i32) -> f32 {
+
+        let mut hit_chance = hit;
+        if skill_delta > 10 { 
+            if hit_chance < 0.01 { 
+                panic!("A hit application in two parts require that the hit \
+                       from items alone is higher than 1% if the skill delta \
+                       is greater than 10");
+            }
+            hit_chance -= 0.01;
+        }
+        return hit_chance;
     }
 
     fn set_white_hit_table(&mut self, character: &Character) {
@@ -656,27 +783,36 @@ impl WepSimulator {
         }
 
         // miss chance
+        let hit_chance = self.get_effective_hit_chance_from_hit_and_skill_delta(
+            character.sec_stats.hit, skill_delta);
         let mut miss_chance = get_miss_from_level_delta(skill_delta);
         miss_chance = 0.8 * miss_chance + 0.2;
-        miss_chance = subtract_hit_from_miss(character.sec_stats.hit, 
-                                             miss_chance);
+        miss_chance = miss_chance - hit_chance;
         self.hit_table_white.miss_value = miss_chance;
 
         // dodge chance
-        let dodge_value = miss_chance + 0.05 + 0.001 * (skill_delta) as f32;
+        let dodge_chance = 0.05 + 0.001 * (skill_delta) as f32;
+        let dodge_value = miss_chance + dodge_chance;
         self.hit_table_white.dodge_value = dodge_value;
 
+        // glancing chance
+        if self.enemy_lvl < 60 || self.enemy_lvl > 63 { 
+            panic!("No reliable glancing numbers outside 60-63");
+        }
+        let glancing_chance = 0.1 + 0.1 * (self.enemy_lvl - 60) as f32; 
+        let glancing_value = dodge_value + glancing_chance;
+        self.hit_table_white.glancing_value = glancing_value;
+
         // crit chance
-        let mut crit_value = dodge_value + character.sec_stats.crit;
-        crit_value -= 0.01 * (self.enemy_lvl - 60) as f32;
-        if self.enemy_lvl == 63 { crit_value -= 0.018; }
+        let mut crit_chance = character.sec_stats.crit;
+        crit_chance = max_f32( 0.0, 
+            crit_chance - 0.01 * (self.enemy_lvl - 60) as f32 );
+        if self.enemy_lvl == 63 { 
+            crit_chance = max_f32( 0.0, crit_chance - 0.018 );
+        }
+        let crit_value = glancing_value + crit_chance;
         self.hit_table_white.crit_value = crit_value;
         
-        // glancing chance
-        if self.enemy_lvl >= 60 && self.enemy_lvl <= 63 { 
-            self.hit_table_white.glancing_value = 
-                0.1 + 0.1 * (self.enemy_lvl - 60) as f32; 
-        } else { panic!("No reliable glancing numbers outside 60-63"); }
     }
 
     fn add_hit(&mut self, hit: f32) {
@@ -698,6 +834,20 @@ impl WepSimulator {
             }
         }
     }
+
+    fn print_hit_tables(&self) {
+        println!("\nHit table for {} white attacks:", self.weapon_slot);
+        self.hit_table_white.print_table();
+        if self.is_main_hand() {
+            println!("\nHit table for {} yellow attacks:", self.weapon_slot);
+            self.hit_table_yellow.print_table();
+            if self.weapon_type == WeaponType::Dagger {
+            println!("\nHit table for {} backstab:", self.weapon_slot);
+                self.hit_table_backstab.print_table();
+            }
+        }
+    }
+
 }
 
 fn get_miss_from_level_delta(delta: i32) -> f32 {
@@ -705,11 +855,6 @@ fn get_miss_from_level_delta(delta: i32) -> f32 {
     else if delta <= 10 && delta >= 0 { return 0.05 + 0.001 * delta as f32; }
     else if delta <= 15 { return 0.07 + 0.002 * ((delta - 10) as f32); }
     else { panic!("Level difference not implemented"); }
-}
-
-fn subtract_hit_from_miss(hit: f32, miss: f32) -> f32 {
-    if miss > 0.06 { return max_f32(0.0, miss - hit + 0.01); }
-    else { return max_f32(0.0, miss - hit); }
 }
 
 #[derive(Debug,Clone)]
@@ -749,6 +894,16 @@ impl YellowHitTable {
         self.crit_value -= hit_to_subtract;
     }
 
+    fn print_table(&self) {
+        println!("Miss chance:\t\t{:.1}%", 100.0 * self.miss_value);
+        println!("Dodge chance:\t\t{:.1}%", 
+                 100.0 * (self.dodge_value - self.miss_value));
+        println!("Crit chance:\t\t{:.1}%", 
+                 100.0 * (self.crit_value - self.dodge_value));
+        println!("Hit chance:\t\t{:.1}%", 
+                 100.0 * (1.0 - self.crit_value));
+    }
+
 }
 
 #[derive(Debug)]
@@ -786,7 +941,20 @@ impl WhiteHitTable {
         let hit_to_subtract = max_f32(0.0, self.miss_value - hit);
         self.miss_value -= hit_to_subtract;
         self.dodge_value -= hit_to_subtract;
+        self.glancing_value -= hit_to_subtract;
         self.crit_value -= hit_to_subtract;
+    }
+
+    fn print_table(&self) {
+        println!("Miss chance:\t\t{:.1}%", 100.0 * self.miss_value);
+        println!("Dodge chance:\t\t{:.1}%", 
+                 100.0 * (self.dodge_value - self.miss_value));
+        println!("Glancing chance:\t{:.1}%", 
+                 100.0 * (self.glancing_value - self.dodge_value));
+        println!("Crit chance:\t\t{:.1}%", 
+                 100.0 * (self.crit_value - self.glancing_value));
+        println!("Hit chance:\t\t{:.1}%", 
+                 100.0 * (1.0 - self.crit_value));
     }
 }
 
@@ -861,7 +1029,8 @@ impl GeneralModifiers {
 
 #[derive(Debug)]
 struct HitModifiers {
-    glancing: f32,
+    glancing_mh: f32,
+    glancing_oh: f32,
     sinister_strike: f32,
     backstab: f32,
     eviscerate: f32,
@@ -871,7 +1040,8 @@ struct HitModifiers {
 impl HitModifiers {
     fn new() -> HitModifiers {
         HitModifiers {
-            glancing: 1.0,
+            glancing_mh: 1.0,
+            glancing_oh: 1.0,
             sinister_strike: 1.0,
             backstab: 1.0,
             eviscerate: 1.0,
@@ -940,7 +1110,7 @@ pub enum Hit {
 }
 
 
-#[derive(Clone,Copy,Debug,PartialEq)]
+#[derive(Clone,Copy,Debug,Display,PartialEq)]
 pub enum WeaponSlot {
     Mh,
     Oh,
