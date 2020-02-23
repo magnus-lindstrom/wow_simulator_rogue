@@ -1,5 +1,5 @@
 use std::fmt::Display;
-use crate::utils::{Args,deb,max_f32,min_i32,max_i32,roll_die};
+use crate::utils::{Args,deb,min_f32,max_f32,min_i32,max_i32,roll_die};
 use crate::armory::{Character,Weapon,WeaponType};
 use crate::stats::CurrentStats;
 
@@ -69,15 +69,52 @@ impl Simulator {
     fn incorporate_talents(&mut self, character: &Character) {
 
         // assassination table
+        // imp evis
         self.modifiers.hit.eviscerate += 0.05 * 
             character.talents.improved_eviscerate as f32;
        
+        // malice
         self.mh.add_crit(0.01 * character.talents.malice as f32);
         self.oh.add_crit(0.01 * character.talents.malice as f32);
 
+        // relentless strikes
+        match character.talents.relentless_strikes {
+            1 => self.modifiers.finisher.restore_energy_chance_per_combo_point = 
+                0.2,
+            0 => (),
+            _ => panic!("Relentless strikes can only have one talent point")
+        }
+
+        // ruthlessness
+        self.modifiers.finisher.add_combo_point_chance = 
+            0.2 * character.talents.ruthlessness as f32;
+
+        // improved slice and dice
+        self.modifiers.general.slice_and_dice_duration += 
+            0.15 * character.talents.improved_slice_and_dice as f32;
+        
+        // lethality
+        self.modifiers.crit.backstab += 
+            0.06 * character.talents.lethality as f32;
+        self.modifiers.crit.sinister_strike += 
+            0.06 * character.talents.lethality as f32;
+
         // combat table
+        // imp sinister strike
+        match character.talents.improved_sinister_strike {
+            0 => (),
+            1 => self.ability_costs.sinister_strike -= 3,
+            2 => self.ability_costs.sinister_strike -= 5,
+            _ => panic!("Illegal value of improved sinister strike")
+        }
+
+        // imp backstab
         self.mh.hit_table_backstab.add_crit(
             0.1 * character.talents.improved_backstab as f32);
+
+        // precision
+        self.mh.add_hit(0.01 * character.talents.precision as f32);
+        self.oh.add_hit(0.01 * character.talents.precision as f32);
     }
 
 
@@ -112,6 +149,11 @@ impl Simulator {
         self.energy = max_i32(0, self.energy - energy);
     }
 
+    fn add_energy(&mut self, energy_refill: i32) {
+        self.energy = min_i32(self.modifiers.general.energy_max, 
+                              self.energy + energy_refill);
+    }
+
     fn eviscerate(&mut self) {
         let hit: Hit = self.mh.hit_table_yellow.roll_for_hit();
         let mut dmg = 0.0;
@@ -127,7 +169,7 @@ impl Simulator {
         else { panic!("Can only eviscerate with 1-5 combo points."); }
 
         if hit == Hit::Hit || hit == Hit::Crit { 
-            self.clear_combo_points();
+            self.clear_combo_points_and_roll_for_finisher_procs();
 
             dmg *= self.modifiers.hit.eviscerate;
 
@@ -159,12 +201,22 @@ impl Simulator {
         self.timekeep.timers.slice_and_dice = dur;
         self.start_global_cd();
         self.subtract_energy(self.ability_costs.slice_and_dice);
-        self.combo_points = 0;
+        self.clear_combo_points_and_roll_for_finisher_procs();
         if self.verb > 0 { self.show_slice_and_dice() } 
     }
 
-    fn clear_combo_points(&mut self) {
-        self.combo_points = 0;
+    fn clear_combo_points_and_roll_for_finisher_procs(&mut self) {
+        let mut new_combo_points = 0;
+        if self.modifiers.finisher.gets_extra_combo_point() {
+            new_combo_points = 1; 
+            if self.verb > 0 { println!("Got extra combo point from finisher!"); }
+        }
+        if self.modifiers.finisher.gets_extra_energy(self.combo_points) {
+            self.add_energy(25);
+            if self.verb > 0 { println!("Got 25 energy from finisher!"); }
+        }
+
+        self.combo_points = new_combo_points;
     }
 
     fn add_combo_point(&mut self) {
@@ -237,9 +289,11 @@ impl Simulator {
 
         self.stats.record_mh_white_dmg_and_hit(dmg, &hit);
 
-        let msg = format!("{:.1}: MH {} for {:.0} dmg.", 
-                          self.timekeep.timers.time_left, hit, dmg);
-        println!("{}", msg);
+        if self.verb > 0 {
+            let msg = format!("{:.1}: MH {} for {:.0} dmg.", 
+                              self.timekeep.timers.time_left, hit, dmg);
+            println!("{}", msg);
+        }
     }
 
     fn check_oh_swing_timer_and_strike(&mut self) {
@@ -262,9 +316,11 @@ impl Simulator {
 
         self.stats.record_oh_white_dmg_and_hit(dmg, &hit);
 
-        let msg = format!("{:.1}: OH {} for {:.0} dmg.", 
-                          self.timekeep.timers.time_left, hit, dmg);
-        println!("{}", msg);
+        if self.verb > 0 {
+            let msg = format!("{:.1}: OH {} for {:.0} dmg.", 
+                              self.timekeep.timers.time_left, hit, dmg);
+            println!("{}", msg);
+        }
     }
 
     pub fn print_stats(&mut self) {
@@ -282,6 +338,11 @@ impl Simulator {
             self.timekeep.take_time_step();
             self.check_energy_timer_and_refill_energy();
         }
+
+        if self.verb > 2 {
+            println!("\nSimulator object at the end of simulation:\n{:?}",
+                     self);
+        }
     }
 
     fn check_energy_timer_and_refill_energy(&mut self) {
@@ -297,8 +358,7 @@ impl Simulator {
         let die = roll_die();
         if die < 0.25 { refill = 21; }
         else { refill = 20; }
-        self.energy = min_i32(self.modifiers.general.energy_max, 
-                              self.energy + refill);
+        self.add_energy(refill);
         if self.verb > 1 { self.show_energy_refill(); }
     }
 
@@ -619,6 +679,16 @@ impl WepSimulator {
         } else { panic!("No reliable glancing numbers outside 60-63"); }
     }
 
+    fn add_hit(&mut self, hit: f32) {
+        self.hit_table_white.add_hit(hit);
+        if self.is_main_hand() { 
+            self.hit_table_yellow.add_hit(hit); 
+            if self.weapon_type == WeaponType::Dagger {
+                self.hit_table_backstab.add_hit(hit);
+            }
+        }
+    }
+
     fn add_crit(&mut self, crit: f32) {
         self.hit_table_white.add_crit(crit);
         if self.is_main_hand() { 
@@ -671,6 +741,14 @@ impl YellowHitTable {
     fn add_crit(&mut self, crit: f32) {
         self.crit_value += crit;
     }
+
+    fn add_hit(&mut self, hit: f32) {
+        let hit_to_subtract = min_f32(self.miss_value, hit);
+        self.miss_value -= hit_to_subtract;
+        self.dodge_value -= hit_to_subtract;
+        self.crit_value -= hit_to_subtract;
+    }
+
 }
 
 #[derive(Debug)]
@@ -702,6 +780,13 @@ impl WhiteHitTable {
 
     fn add_crit(&mut self, crit: f32) {
         self.crit_value += crit;
+    }
+
+    fn add_hit(&mut self, hit: f32) {
+        let hit_to_subtract = max_f32(0.0, self.miss_value - hit);
+        self.miss_value -= hit_to_subtract;
+        self.dodge_value -= hit_to_subtract;
+        self.crit_value -= hit_to_subtract;
     }
 }
 
@@ -814,16 +899,31 @@ impl CritModifiers {
 
 #[derive(Debug)]
 struct FinisherModifiers {
-    restore_energy_chance: f32,
+    restore_energy_chance_per_combo_point: f32,
     add_combo_point_chance: f32
 }
 
 impl FinisherModifiers {
     fn new() -> FinisherModifiers {
         FinisherModifiers {
-            restore_energy_chance: 0.0,
+            restore_energy_chance_per_combo_point: 0.0,
             add_combo_point_chance: 0.0
         }
+    }
+
+    fn gets_extra_combo_point(&self) -> bool {
+        let die = roll_die();
+        if die < self.add_combo_point_chance { return true; }
+        else { return false; }
+    }
+
+    fn gets_extra_energy(&self, combo_points: i32) -> bool {
+        let die = roll_die();
+        if die < combo_points as f32 
+            * self.restore_energy_chance_per_combo_point { 
+            return true; 
+        }
+        else { return false; }
     }
 }
 

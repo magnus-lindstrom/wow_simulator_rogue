@@ -41,6 +41,5 @@ fn main() {
 
     // println!("args: {:?}\n", args);
     // println!("character: {:?}\n", character);
-    println!("simulator: {:?}\n", simulator);
 
 }

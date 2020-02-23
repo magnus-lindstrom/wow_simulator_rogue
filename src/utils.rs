@@ -9,6 +9,11 @@ pub fn deb<T: std::fmt::Debug>(x: T) {
     println!("{:?}", x);
 }
 
+pub fn min_f32(x: f32, y: f32) -> f32 {
+    if x <= y { return x; }
+    else { return y; }
+}
+
 pub fn max_f32(x: f32, y: f32) -> f32 {
     if x >= y { return x; }
     else { return y; }

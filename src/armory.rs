@@ -245,39 +245,47 @@ impl CharacterSpecification {
 
 #[derive(Debug,Serialize,Deserialize)]
 pub struct Talents {
-    pub improved_backstab: i32,
-    pub precision: i32,
-    pub dw_specialization: i32,
-    pub sword_specialization: i32,
-    pub dagger_specialization: i32,
-    pub weapon_expertise: i32,
-    pub aggression: i32,
-    pub opportunity: i32,
+    // assassination
     pub improved_eviscerate: i32,
     pub malice: i32,
     pub ruthlessness: i32,
     pub improved_slice_and_dice: i32,
     pub relentless_strikes: i32,
-    pub lethality: i32
+    pub lethality: i32,
+    // combat
+    pub improved_sinister_strike: i32,
+    pub improved_backstab: i32,
+    pub precision: i32,
+    pub dagger_specialization: i32,
+    pub dw_specialization: i32,
+    pub sword_specialization: i32,
+    pub weapon_expertise: i32,
+    pub aggression: i32,
+    // subtlety
+    pub opportunity: i32
 }
 
 impl Talents {
     fn new() -> Talents {
         Talents {
-            improved_backstab: 0,
-            precision: 0,
-            dw_specialization: 0,
-            sword_specialization: 0,
-            dagger_specialization: 0,
-            weapon_expertise: 0,
-            aggression: 0,
-            opportunity: 0,
+            // assassination
             improved_eviscerate: 0,
             malice: 0,
             ruthlessness: 0,
             improved_slice_and_dice: 0,
             relentless_strikes: 0,
-            lethality: 0
+            lethality: 0,
+            // combat
+            improved_sinister_strike: 0,
+            improved_backstab: 0,
+            precision: 0,
+            dagger_specialization: 0,
+            dw_specialization: 0,
+            sword_specialization: 0,
+            weapon_expertise: 0,
+            aggression: 0,
+            // subtlety
+            opportunity: 0
         }
     }
 }
