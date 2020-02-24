@@ -1,3 +1,28 @@
+# hit procc written like
+#
+# example 1
+# hit_procc: None
+#
+# example 2
+# hit_procc:
+#   Dmg:
+#     - name
+#     - damage
+#     - procc_chance
+# 
+# example 3
+# hit_procc:
+#   Strength:
+#     - name
+#     - strength_value
+#     - duration
+#     - procc_chance
+#
+# example 4
+# hit_procc:
+#   ExtraAttack:
+#     - name
+#     - procc_chance
 ---
 distracting_dagger:
   name: distracting_dagger
@@ -21,10 +46,7 @@ distracting_dagger:
   min_dmg: 42.0
   max_dmg: 64.0
   mean_dmg: 0.0
-  hit_procc: 
-    Dmg:
-      dmg: 95.0
-      chance: 0.04
+  hit_procc: None
 gutgore_ripper:
   name: gutgore_ripper
   weapon_type: Dagger
@@ -47,4 +69,8 @@ gutgore_ripper:
   min_dmg: 63.0
   max_dmg: 119.0
   mean_dmg: 0.0
-  hit_procc: None
+  hit_procc:
+    Dmg: 
+      - gutgore_ripper
+      - 95.0
+      - 0.04

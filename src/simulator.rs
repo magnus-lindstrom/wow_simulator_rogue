@@ -330,28 +330,30 @@ impl Simulator {
         self.combo_points = min_i32(5, self.combo_points + 1);
     }
 
-    fn roll_for_procc(&mut self, procc: HitProcc) {
+    fn roll_for_procc(&mut self, procc: &HitProcc) {
         let die = roll_die();
         match procc {
             HitProcc::Dmg(_,_,chance) 
-                => if die < chance { self.stats.record_procc(chance); },
+                => if die < *chance { self.stats.record_procc(procc); },
             HitProcc::Strength(_,_,_,chance) 
-                => if die < chance { self.stats.record_procc(chance); },
+                => if die < *chance { self.stats.record_procc(procc); },
             HitProcc::ExtraAttack(_,chance) 
-                => if die < chance { self.stats.record_procc(chance); },
+                => if die < *chance { self.stats.record_procc(procc); },
             HitProcc::None => (),
         }
     }
 
     fn trigger_hit_procc_mh(&mut self) {
         for i in 0..self.mh.hit_proccs.len() {
-            self.roll_for_procc(self.mh.hit_proccs[i])
+            let procc = self.mh.hit_proccs[i].clone();
+            self.roll_for_procc(&procc);
         }
     }
 
     fn trigger_hit_procc_oh(&mut self) {
-        for procc in self.oh.hit_proccs {
-            self.roll_for_procc(&procc)
+        for i in 0..self.oh.hit_proccs.len() {
+            let procc = self.oh.hit_proccs[i].clone();
+            self.roll_for_procc(&procc);
         }
     }
 
