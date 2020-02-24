@@ -166,3 +166,23 @@ pub fn roll_die() -> f32 {
     let roll: f32 = (roll as f32) / 10_000.0;
     return roll;
 }
+
+pub fn mean(numbers: &Vec<f32>) -> f32 {
+
+    let mut sum: f64 = 0.0;
+    for n in numbers.iter() { sum += *n as f64; }
+
+    let avg = sum / numbers.len() as f64;
+    return avg as f32;
+}
+
+pub fn std_dev(numbers: &Vec<f32>) -> f32 {
+
+    let mean = mean(numbers);
+    let mut tmp = 0.0;
+    for nr in numbers {
+        tmp += (nr - mean).powf(2.0);
+    }
+    let std_dev = (tmp / (numbers.len() - 1) as f32).sqrt();
+    return std_dev;
+}

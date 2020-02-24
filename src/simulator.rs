@@ -1,6 +1,6 @@
 use std::fmt::Display;
 use crate::utils::{Args,deb,min_f32,max_f32,min_i32,max_i32,roll_die};
-use crate::armory::{Character,Weapon,WeaponType};
+use crate::armory::{Character,Enchant,HitProcc,Weapon,WeaponType};
 use crate::stats::CurrentStats;
 
 
@@ -40,13 +40,17 @@ impl Simulator {
 
     pub fn apply_input_arguments(&mut self, args: &Args) {
         self.timekeep.dt = args.dt;
-        self.timekeep.timers.time_left = args.fight_length;
+        self.timekeep.fight_length = args.fight_length;
         self.fight_length = args.fight_length;
         self.stats.set_fight_length(args.fight_length);
         self.verb = args.verb;
         self.timekeep.verb = args.verb;
         self.mh.enemy_lvl = args.enemy_lvl;
         self.oh.enemy_lvl = args.enemy_lvl;
+    }
+
+    pub fn get_stats(&self) -> CurrentStats {
+        return self.stats.copy();
     }
     
     fn set_glancing_reduction(&mut self, character: &Character) {
@@ -271,6 +275,7 @@ impl Simulator {
         else { panic!("Can only eviscerate with 1-5 combo points."); }
 
         if hit == Hit::Hit || hit == Hit::Crit { 
+            self.trigger_hit_procc_mh();
             self.clear_combo_points_and_roll_for_finisher_procs();
 
             dmg *= self.modifiers.hit.eviscerate;
@@ -325,6 +330,31 @@ impl Simulator {
         self.combo_points = min_i32(5, self.combo_points + 1);
     }
 
+    fn roll_for_procc(&mut self, procc: HitProcc) {
+        let die = roll_die();
+        match procc {
+            HitProcc::Dmg(_,_,chance) 
+                => if die < chance { self.stats.record_procc(chance); },
+            HitProcc::Strength(_,_,_,chance) 
+                => if die < chance { self.stats.record_procc(chance); },
+            HitProcc::ExtraAttack(_,chance) 
+                => if die < chance { self.stats.record_procc(chance); },
+            HitProcc::None => (),
+        }
+    }
+
+    fn trigger_hit_procc_mh(&mut self) {
+        for i in 0..self.mh.hit_proccs.len() {
+            self.roll_for_procc(self.mh.hit_proccs[i])
+        }
+    }
+
+    fn trigger_hit_procc_oh(&mut self) {
+        for procc in self.oh.hit_proccs {
+            self.roll_for_procc(&procc)
+        }
+    }
+
     fn backstab(&mut self) {
         let hit: Hit = self.mh.hit_table_backstab.roll_for_hit();
         let mut dmg = 0.0;
@@ -332,6 +362,7 @@ impl Simulator {
             self.energy -= (0.2 * self.ability_costs.backstab as f32) as i32;
         }
         if hit == Hit::Hit || hit == Hit::Crit { 
+            self.trigger_hit_procc_mh();
             self.energy -= self.ability_costs.backstab;
             self.add_combo_point();
             dmg = 1.5 * self.mh.mean_dmg + 210.0;
@@ -380,6 +411,7 @@ impl Simulator {
         let hit: Hit = self.mh.hit_table_white.roll_for_hit();
         let mut dmg = 0.0;
         if hit == Hit::Hit || hit == Hit::Crit || hit == Hit::Glancing { 
+            self.trigger_hit_procc_mh();
             dmg = self.mh.mean_dmg;
 
             if hit == Hit::Glancing {
@@ -406,6 +438,7 @@ impl Simulator {
         let hit: Hit = self.oh.hit_table_white.roll_for_hit();
         let mut dmg = 0.0;
         if hit == Hit::Hit || hit == Hit::Crit || hit == Hit::Glancing { 
+            self.trigger_hit_procc_oh();
             dmg = self.oh.mean_dmg;
             dmg *= self.modifiers.hit.oh;
 
@@ -426,11 +459,12 @@ impl Simulator {
     }
 
     pub fn print_stats(&mut self) {
-        self.stats.print_stats();
+        if self.verb > 1 { self.stats.print_stats(); }
     }
 
     pub fn simulate(&mut self) {
         self.stats.clear();
+        self.timekeep.reset_timers();
 
         while self.timekeep.timers.time_left > 0.0 {
             self.perform_apt_yellow_ability();
@@ -526,12 +560,28 @@ impl Timers {
             oh_swing: 0.0
         }
     }
+
+    fn reset_with_fight_length(&mut self, fight_length: f32) {
+        self.adrenaline_rush = 0.0;
+        self.adrenaline_rush_cd = 0.0;
+        self.energy_refill = 0.0;
+        self.blade_flurry = 0.0;
+        self.blade_flurry_cd = 0.0;
+        self.slice_and_dice = 0.0;
+        self.thistle_tea_cd = 0.0;
+        self.time_left = fight_length;
+        self.global_cd = 0.0;
+        self.mh_swing = 0.0;
+        self.oh_swing = 0.0;
+    }
+
 }
 
 
 #[derive(Debug)]
 struct TimeKeeper {
     timers: Timers,
+    fight_length: f32,
     dt: f32,
     mh_swing_interval: f32,
     oh_swing_interval: f32,
@@ -542,6 +592,7 @@ impl TimeKeeper {
     fn new() -> TimeKeeper {
         TimeKeeper {
             timers: Timers::new(),
+            fight_length: 0.0,
             dt: 0.0,
             mh_swing_interval: 0.0,
             oh_swing_interval: 0.0,
@@ -576,6 +627,10 @@ impl TimeKeeper {
     }
 
     fn reset_energy_timer(&mut self) { self.timers.energy_refill = 2.0; }
+
+    fn reset_timers(&mut self) {
+        self.timers.reset_with_fight_length(self.fight_length);
+    }
 
     fn take_time_step(&mut self) {
 
@@ -671,20 +726,52 @@ impl WepSimulator {
     fn is_off_hand(&self) -> bool { 
         if self.weapon_slot == WeaponSlot::Oh { return true; }
         else if self.weapon_slot == WeaponSlot::Mh { return false; }
-        else { panic!("Weapon type not initialized yet."); }
+        else { panic!("Weapon not initialized yet."); }
     }
 
     fn set_mechanics_from_character(&mut self, character: &Character) {
         self.set_wep_dmg(character);
         self.set_hit_tables(character);
+
+        self.set_hit_proccs(character);
+
+        if self.is_off_hand() { 
+            self.apply_enchant(&character.oh_enchant); 
+        }
+        else { self.apply_enchant(&character.mh_enchant); }
+    }
+
+    fn apply_enchant(&mut self, enchant: &Enchant) {
+        self.mean_dmg += enchant.extra_damage;
+    }
+
+    fn set_hit_proccs(&mut self, character: &Character) {
+        if self.is_main_hand() {
+            if character.mh.get_hit_procc() != HitProcc::None {
+                self.hit_proccs.push(character.mh.get_hit_procc());
+            }
+            // if character.mh_enchant.get_hit_procc() != HitProcc::None {
+                // self.hit_proccs.push(character.mh_enchant.get_hit_procc());
+            // }
+        } else {
+            if character.oh.get_hit_procc() != HitProcc::None {
+                self.hit_proccs.push(character.oh.get_hit_procc());
+            }
+            // if character.oh_enchant.get_hit_procc() != HitProcc::None {
+                // self.hit_proccs.push(character.oh_enchant.get_hit_procc());
+            // }
+        }
+
     }
 
     fn set_wep_dmg(&mut self, character: &Character) {
 
         if self.is_off_hand() {
             self.mean_dmg = character.oh.get_mean_dmg();
+            self.mean_dmg += character.oh_enchant.extra_damage;
         } else {
             self.mean_dmg = character.mh.get_mean_dmg();
+            self.mean_dmg += character.mh_enchant.extra_damage;
         }
         self.mean_dmg += self.normalized_speed 
                        * character.sec_stats.attack_power as f32
@@ -956,41 +1043,6 @@ impl WhiteHitTable {
         println!("Hit chance:\t\t{:.1}%", 
                  100.0 * (1.0 - self.crit_value));
     }
-}
-
-#[derive(Debug)]
-enum HitProcc {
-    Dmg(DmgProcc), // dmg caused todo: how to deal with dmg reductions? (armor,
-                    // resistance)
-    Dot(DotProcc),
-    Strength(StrProcc),
-    ExtraAttackProcc(ExtraAttackProcc),
-    None,
-}
-
-#[derive(Debug)]
-struct DmgProcc {
-    procc_chance: f32
-}
-
-#[derive(Debug)]
-struct DotProcc {
-    procc_chance: f32,
-    time_between_ticks: f32,
-    ticks: f32,
-    dmg: f32
-}
-
-#[derive(Debug)]
-struct StrProcc {
-    procc_chance: f32,
-    duration: f32,
-    strength: i32
-}
-
-#[derive(Debug)]
-struct ExtraAttackProcc {
-    procc_chance: f32
 }
 
 #[derive(Debug)]

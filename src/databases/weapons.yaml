@@ -21,6 +21,10 @@ distracting_dagger:
   min_dmg: 42.0
   max_dmg: 64.0
   mean_dmg: 0.0
+  hit_procc: 
+    Dmg:
+      dmg: 95.0
+      chance: 0.04
 gutgore_ripper:
   name: gutgore_ripper
   weapon_type: Dagger
@@ -43,3 +47,4 @@ gutgore_ripper:
   min_dmg: 63.0
   max_dmg: 119.0
   mean_dmg: 0.0
+  hit_procc: None

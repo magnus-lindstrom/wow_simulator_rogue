@@ -1,5 +1,5 @@
-- add wep enchants to character, not to weapons. Make sure that the
-  stats are transferred to character as well.
+- make roll_for_proccs work
+- add hit_proccs from armor
 - poisons (maybe as enchants?)
 - extra attacks
 - enchants

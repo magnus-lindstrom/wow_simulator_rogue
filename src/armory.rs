@@ -150,17 +150,25 @@ pub enum WeaponType {
     None,
 }
 
+#[derive(Debug,Clone,Serialize,Deserialize,PartialEq)]
+pub enum HitProcc {
+    Dmg(String, f32, f32), // name, damage, procc chance
+    Strength(String, i32, f32, f32), // name, strength, duration, procc chance
+    ExtraAttack(String, f32), // name, procc chance
+    None,
+}
+
 #[derive(Debug,Serialize,Deserialize)]
 pub struct Weapon {
     name: String,
     weapon_type: WeaponType,
     prim_stats: PrimStats,
     sec_stats: SecStats,
-    enchant: Enchant,
     swing_interval: f32,
     min_dmg: f32,
     max_dmg: f32,
-    mean_dmg: f32
+    mean_dmg: f32,
+    hit_procc: HitProcc
 }
 
 impl Weapon {
@@ -170,11 +178,11 @@ impl Weapon {
             weapon_type: WeaponType::None,
             prim_stats: PrimStats::new_from_race(Race::None),
             sec_stats: SecStats::new_from_race(Race::None),
-            enchant: Enchant::new(),
             swing_interval: 0.0,
             min_dmg: 0.0,
             max_dmg: 0.0,
-            mean_dmg: 0.0
+            mean_dmg: 0.0,
+            hit_procc: HitProcc::None
         }
     }
 
@@ -184,11 +192,11 @@ impl Weapon {
             weapon_type: self.weapon_type.clone(),
             prim_stats: self.prim_stats.clone(),
             sec_stats: self.sec_stats.clone(),
-            enchant: self.enchant.copy(),
             swing_interval: self.swing_interval,
             min_dmg: self.min_dmg,
             max_dmg: self.max_dmg,
-            mean_dmg: self.mean_dmg
+            mean_dmg: self.mean_dmg,
+            hit_procc: self.hit_procc.clone()
         }
     }
 
@@ -206,6 +214,10 @@ impl Weapon {
 
     pub fn get_weapon_type(&self) -> WeaponType {
         return self.weapon_type;
+    }
+
+    pub fn get_hit_procc(&self) -> HitProcc {
+        return self.hit_procc.clone();
     }
 }
         
@@ -265,11 +277,11 @@ impl EnchantSpecification {
 }
 
 #[derive(Debug,Serialize,Deserialize)]
-struct Enchant {
+pub struct Enchant {
     name: String,
     prim_stats: PrimStats,
     sec_stats: SecStats,
-    extra_damage: f32
+    pub extra_damage: f32
 }
 
 impl Enchant {
@@ -345,7 +357,9 @@ pub struct Character {
     pub prim_stats: PrimStats,
     pub sec_stats: SecStats,
     buffs: Buffs,
-    armor_enchants: Vec<Enchant>,
+    pub armor_enchants: Vec<Enchant>,
+    pub mh_enchant: Enchant,
+    pub oh_enchant: Enchant,
     pub mh: Weapon,
     pub oh: Weapon,
     armor: Vec<Armor>,
@@ -357,7 +371,6 @@ impl Character {
         let mut character = Character::new(Race::Human);
 
         let item_spec = ItemSpecification::get_item_specification(args);
-        println!("hej");
         character.set_armor_and_weapons(item_spec);
         let enchant_spec = EnchantSpecification::get_enchant_spec(args);
         character.set_enchants(enchant_spec);
@@ -366,7 +379,7 @@ impl Character {
         character.set_talents(args);
         character.apply_stats_from_armor_and_weapons();
         character.apply_stats_from_buffs();
-        // character.apply_stats_from_enchants();
+        character.apply_stats_from_enchants();
         character.convert_primary_stats_to_secondary();
         return character;
     }
@@ -379,6 +392,8 @@ impl Character {
             sec_stats: SecStats::new_from_race(race),
             buffs: Buffs::new(),
             armor_enchants: Vec::new(),
+            mh_enchant: Enchant::new(),
+            oh_enchant: Enchant::new(),
             mh: Weapon::new(),
             oh: Weapon::new(),
             armor: Vec::new(),
@@ -420,14 +435,14 @@ impl Character {
             .get(&enchant_spec.mh_enchant_name.to_string())
             .expect(&format!("Could not find {} in enchants file.", 
                             &enchant_spec.mh_enchant_name.to_string()));
-        self.mh.enchant = mh_enchant.copy();
+        self.mh_enchant = mh_enchant.copy();
 
         // oh enchant
         let oh_enchant = enchant_collection
             .get(&enchant_spec.oh_enchant_name.to_string())
             .expect(&format!("Could not find {} in enchants file.", 
                             &enchant_spec.oh_enchant_name.to_string()));
-        self.oh.enchant = oh_enchant.copy();
+        self.oh_enchant = oh_enchant.copy();
 
     }
 
@@ -501,6 +516,18 @@ impl Character {
                             &item_spec.oh_name.to_string()));
         self.oh = oh.copy();
         self.oh.set_mean_dmg();
+    }
+
+    fn apply_stats_from_enchants(&mut self) {
+        for i in 0..self.armor_enchants.len() {
+            self.apply_prim_stats(self.armor_enchants[i].prim_stats);
+            self.apply_sec_stats(self.armor_enchants[i].sec_stats);
+        }
+        self.apply_prim_stats(self.mh_enchant.prim_stats);
+        self.apply_prim_stats(self.oh_enchant.prim_stats);
+
+        self.apply_sec_stats(self.mh_enchant.sec_stats);
+        self.apply_sec_stats(self.oh_enchant.sec_stats);
     }
 
     fn apply_stats_from_armor_and_weapons(&mut self) {

@@ -1,5 +1,5 @@
 ---
-armor_enchants:
+armor_enchant_names:
   # head
   - arcanum_of_rapidity
   # chest
@@ -11,7 +11,7 @@ armor_enchants:
   # legs
   - arcanum_of_rapidity
   # feet
-mh_enchant: superior_striking
-oh_enchant: greater_striking
+mh_enchant_name: superior_striking
+oh_enchant_name: greater_striking
 
 

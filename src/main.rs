@@ -22,8 +22,10 @@ extern crate serde_yaml;
 #[macro_use]
 extern crate enum_display_derive;
 
-use armory::{Character};
-use simulator::{Simulator};
+use armory::Character;
+use simulator::Simulator;
+use stats::OverallStats;
+use utils::deb;
 
 
 fn main() {
@@ -34,10 +36,14 @@ fn main() {
     simulator.apply_input_arguments(&args);
     simulator.configure_with_character(&character);
 
+    let mut stats = OverallStats::new_from_args(&args);
+
     for i_iter in 0..args.iterations {
         simulator.simulate();
         simulator.print_stats();
+        stats.import_current_data(simulator.get_stats());
     }
+    stats.print();
 
     // println!("args: {:?}\n", args);
     // println!("character: {:?}\n", character);
