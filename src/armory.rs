@@ -288,16 +288,6 @@ pub struct Enchant {
 }
 
 impl Enchant {
-    pub fn new() -> Enchant {
-        Enchant {
-            name: "".to_string(),
-            prim_stats: PrimStats::new_from_race(Race::None),
-            sec_stats: SecStats::new_from_race(Race::None),
-            hit_procc: HitProcc::None,
-            extra_damage: 0.0
-        }
-    }
-
     fn copy(&self) -> Enchant {
         Enchant {
             name: self.name.to_string(),
@@ -357,30 +347,55 @@ impl Talents {
 }
 
 #[derive(Clone,Debug,Serialize,Deserialize)]
-enum CooldownEffect {
-    EnergyRegenMultiplier(f32, f32), // multiplier, duration
+pub enum CooldownEffect {
+    EnergyRegenMultiplier(i32, f32), // multiplier, duration
     AttackSpeedMultiplier(f32, f32), // multiplier, duration
     InstantEnergyRefill(i32) // energy
 }
 
 #[derive(Clone,Debug,Serialize,Deserialize)]
 pub struct Cooldown {
-    name: String,
-    effect: CooldownEffect,
-    cd: f32,
-    use_below_energy: i32
+    pub name: String,
+    pub effect: CooldownEffect,
+    pub time_left: f32,
+    pub cd: f32,
+    pub cd_left: f32,
+    pub cost: i32,
+    pub use_below_energy: i32
 }
 
 impl Cooldown {
-    pub fn GetCommonCooldowns() -> Vec<Cooldown> {
+    pub fn get_common_cooldowns() -> Vec<Cooldown> {
         let mut cd_vector = Vec::new();
         cd_vector.push(
             Cooldown {
                 name: "Adrenaline rush".to_string(),
-                effect: CooldownEffect::EnergyRegenMultiplier(2.0, 15.0),
+                effect: CooldownEffect::EnergyRegenMultiplier(2, 15.0),
+                time_left: 0.0,
                 cd: 5.0 * 60.0,
-                active: false,
+                cd_left: 0.0,
+                cost: 0,
                 use_below_energy: 50
+            });
+        cd_vector.push(
+            Cooldown {
+                name: "Blade flurry".to_string(),
+                effect: CooldownEffect::AttackSpeedMultiplier(1.2, 15.0),
+                time_left: 0.0,
+                cd: 2.0 * 60.0,
+                cd_left: 0.0,
+                cost: 20,
+                use_below_energy: 100
+            });
+        cd_vector.push(
+            Cooldown {
+                name: "Thistle tea".to_string(),
+                effect: CooldownEffect::InstantEnergyRefill(100),
+                time_left: 0.0,
+                cd: 5.0 * 60.0,
+                cd_left: 0.0,
+                cost: 0,
+                use_below_energy: 10
             });
         return cd_vector;
     }
@@ -422,7 +437,7 @@ impl Character {
     }
 
     fn set_common_cooldowns(&mut self) {
-        self.cooldowns = Cooldown::GetCommonCooldowns();
+        self.cooldowns = Cooldown::get_common_cooldowns();
     }
 
     fn new(race: Race) -> Character {
@@ -608,10 +623,6 @@ impl Character {
         self.sec_stats.hit += sec_stats.hit;
         self.sec_stats.haste += sec_stats.haste;
         self.sec_stats.attack_power += sec_stats.attack_power;
-    }
-
-    pub fn get_sec_stats(&self) -> SecStats {
-        return self.sec_stats.clone();
     }
 }
 

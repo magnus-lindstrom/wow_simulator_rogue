@@ -38,7 +38,7 @@ fn main() {
 
     let mut stats = OverallStats::new_from_args(&args);
 
-    for i_iter in 0..args.iterations {
+    for _iter in 0..args.iterations {
         simulator.simulate();
         simulator.print_stats();
         stats.import_current_data(simulator.get_stats());

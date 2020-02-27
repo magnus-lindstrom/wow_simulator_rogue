@@ -169,7 +169,7 @@ impl CurrentStats {
     pub fn declare_proccs(&mut self, hit_proccs: &Vec<HitProcc>) {
         for i in 0..hit_proccs.len() {
             let name = match &hit_proccs[i] {
-                HitProcc::Dmg(name,damage,_,_) => name.clone(),
+                HitProcc::Dmg(name,_,_,_) => name.clone(),
                 HitProcc::Strength(name,_,_,_) => name.clone(),
                 HitProcc::ExtraAttack(name,_) => name.clone(),
                 HitProcc::None => panic!("Simulation does not run with \
@@ -275,7 +275,7 @@ impl CurrentStats {
 
     fn clear_proccs(&mut self) {
         let mut new_map: HashMap<String,DamageAndCount> = HashMap::new();
-        for (name, dmg_and_count) in &self.proccs {
+        for (name, _) in &self.proccs {
             new_map.entry(name.to_string()).or_insert(DamageAndCount::new());
         }
         self.proccs = new_map;

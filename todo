@@ -1,5 +1,4 @@
-- make attack speed increase with snd
-- make energy regen increase with adrenaline rush
+- verify stats being correct with ingame
 - poisons (as HitProccs?), sharpening stones <-- should all be enchants?
 - add hit_proccs from armor
 - extra attacks
