@@ -14,7 +14,8 @@ pub struct OverallStats {
     sinister_strike_ratio: Vec<f32>,
     eviscerate_ratio: Vec<f32>,
     mh_white_ratio: Vec<f32>,
-    oh_white_ratio: Vec<f32>
+    oh_white_ratio: Vec<f32>,
+    procc_dps_ratios: HashMap<String,Vec<f32>>
 }
 
 impl OverallStats {
@@ -27,7 +28,8 @@ impl OverallStats {
             sinister_strike_ratio: Vec::new(),
             eviscerate_ratio: Vec::new(),
             mh_white_ratio: Vec::new(),
-            oh_white_ratio: Vec::new()
+            oh_white_ratio: Vec::new(),
+            procc_dps_ratios: HashMap::new()
         }
     }
 
@@ -38,6 +40,12 @@ impl OverallStats {
         self.eviscerate_ratio.push(stats.eviscerate.dmg / stats.dmg);
         self.mh_white_ratio.push(stats.mh_white.dmg / stats.dmg);
         self.oh_white_ratio.push(stats.oh_white.dmg / stats.dmg);
+
+        for (name, dmg_and_count) in &stats.proccs {
+            let cur_vec = self.procc_dps_ratios.entry(name.to_string())
+                .or_insert(Vec::new());
+            cur_vec.push(dmg_and_count.dmg / stats.dmg);
+        }
     }
 
     pub fn print(&self) {
@@ -102,6 +110,20 @@ impl OverallStats {
                      100.0 * mean_eviscerate_ratio, 
                      100.0 * mean_eviscerate_ratio_std);
         }
+
+        for (name, dps_ratios) in &self.procc_dps_ratios {
+
+            let mean_procc_dps_ratio = mean(&dps_ratios);
+            let procc_dps_within_std = std_dev(dps_ratios);
+            let mean_procc_dps_ratio_std = 1.96 * procc_dps_within_std
+                / (self.n_runs as f32).sqrt();
+
+            if mean_procc_dps_ratio > 0.0 {
+                println!("{}:\t{:>8.2}% ±{:.2}%", name,
+                         100.0 * mean_procc_dps_ratio, 
+                         100.0 * mean_procc_dps_ratio_std);
+            }
+        }
     }
 }
 
@@ -144,6 +166,20 @@ impl CurrentStats {
         }
     }
 
+    pub fn declare_proccs(&mut self, hit_proccs: &Vec<HitProcc>) {
+        for i in 0..hit_proccs.len() {
+            let name = match &hit_proccs[i] {
+                HitProcc::Dmg(name,damage,_,_) => name.clone(),
+                HitProcc::Strength(name,_,_,_) => name.clone(),
+                HitProcc::ExtraAttack(name,_) => name.clone(),
+                HitProcc::None => panic!("Simulation does not run with \
+                'None' proccs"),
+            };
+
+            self.proccs.insert(name.to_string(), DamageAndCount::new());
+        }
+    }
+
     pub fn set_fight_length(&mut self, fight_length: f32) {
         self.fight_length = fight_length;
     }
@@ -175,6 +211,19 @@ impl CurrentStats {
     }
 
     pub fn record_procc(&mut self, procc: &HitProcc) {
+        match procc {
+            HitProcc::Dmg(name,damage,_,_) => {
+                let cur_val = self.proccs.entry(name.to_string())
+                    .or_insert(DamageAndCount::new());
+                cur_val.count += 1;
+                cur_val.dmg += damage;
+                self.dmg += damage
+                },
+            HitProcc::Strength(_,_,_,_) => (),
+
+            HitProcc::ExtraAttack(_,_) => (),
+            HitProcc::None => panic!("HitProcc::None cannot procc!"),
+        }
     }
 
     fn print_dps(&self) {
@@ -192,9 +241,16 @@ impl CurrentStats {
         }
         let mh_white_ratio = 100.0 * self.mh_white.dmg 
             / (self.mh_white.dmg + self.oh_white.dmg);
-        println!("White hits:\t\t{:.2}%\t(mh/oh: {:.0}/{:.0})\n", 
+        println!("White hits:\t\t{:.2}%\t(mh/oh: {:.0}/{:.0})", 
                  100.0 * (self.mh_white.dmg + self.oh_white.dmg) / self.dmg,
                  mh_white_ratio, 100.0 - mh_white_ratio);
+        for (name, dmg_and_count) in &self.proccs {
+            if dmg_and_count.dmg > 0.0 {
+                println!("{}:\t\t{:.2}%", name,
+                         100.0 * dmg_and_count.dmg / self.dmg);
+            }
+        }
+        println!("\n");
     }
 
     pub fn print_stats(&mut self) {
@@ -214,6 +270,15 @@ impl CurrentStats {
         self.eviscerate.clear();
         self.mh_white.clear();
         self.oh_white.clear();
+        self.clear_proccs();
+    }
+
+    fn clear_proccs(&mut self) {
+        let mut new_map: HashMap<String,DamageAndCount> = HashMap::new();
+        for (name, dmg_and_count) in &self.proccs {
+            new_map.entry(name.to_string()).or_insert(DamageAndCount::new());
+        }
+        self.proccs = new_map;
     }
 }
 
@@ -296,4 +361,13 @@ impl OneAttackStats {
 struct DamageAndCount {
     dmg: f32,
     count: i32
+}
+
+impl DamageAndCount {
+    pub fn new() -> DamageAndCount {
+        DamageAndCount {
+            dmg: 0.0,
+            count: 0
+        }
+    }
 }

@@ -152,7 +152,7 @@ pub enum WeaponType {
 
 #[derive(Debug,Clone,Serialize,Deserialize,PartialEq)]
 pub enum HitProcc {
-    Dmg(String, f32, f32), // name, damage, procc chance
+    Dmg(String, f32, f32, f32), // name, damage, resist chance, procc chance
     Strength(String, i32, f32, f32), // name, strength, duration, procc chance
     ExtraAttack(String, f32), // name, procc chance
     None,
@@ -226,7 +226,8 @@ pub struct Armor {
     // todo: add item slots and sets
     name: String,
     prim_stats: PrimStats,
-    sec_stats: SecStats
+    sec_stats: SecStats,
+    pub hit_procc: HitProcc
 }
 
 impl Armor {
@@ -234,7 +235,8 @@ impl Armor {
         Armor {
             name: self.name.to_string(),
             prim_stats: self.prim_stats.clone(),
-            sec_stats: self.sec_stats.clone()
+            sec_stats: self.sec_stats.clone(),
+            hit_procc: self.hit_procc.clone()
         }
     }
 }
@@ -261,8 +263,8 @@ impl ItemSpecification {
 #[derive(Debug,Serialize,Deserialize)]
 struct EnchantSpecification {
     armor_enchant_names: Vec<String>,
-    mh_enchant_name: String,
-    oh_enchant_name: String
+    mh_enchant_names: Vec<String>,
+    oh_enchant_names: Vec<String>
 }
 
 impl EnchantSpecification {
@@ -281,6 +283,7 @@ pub struct Enchant {
     name: String,
     prim_stats: PrimStats,
     sec_stats: SecStats,
+    pub hit_procc: HitProcc,
     pub extra_damage: f32
 }
 
@@ -290,6 +293,7 @@ impl Enchant {
             name: "".to_string(),
             prim_stats: PrimStats::new_from_race(Race::None),
             sec_stats: SecStats::new_from_race(Race::None),
+            hit_procc: HitProcc::None,
             extra_damage: 0.0
         }
     }
@@ -299,6 +303,7 @@ impl Enchant {
             name: self.name.to_string(),
             prim_stats: self.prim_stats.clone(),
             sec_stats: self.sec_stats.clone(),
+            hit_procc: self.hit_procc.clone(),
             extra_damage: self.extra_damage
         }
     }
@@ -351,6 +356,36 @@ impl Talents {
     }
 }
 
+#[derive(Clone,Debug,Serialize,Deserialize)]
+enum CooldownEffect {
+    EnergyRegenMultiplier(f32, f32), // multiplier, duration
+    AttackSpeedMultiplier(f32, f32), // multiplier, duration
+    InstantEnergyRefill(i32) // energy
+}
+
+#[derive(Clone,Debug,Serialize,Deserialize)]
+pub struct Cooldown {
+    name: String,
+    effect: CooldownEffect,
+    cd: f32,
+    use_below_energy: i32
+}
+
+impl Cooldown {
+    pub fn GetCommonCooldowns() -> Vec<Cooldown> {
+        let mut cd_vector = Vec::new();
+        cd_vector.push(
+            Cooldown {
+                name: "Adrenaline rush".to_string(),
+                effect: CooldownEffect::EnergyRegenMultiplier(2.0, 15.0),
+                cd: 5.0 * 60.0,
+                active: false,
+                use_below_energy: 50
+            });
+        return cd_vector;
+    }
+}
+
 #[derive(Debug,Serialize,Deserialize)]
 pub struct Character {
     race: Race,
@@ -358,12 +393,13 @@ pub struct Character {
     pub sec_stats: SecStats,
     buffs: Buffs,
     pub armor_enchants: Vec<Enchant>,
-    pub mh_enchant: Enchant,
-    pub oh_enchant: Enchant,
+    pub mh_enchants: Vec<Enchant>, // both poisons and actual enchants
+    pub oh_enchants: Vec<Enchant>, // both poisons and actual enchants
     pub mh: Weapon,
     pub oh: Weapon,
-    armor: Vec<Armor>,
-    pub talents: Talents
+    pub armor: Vec<Armor>,
+    pub talents: Talents,
+    pub cooldowns: Vec<Cooldown>
 }
 
 impl Character {
@@ -381,9 +417,13 @@ impl Character {
         character.apply_stats_from_buffs();
         character.apply_stats_from_enchants();
         character.convert_primary_stats_to_secondary();
+        character.set_common_cooldowns();
         return character;
     }
 
+    fn set_common_cooldowns(&mut self) {
+        self.cooldowns = Cooldown::GetCommonCooldowns();
+    }
 
     fn new(race: Race) -> Character {
         Character {
@@ -392,12 +432,13 @@ impl Character {
             sec_stats: SecStats::new_from_race(race),
             buffs: Buffs::new(),
             armor_enchants: Vec::new(),
-            mh_enchant: Enchant::new(),
-            oh_enchant: Enchant::new(),
+            mh_enchants: Vec::new(),
+            oh_enchants: Vec::new(),
             mh: Weapon::new(),
             oh: Weapon::new(),
             armor: Vec::new(),
-            talents: Talents::new()
+            talents: Talents::new(),
+            cooldowns: Vec::new()
         }
     }
 
@@ -424,25 +465,30 @@ impl Character {
 
         // armor enchants
         for enchant_name in &enchant_spec.armor_enchant_names {
-            let enchant = enchant_collection.get(&enchant_name.to_string())
+            let enchant = enchant_collection
+                .get(&enchant_name.to_string())
                 .expect(&format!("Could not find {} in enchants file.", 
                                  enchant_name));
             self.armor_enchants.push(enchant.copy());
         }
 
-        // mh enchant
-        let mh_enchant = enchant_collection
-            .get(&enchant_spec.mh_enchant_name.to_string())
-            .expect(&format!("Could not find {} in enchants file.", 
-                            &enchant_spec.mh_enchant_name.to_string()));
-        self.mh_enchant = mh_enchant.copy();
+        // mh enchants
+        for enchant_name in &enchant_spec.mh_enchant_names {
+            let enchant = enchant_collection
+                .get(&enchant_name.to_string())
+                .expect(&format!("Could not find {} in enchants file.", 
+                                enchant_name));
+            self.mh_enchants.push(enchant.copy());
+        }
 
-        // oh enchant
-        let oh_enchant = enchant_collection
-            .get(&enchant_spec.oh_enchant_name.to_string())
-            .expect(&format!("Could not find {} in enchants file.", 
-                            &enchant_spec.oh_enchant_name.to_string()));
-        self.oh_enchant = oh_enchant.copy();
+        // oh enchants
+        for enchant_name in &enchant_spec.oh_enchant_names {
+            let enchant = enchant_collection
+                .get(&enchant_name.to_string())
+                .expect(&format!("Could not find {} in enchants file.", 
+                                enchant_name));
+            self.oh_enchants.push(enchant.copy());
+        }
 
     }
 
@@ -523,11 +569,14 @@ impl Character {
             self.apply_prim_stats(self.armor_enchants[i].prim_stats);
             self.apply_sec_stats(self.armor_enchants[i].sec_stats);
         }
-        self.apply_prim_stats(self.mh_enchant.prim_stats);
-        self.apply_prim_stats(self.oh_enchant.prim_stats);
-
-        self.apply_sec_stats(self.mh_enchant.sec_stats);
-        self.apply_sec_stats(self.oh_enchant.sec_stats);
+        for i in 0..self.mh_enchants.len() {
+            self.apply_prim_stats(self.mh_enchants[i].prim_stats);
+            self.apply_sec_stats(self.mh_enchants[i].sec_stats);
+        }
+        for i in 0..self.oh_enchants.len() {
+            self.apply_prim_stats(self.oh_enchants[i].prim_stats);
+            self.apply_sec_stats(self.oh_enchants[i].sec_stats);
+        }
     }
 
     fn apply_stats_from_armor_and_weapons(&mut self) {

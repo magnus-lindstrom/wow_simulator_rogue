@@ -11,7 +11,10 @@ armor_enchant_names:
   # legs
   - arcanum_of_rapidity
   # feet
-mh_enchant_name: superior_striking
-oh_enchant_name: greater_striking
+
+mh_enchant_names: 
+  - superior_striking
+oh_enchant_names: 
+  - greater_striking
 
 

@@ -1,6 +1,6 @@
 use std::fmt::Display;
 use crate::utils::{Args,deb,min_f32,max_f32,min_i32,max_i32,roll_die};
-use crate::armory::{Character,Enchant,HitProcc,Weapon,WeaponType};
+use crate::armory::{Character,Cooldown,Enchant,HitProcc,Weapon,WeaponType};
 use crate::stats::CurrentStats;
 
 
@@ -13,6 +13,7 @@ pub struct Simulator {
     rotation: Rotation,
     ability_costs: AbilityCosts,
     modifiers: Modifiers,
+    cooldowns: Vec<Cooldown>,
     stats: CurrentStats,
     extra_attacks: i32,
     energy: i32,
@@ -30,6 +31,7 @@ impl Simulator {
             rotation: Rotation::None,
             ability_costs: AbilityCosts::new(),
             modifiers: Modifiers::new(),
+            cooldowns: Vec::new(),
             stats: CurrentStats::new(),
             extra_attacks: 0,
             energy: 0,
@@ -135,11 +137,20 @@ impl Simulator {
         self.oh.set_off_hand();
         self.oh.set_mechanics_from_character(character);
 
+        self.declare_proccs();
+        self.set_cooldowns(character);
         self.set_glancing_reduction(character);
-
         self.incorporate_talents(character);
-
         self.set_rotation();
+    }
+
+    fn set_cooldowns(&mut self, character: &Character) {
+        self.cooldowns = character.cooldowns.clone();
+    }
+
+    fn declare_proccs(&mut self) {
+        self.stats.declare_proccs(&self.mh.hit_proccs);
+        self.stats.declare_proccs(&self.oh.hit_proccs);
     }
 
     fn incorporate_talents(&mut self, character: &Character) {
@@ -330,16 +341,56 @@ impl Simulator {
         self.combo_points = min_i32(5, self.combo_points + 1);
     }
 
+    fn print_procc(&mut self, procc: &HitProcc) {
+        let sub_msg = match procc {
+            HitProcc::Dmg(name,dmg,_,_) => 
+                format!("{} procc for {:.0} dmg!", name, dmg),
+            HitProcc::Strength(name,_,_,_) =>
+                format!("Strength procc from {}!", name),
+            HitProcc::ExtraAttack(name,_) =>
+                format!("Extra swing procc from {}!", name),
+            HitProcc::None => panic!("'None' proccs not allowed in simulation.")
+        };
+        let msg = format!("{:.1}: {}", 
+                          self.timekeep.timers.time_left, sub_msg);
+        println!("{}", msg);
+    }
+
+    fn extra_attack_procc(&mut self) {
+        self.timekeep.reset_mh_swing_timer();
+        self.add_extra_attack();
+    }
+
+    fn add_extra_attack(&mut self) {
+        self.extra_attacks += 1;
+    }
+
     fn roll_for_procc(&mut self, procc: &HitProcc) {
         let die = roll_die();
-        match procc {
-            HitProcc::Dmg(_,_,chance) 
-                => if die < *chance { self.stats.record_procc(procc); },
-            HitProcc::Strength(_,_,_,chance) 
-                => if die < *chance { self.stats.record_procc(procc); },
-            HitProcc::ExtraAttack(_,chance) 
-                => if die < *chance { self.stats.record_procc(procc); },
-            HitProcc::None => (),
+        let does_procc = match procc {
+            HitProcc::Dmg(_,_,resist_chance,procc_chance) => {
+                if die < *procc_chance { 
+                    let die_resist = roll_die();
+                    if die_resist > *resist_chance {true }
+                    else { false }
+                } else { false }
+            },
+            HitProcc::Strength(_,_,_,procc_chance) => {
+                if die < *procc_chance { true }
+                else { false }
+            },
+            HitProcc::ExtraAttack(_,procc_chance) => {
+                if die < *procc_chance { 
+                    self.extra_attack_procc();
+                    true 
+                }
+                else { false }
+            },
+            HitProcc::None => panic!("'None' proccs not allowed in simulation.")
+        };
+        if does_procc {
+            if self.verb > 0 { self.print_procc(procc); }
+            self.stats.record_procc(procc); 
         }
     }
 
@@ -464,11 +515,24 @@ impl Simulator {
         if self.verb > 1 { self.stats.print_stats(); }
     }
 
+    fn use_ready_cooldowns(&mut self) {
+        for cooldown in self.timekeep.cooldowns {
+            if self.energy <= cooldown.use_below_energy {
+                match cooldown.effect {
+                    EnergyRegenMultiplier(mult, duration) => {
+                        self.modifiers.general.energy_regen_increase *= 2;
+                        cooldown.cd = dur;
+                    },
+                    AttackSpeedMultiplier(mult, duration) => {
+
+    }
+
     pub fn simulate(&mut self) {
         self.stats.clear();
         self.timekeep.reset_timers();
 
         while self.timekeep.timers.time_left > 0.0 {
+            self.use_ready_cooldowns();
             self.perform_apt_yellow_ability();
             self.check_oh_swing_timer_and_strike();
             self.check_mh_swing_timer_and_strike();
@@ -476,7 +540,10 @@ impl Simulator {
             self.timekeep.take_time_step();
             self.check_energy_timer_and_refill_energy();
         }
+        self.print_at_end_of_simulation();
+    }
 
+    fn print_at_end_of_simulation(&mut self) {
         if self.verb > 2 {
             println!("\nSimulator object at the end of simulation:\n{:?}",
                      self);
@@ -533,13 +600,8 @@ impl AbilityCosts {
 
 #[derive(Debug)]
 struct Timers {
-    adrenaline_rush: f32,
-    adrenaline_rush_cd: f32,
     energy_refill: f32,
-    blade_flurry: f32,
-    blade_flurry_cd: f32,
     slice_and_dice: f32,
-    thistle_tea_cd: f32,
     time_left: f32,
     global_cd: f32,
     mh_swing: f32,
@@ -549,13 +611,8 @@ struct Timers {
 impl Timers {
     fn new() -> Timers {
         Timers {
-            adrenaline_rush: 0.0,
-            adrenaline_rush_cd: 0.0,
             energy_refill: 0.0,
-            blade_flurry: 0.0,
-            blade_flurry_cd: 0.0,
             slice_and_dice: 0.0,
-            thistle_tea_cd: 0.0,
             time_left: 0.0,
             global_cd: 0.0,
             mh_swing: 0.0,
@@ -564,13 +621,8 @@ impl Timers {
     }
 
     fn reset_with_fight_length(&mut self, fight_length: f32) {
-        self.adrenaline_rush = 0.0;
-        self.adrenaline_rush_cd = 0.0;
         self.energy_refill = 0.0;
-        self.blade_flurry = 0.0;
-        self.blade_flurry_cd = 0.0;
         self.slice_and_dice = 0.0;
-        self.thistle_tea_cd = 0.0;
         self.time_left = fight_length;
         self.global_cd = 0.0;
         self.mh_swing = 0.0;
@@ -583,6 +635,7 @@ impl Timers {
 #[derive(Debug)]
 struct TimeKeeper {
     timers: Timers,
+    cooldowns: Vec<Cooldown>,
     fight_length: f32,
     dt: f32,
     mh_swing_interval: f32,
@@ -594,6 +647,7 @@ impl TimeKeeper {
     fn new() -> TimeKeeper {
         TimeKeeper {
             timers: Timers::new(),
+            cooldowns: Vec::new(),
             fight_length: 0.0,
             dt: 0.0,
             mh_swing_interval: 0.0,
@@ -636,26 +690,11 @@ impl TimeKeeper {
 
     fn take_time_step(&mut self) {
 
-        if self.timers.adrenaline_rush > 0.0 { 
-            self.timers.adrenaline_rush -= self.dt; 
-        }
-        if self.timers.adrenaline_rush_cd > 0.0 { 
-            self.timers.adrenaline_rush_cd -= self.dt; 
-        }
         if self.timers.energy_refill > 0.0 { 
             self.timers.energy_refill -= self.dt; 
         }
-        if self.timers.blade_flurry > 0.0 { 
-            self.timers.blade_flurry -= self.dt; 
-        }
-        if self.timers.blade_flurry_cd > 0.0 { 
-            self.timers.blade_flurry_cd -= self.dt; 
-        }
         if self.timers.slice_and_dice > 0.0 { 
             self.timers.slice_and_dice -= self.dt; 
-        }
-        if self.timers.thistle_tea_cd > 0.0 { 
-            self.timers.thistle_tea_cd -= self.dt; 
         }
         if self.timers.time_left > 0.0 { 
             self.timers.time_left -= self.dt; 
@@ -668,6 +707,10 @@ impl TimeKeeper {
         }
         if self.timers.oh_swing > 0.0 { 
             self.timers.oh_swing -= self.dt; 
+        }
+
+        for cooldown in self.cooldowns {
+            if cooldown.cd > 0.0 { cooldown.cd -= self.dt; }
         }
     }
 }
@@ -735,45 +778,61 @@ impl WepSimulator {
         self.set_wep_dmg(character);
         self.set_hit_tables(character);
 
-        self.set_hit_proccs(character);
-
-        if self.is_off_hand() { 
-            self.apply_enchant(&character.oh_enchant); 
-        }
-        else { self.apply_enchant(&character.mh_enchant); }
+        self.set_hit_proccs(&character);
+        self.apply_enchant_dmg(&character); 
     }
 
-    fn apply_enchant(&mut self, enchant: &Enchant) {
-        self.mean_dmg += enchant.extra_damage;
+    fn apply_enchant_dmg(&mut self, character: &Character) {
+        if self.is_main_hand() {
+            for i in 0..character.mh_enchants.len() {
+                self.mean_dmg += character.mh_enchants[i].extra_damage;
+            }
+        } else if self.is_off_hand() {
+            for i in 0..character.oh_enchants.len() {
+                self.mean_dmg += character.oh_enchants[i].extra_damage;
+            }
+        } else { panic!("Uninitialized weapon"); }
     }
 
     fn set_hit_proccs(&mut self, character: &Character) {
+
+        // armor hit proccs go on both weapons
+        for i in 0..character.armor.len() {
+            if character.armor[i].hit_procc != HitProcc::None {
+                self.hit_proccs.push(character.armor[i].hit_procc.clone());
+            }
+        }
+
+        // weapon enhants only for that weapon
         if self.is_main_hand() {
             if character.mh.get_hit_procc() != HitProcc::None {
                 self.hit_proccs.push(character.mh.get_hit_procc());
             }
-            // if character.mh_enchant.get_hit_procc() != HitProcc::None {
-                // self.hit_proccs.push(character.mh_enchant.get_hit_procc());
-            // }
+            for i in 0..character.mh_enchants.len() {
+                if character.mh_enchants[i].hit_procc != HitProcc::None {
+                    self.hit_proccs.push(
+                        character.mh_enchants[i].hit_procc.clone());
+                }
+            }
         } else {
             if character.oh.get_hit_procc() != HitProcc::None {
                 self.hit_proccs.push(character.oh.get_hit_procc());
             }
-            // if character.oh_enchant.get_hit_procc() != HitProcc::None {
-                // self.hit_proccs.push(character.oh_enchant.get_hit_procc());
-            // }
+            for i in 0..character.oh_enchants.len() {
+                if character.oh_enchants[i].hit_procc != HitProcc::None {
+                    self.hit_proccs.push(
+                        character.oh_enchants[i].hit_procc.clone());
+                }
+            }
         }
-
     }
 
     fn set_wep_dmg(&mut self, character: &Character) {
 
         if self.is_off_hand() {
             self.mean_dmg = character.oh.get_mean_dmg();
-            self.mean_dmg += character.oh_enchant.extra_damage;
         } else {
             self.mean_dmg = character.mh.get_mean_dmg();
-            self.mean_dmg += character.mh_enchant.extra_damage;
         }
         self.mean_dmg += self.normalized_speed 
                        * character.sec_stats.attack_power as f32
@@ -1069,6 +1128,7 @@ impl Modifiers {
 #[derive(Debug)]
 struct GeneralModifiers {
     slice_and_dice_duration: f32,
+    energy_regen_increase: i32,
     energy_max: i32
 }
 
@@ -1076,6 +1136,7 @@ impl GeneralModifiers {
     fn new() -> GeneralModifiers {
         GeneralModifiers {
             slice_and_dice_duration: 1.0,
+            energy_regen_increase: 1,
             energy_max: 100
         }
     }

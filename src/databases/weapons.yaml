@@ -1,16 +1,14 @@
 # hit procc written like
 #
-# example 1
 # hit_procc: None
 #
-# example 2
 # hit_procc:
 #   Dmg:
 #     - name
 #     - damage
+#     - resist_chance
 #     - procc_chance
 # 
-# example 3
 # hit_procc:
 #   Strength:
 #     - name
@@ -18,7 +16,6 @@
 #     - duration
 #     - procc_chance
 #
-# example 4
 # hit_procc:
 #   ExtraAttack:
 #     - name
@@ -71,6 +68,7 @@ gutgore_ripper:
   mean_dmg: 0.0
   hit_procc:
     Dmg: 
-      - gutgore_ripper
+      - Gutgore ripper
       - 95.0
+      - 0.15
       - 0.04

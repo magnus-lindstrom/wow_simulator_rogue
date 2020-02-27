@@ -120,7 +120,12 @@ pub fn get_arguments() -> Args {
             .long("verbose") 
             .multiple(true)
             .takes_value(false) 
-            .help("Be verbose, print details about fights."))
+            .help("0: print a short summary of dps at the end of all iterations\n\
+            1: prints a combat log with abilities used \n\
+            and strikes made\n\
+            2: prints minor events like energy refill and a detailed summary\n\
+            of all attacks made.\n\
+            3: dump entire simulator object at the end of a run."))
         .get_matches();
 
     let dt = matches.value_of("Step length").unwrap_or("0.01");
