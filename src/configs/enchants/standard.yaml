@@ -2,19 +2,22 @@
 armor_enchant_names:
   # head
   - arcanum_of_rapidity
+  # back
+  - lesser_agility
   # chest
   - greater_stats
   # bracer
   - superior_strength
   # gloves
-  - greater_agility
+  - minor_haste
   # legs
   - arcanum_of_rapidity
   # feet
+  - greater_agility
 
 mh_enchant_names: 
   - superior_striking
+  - instant_poison_vi
 oh_enchant_names: 
   - greater_striking
-
-
+  - instant_poison_vi

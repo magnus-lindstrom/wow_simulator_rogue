@@ -90,6 +90,28 @@ impl PrimStats {
             }
         } else { panic!("Race not implemented"); }
     }
+
+    fn print_stats(&self, talents: &Talents) {
+        let mut dagger_skill = self.dagger_skill;
+        let mut sword_skill = self.sword_skill;
+
+        if talents.weapon_expertise == 1 { 
+            dagger_skill += 3; 
+            sword_skill += 3; 
+        }
+        else if talents.weapon_expertise == 2 { 
+            dagger_skill += 5; 
+            sword_skill += 5; 
+        }
+        let msg = format!("\n*** Primary stats ***\n\
+        Strength: {}\n\
+        Agility: {}\n\
+        Stamina: {}\n\
+        Sword skill: {}\n\
+        Dagger_skill: {}", self.strength, self.agility, self.stamina, 
+        sword_skill, dagger_skill);
+        println!("{}", msg);
+    }
 }
 
 #[derive(Clone,Copy,Debug,Serialize,Deserialize)]
@@ -117,6 +139,26 @@ impl SecStats {
                 attack_power: 0
             }
         } else { panic!("Race not implemented"); }
+    }
+
+    fn print_stats(&self, prim_stats: &PrimStats, talents: &Talents) {
+        let mut weapon_skill = prim_stats.dagger_skill;
+        if talents.weapon_expertise == 1 { weapon_skill += 3; }
+        else if talents.weapon_expertise == 2 { weapon_skill += 5; }
+
+        let mut crit = self.crit + 0.01 * talents.malice as f32;
+        crit += 0.01 * talents.dagger_specialization as f32;
+        crit += 0.0004 * (weapon_skill - 300) as f32;
+        
+        let hit = self.hit + 0.01 * talents.precision as f32;
+
+        let msg = format!("\n*** Secondary stats ***\n\
+        Crit: {}\n\
+        Hit: {}\n\
+        Haste: {}\n\
+        Attack power: {}", crit, hit, self.haste, 
+        self.attack_power);
+        println!("{}", msg);
     }
 }
 
@@ -434,6 +476,13 @@ impl Character {
         character.convert_primary_stats_to_secondary();
         character.set_common_cooldowns();
         return character;
+    }
+
+    pub fn print_all_stats(&self, args: &Args) {
+        if args.verb > 2 {
+            self.prim_stats.print_stats(&self.talents);
+            self.sec_stats.print_stats(&self.prim_stats, &self.talents);
+        }
     }
 
     fn set_common_cooldowns(&mut self) {

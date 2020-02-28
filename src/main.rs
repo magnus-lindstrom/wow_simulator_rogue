@@ -44,6 +44,7 @@ fn main() {
         stats.import_current_data(simulator.get_stats());
     }
     stats.print();
+    character.print_all_stats(&args);
 
     // println!("args: {:?}\n", args);
     // println!("character: {:?}\n", character);

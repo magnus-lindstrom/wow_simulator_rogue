@@ -55,7 +55,7 @@ onyxia_tooth_pendant:
     dagger_skill: 0
   sec_stats:
     crit: 0.01
-    hit: 0.0
+    hit: 0.01
     haste: 0.0
     attack_power: 0
   hit_procc: None
@@ -211,6 +211,26 @@ shadowcraft_boots:
     haste: 0.0
     attack_power: 0
   hit_procc: None
+boots_of_the_shadow_flame:
+  name: boots_of_the_shadow_flame
+  prim_stats:
+    agility: 0
+    strength: 0
+    stamina: 22
+    arcane_resistance: 0
+    fire_resistance: 0
+    frost_resistance: 0
+    shadow_resistance: 0
+    sword_skill: 0
+    dagger_skill: 0
+  sec_stats:
+    crit: 0.0
+    hit: 0.02
+    haste: 0.0
+    attack_power: 44
+  hit_procc: None
+
+
 # ring
 master_dragonslayers_ring:
   name: master_dragonslayers_ring
@@ -298,11 +318,30 @@ hand_of_justice:
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
-    crit: 0.02
+    crit: 0.0
     hit: 0.0
     haste: 0.0
-    attack_power: 0
+    attack_power: 20
   hit_procc:
     ExtraAttack:
       - Hand of justice
       - 0.02
+# Ranged weapons
+satyrs_bow:
+  name: satyrs_bow
+  prim_stats:
+    agility: 3
+    strength: 0
+    stamina: 0
+    arcane_resistance: 0
+    fire_resistance: 0
+    frost_resistance: 0
+    shadow_resistance: 0
+    sword_skill: 0
+    dagger_skill: 0
+  sec_stats:
+    crit: 0.0
+    hit: 0.01
+    haste: 0.0
+    attack_power: 0
+  hit_procc: None

@@ -306,6 +306,7 @@ impl Simulator {
             }
         }
 
+        dmg = self.modifiers.armor_reduction(dmg);
         self.stats.record_eviscerate_dmg_and_hit(dmg, &hit);
 
         if self.verb > 0 {
@@ -367,10 +368,20 @@ impl Simulator {
     }
 
     fn extra_attack_procc(&mut self) {
+        self.reset_mh_swing();
+        self.add_extra_attack();
+    }
+    
+    fn reset_mh_swing(&mut self) {
         self.timekeep.reset_mh_swing_timer(
             self.modifiers.general.attack_speed_modifier
             );
-        self.add_extra_attack();
+    }
+
+    fn reset_oh_swing(&mut self) {
+        self.timekeep.reset_oh_swing_timer(
+            self.modifiers.general.attack_speed_modifier
+            );
     }
 
     fn add_extra_attack(&mut self) {
@@ -438,6 +449,7 @@ impl Simulator {
                 dmg += dmg * self.modifiers.crit.backstab;
             }
         }
+        dmg = self.modifiers.armor_reduction(dmg);
         self.stats.record_backstab_dmg_and_hit(dmg, &hit);
         self.start_global_cd();
 
@@ -469,14 +481,7 @@ impl Simulator {
             && can_eviscerate { self.eviscerate(); }
     }
 
-    fn check_mh_swing_timer_and_strike(&mut self) {
-
-        if self.timekeep.timers.mh_swing > 0.0 { return; }
-        else { 
-            self.timekeep.reset_mh_swing_timer(
-                self.modifiers.general.attack_speed_modifier
-                ); 
-        }
+    fn perform_mh_strike(&mut self) {
 
         let hit: Hit = self.mh.hit_table_white.roll_for_hit();
         let mut dmg = 0.0;
@@ -490,9 +495,12 @@ impl Simulator {
                 dmg *= 2.0;
             }
         }
-
+        dmg = self.modifiers.armor_reduction(dmg);
         self.stats.record_mh_white_dmg_and_hit(dmg, &hit);
+        self.print_mh_hit_and_dmg(hit, dmg);
+    }
 
+    fn print_mh_hit_and_dmg(&mut self, hit: Hit, dmg: f32) {
         if self.verb > 0 {
             let msg = format!("{:.1}: MH {} for {:.0} dmg.", 
                               self.timekeep.timers.time_left, hit, dmg);
@@ -500,14 +508,15 @@ impl Simulator {
         }
     }
 
-    fn check_oh_swing_timer_and_strike(&mut self) {
-
-        if self.timekeep.timers.oh_swing > 0.0 { return; }
-        else { 
-            self.timekeep.reset_oh_swing_timer(
-                self.modifiers.general.attack_speed_modifier
-                ); 
+    fn print_oh_hit_and_dmg(&mut self, hit: Hit, dmg: f32) {
+        if self.verb > 0 {
+            let msg = format!("{:.1}: OH {} for {:.0} dmg.", 
+                              self.timekeep.timers.time_left, hit, dmg);
+            println!("{}", msg);
         }
+    }
+
+    fn perform_oh_strike(&mut self) {
 
         let hit: Hit = self.oh.hit_table_white.roll_for_hit();
         let mut dmg = 0.0;
@@ -522,14 +531,21 @@ impl Simulator {
                 dmg *= 2.0;
             }
         }
-
+        dmg = self.modifiers.armor_reduction(dmg);
         self.stats.record_oh_white_dmg_and_hit(dmg, &hit);
+        self.print_oh_hit_and_dmg(hit, dmg);
+    }
 
-        if self.verb > 0 {
-            let msg = format!("{:.1}: OH {} for {:.0} dmg.", 
-                              self.timekeep.timers.time_left, hit, dmg);
-            println!("{}", msg);
-        }
+    fn check_mh_swing_timer_and_strike(&mut self) {
+        if self.timekeep.timers.mh_swing > 0.0 { return; }
+        self.perform_mh_strike();
+        self.reset_mh_swing(); 
+    }
+
+    fn check_oh_swing_timer_and_strike(&mut self) {
+        if self.timekeep.timers.oh_swing > 0.0 { return; }
+        self.perform_oh_strike();
+        self.reset_oh_swing();
     }
 
     pub fn print_stats(&mut self) {
@@ -607,6 +623,7 @@ impl Simulator {
             self.perform_apt_yellow_ability();
             self.check_oh_swing_timer_and_strike();
             self.check_mh_swing_timer_and_strike();
+            self.do_extra_attacks();
 
             self.check_energy_timer_and_refill_energy();
 
@@ -616,11 +633,16 @@ impl Simulator {
         self.print_at_end_of_simulation();
     }
 
-    fn take_time_step(&mut self) {
+    fn do_extra_attacks(&mut self) {
+        while self.extra_attacks > 0 {
+            self.perform_mh_strike();
+            self.extra_attacks -= 1;
+        }
+    }
 
+    fn take_time_step(&mut self) {
         self.timekeep.take_time_step();
         self.check_cooldowns_wearing_off();
-
     }
 
     fn check_cooldowns_wearing_off(&mut self) {
@@ -1221,7 +1243,8 @@ struct Modifiers {
     general: GeneralModifiers,
     hit: HitModifiers,
     crit: CritModifiers,
-    finisher: FinisherModifiers
+    finisher: FinisherModifiers,
+    armor_factor: f32
 }
 
 impl Modifiers {
@@ -1230,13 +1253,34 @@ impl Modifiers {
             general: GeneralModifiers::new(),
             hit: HitModifiers::new(),
             crit: CritModifiers::new(),
-            finisher: FinisherModifiers::new()
+            finisher: FinisherModifiers::new(),
+            armor_factor: 1.0
         }
+    }
+
+    fn armor_reduction(&self, dmg: f32) -> f32 {
+        return dmg * self.armor_factor;
     }
 
     fn set_modifiers(&mut self, character: &Character) {
         self.general.set_modifiers(character);
+        self.set_armor_factor();
     }
+
+    fn set_armor_factor(&mut self) {
+        let mut armor = 3731.0;
+        // 5 sunder armor stacks
+        armor -= 2250.0;
+        // CoR
+        armor -= 640.0;
+        // Faerie fire
+        armor -= 505.0;
+        armor = max_f32(armor, 0.0);
+        let x = armor / (85.0 * 60.0 + 40.0);
+        let red = x / (1.0 + x);
+        self.armor_factor = 1.0 - red;
+    }
+
 }
 
 #[derive(Debug)]
