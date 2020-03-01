@@ -24,14 +24,11 @@
 # head
 bloodfang_hood:
   name: bloodfang_hood
+  set_tag: 'bloodfang armor'
   prim_stats:
     agility: 27
     strength: 19
     stamina: 25
-    arcane_resistance: 0
-    fire_resistance: 0
-    frost_resistance: 10
-    shadow_resistance: 10
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
@@ -43,14 +40,11 @@ bloodfang_hood:
 # neck
 onyxia_tooth_pendant:
   name: onyxia_tooth_pendant
+  set_tag: ''
   prim_stats:
     agility: 12
     strength: 0
     stamina: 9
-    arcane_resistance: 0
-    fire_resistance: 10
-    frost_resistance: 0
-    shadow_resistance: 0
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
@@ -62,14 +56,11 @@ onyxia_tooth_pendant:
 # shoulders
 nightslayer_shoulder_pads:
   name: nightslayer_shoulder_pads
+  set_tag: 'nightslayer armor'
   prim_stats:
     agility: 26
     strength: 3
     stamina: 12
-    arcane_resistance: 0
-    fire_resistance: 0
-    frost_resistance: 0
-    shadow_resistance: 7
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
@@ -81,14 +72,11 @@ nightslayer_shoulder_pads:
 # back
 cape_of_the_black_baron:
   name: cape_of_the_black_baron
+  set_tag: ''
   prim_stats:
     agility: 15
     strength: 0
     stamina: 0
-    arcane_resistance: 0
-    fire_resistance: 0
-    frost_resistance: 0
-    shadow_resistance: 0
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
@@ -100,14 +88,11 @@ cape_of_the_black_baron:
 # chest
 nightslayer_chestpiece:
   name: nightslayer_chestpiece
+  set_tag: 'nightslayer armor'
   prim_stats:
     agility: 29
     strength: 10
     stamina: 20
-    arcane_resistance: 0
-    fire_resistance: 10
-    frost_resistance: 0
-    shadow_resistance: 0
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
@@ -119,14 +104,11 @@ nightslayer_chestpiece:
 # bracers
 nightslayer_bracelets:
   name: nightslayer_bracelets
+  set_tag: 'nightslayer armor'
   prim_stats:
     agility: 20
     strength: 0
     stamina: 15
-    arcane_resistance: 0
-    fire_resistance: 0
-    frost_resistance: 0
-    shadow_resistance: 0
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
@@ -138,14 +120,11 @@ nightslayer_bracelets:
 # hands
 nightslayer_gloves:
   name: nightslayer_gloves
+  set_tag: 'nightslayer armor'
   prim_stats:
     agility: 18
     strength: 12
     stamina: 17
-    arcane_resistance: 0
-    fire_resistance: 7
-    frost_resistance: 0
-    shadow_resistance: 0
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
@@ -157,16 +136,28 @@ nightslayer_gloves:
 # waist
 nightslayer_belt:
   name: nightslayer_belt
+  set_tag: 'nightslayer armor'
   prim_stats:
     agility: 17
     strength: 9
     stamina: 18
-    arcane_resistance: 0
-    fire_resistance: 7
-    frost_resistance: 0
-    shadow_resistance: 0
     sword_skill: 0
     dagger_skill: 0
+  sec_stats:
+    crit: 0.01
+    hit: 0.0
+    haste: 0.0
+    attack_power: 0
+  hit_procc: None
+muggers_belt:
+  name: muggers_belt
+  set_tag: ''
+  prim_stats:
+    agility: 0
+    strength: 0
+    stamina: 16
+    sword_skill: 0
+    dagger_skill: 5
   sec_stats:
     crit: 0.01
     hit: 0.0
@@ -176,14 +167,11 @@ nightslayer_belt:
 # pants
 bloodfang_pants:
   name: bloodfang_pants
+  set_tag: 'bloodfang armor'
   prim_stats:
     agility: 37
     strength: 11
     stamina: 17
-    arcane_resistance: 10
-    fire_resistance: 10
-    frost_resistance: 0
-    shadow_resistance: 0
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
@@ -195,14 +183,11 @@ bloodfang_pants:
 # boots
 shadowcraft_boots:
   name: shadowcraft_boots
+  set_tag: ''
   prim_stats:
     agility: 21
     strength: 0
     stamina: 9
-    arcane_resistance: 0
-    fire_resistance: 0
-    frost_resistance: 0
-    shadow_resistance: 0
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
@@ -213,14 +198,11 @@ shadowcraft_boots:
   hit_procc: None
 boots_of_the_shadow_flame:
   name: boots_of_the_shadow_flame
+  set_tag: ''
   prim_stats:
     agility: 0
     strength: 0
     stamina: 22
-    arcane_resistance: 0
-    fire_resistance: 0
-    frost_resistance: 0
-    shadow_resistance: 0
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
@@ -234,14 +216,11 @@ boots_of_the_shadow_flame:
 # ring
 master_dragonslayers_ring:
   name: master_dragonslayers_ring
+  set_tag: ''
   prim_stats:
     agility: 0
     strength: 0
     stamina: 14
-    arcane_resistance: 0
-    fire_resistance: 0
-    frost_resistance: 0
-    shadow_resistance: 0
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
@@ -252,14 +231,11 @@ master_dragonslayers_ring:
   hit_procc: None
 tarnished_elven_ring:
   name: tarnished_elven_ring
+  set_tag: ''
   prim_stats:
     agility: 15
     strength: 0
     stamina: 0
-    arcane_resistance: 0
-    fire_resistance: 0
-    frost_resistance: 0
-    shadow_resistance: 0
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
@@ -271,14 +247,11 @@ tarnished_elven_ring:
 # trinket
 royal_seal_of_eldre_thalas:
   name: royal_seal_of_eldre_thalas
+  set_tag: ''
   prim_stats:
     agility: 0
     strength: 0
     stamina: 0
-    arcane_resistance: 0
-    fire_resistance: 10
-    frost_resistance: 0
-    shadow_resistance: 0
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
@@ -289,14 +262,11 @@ royal_seal_of_eldre_thalas:
   hit_procc: None
 blackhands_breadth:
   name: blackhands_breadth
+  set_tag: ''
   prim_stats:
     agility: 0
     strength: 0
     stamina: 0
-    arcane_resistance: 0
-    fire_resistance: 0
-    frost_resistance: 0
-    shadow_resistance: 0
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
@@ -307,14 +277,11 @@ blackhands_breadth:
   hit_procc: None
 hand_of_justice:
   name: hand_of_justice
+  set_tag: ''
   prim_stats:
     agility: 0
     strength: 0
     stamina: 0
-    arcane_resistance: 0
-    fire_resistance: 0
-    frost_resistance: 0
-    shadow_resistance: 0
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
@@ -329,14 +296,11 @@ hand_of_justice:
 # Ranged weapons
 satyrs_bow:
   name: satyrs_bow
+  set_tag: ''
   prim_stats:
     agility: 3
     strength: 0
     stamina: 0
-    arcane_resistance: 0
-    fire_resistance: 0
-    frost_resistance: 0
-    shadow_resistance: 0
     sword_skill: 0
     dagger_skill: 0
   sec_stats:

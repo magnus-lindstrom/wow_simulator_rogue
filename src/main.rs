@@ -25,7 +25,6 @@ extern crate enum_display_derive;
 use armory::Character;
 use simulator::Simulator;
 use stats::OverallStats;
-use utils::deb;
 
 
 fn main() {

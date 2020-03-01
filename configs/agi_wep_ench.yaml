@@ -1,0 +1,92 @@
+---
+items:
+  armor_names:
+  ### head
+    - bloodfang_hood
+  ### neck
+    - onyxia_tooth_pendant
+  ### shoulders
+    - nightslayer_shoulder_pads
+  ### back
+    - cape_of_the_black_baron
+  ### chest
+    - nightslayer_chestpiece
+  ### bracers
+    - nightslayer_bracelets
+  ### gloves
+    - nightslayer_gloves
+  ### belt
+    - nightslayer_belt
+  ### legs
+    - bloodfang_pants
+  ### boots
+    - boots_of_the_shadow_flame
+    #  - shadowcraft_boots
+  ### rings
+    - master_dragonslayers_ring
+    - tarnished_elven_ring
+  ### trinkets
+  #  - royal_seal_of_eldre_thalas
+    - hand_of_justice
+    - blackhands_breadth
+  ### ranged
+    - satyrs_bow
+  mh_name:
+    gutgore_ripper
+  oh_name:
+    distracting_dagger
+
+enchants:
+  armor_enchant_names:
+    # head
+    - arcanum_of_rapidity
+    # back
+    - lesser_agility
+    # chest
+    - greater_stats
+    # bracer
+    - superior_strength
+    # gloves
+    - minor_haste
+    # legs
+    - arcanum_of_rapidity
+    # feet
+    - greater_agility
+
+  mh_enchant_names: 
+    - agility
+    - instant_poison_vi
+  oh_enchant_names: 
+    - agility
+    - instant_poison_vi
+
+talents:
+  # assassination
+  improved_eviscerate: 0
+  malice: 5 
+  ruthlessness: 2
+  improved_slice_and_dice: 3
+  relentless_strikes: 1
+  lethality: 5
+  # combat
+  improved_sinister_strike: 2
+  improved_backstab: 3
+  precision: 5 
+  dagger_specialization: 5
+  dual_wield_specialization: 5
+  sword_specialization: 0 # TODO
+  weapon_expertise: 2
+  aggression: 2
+  # subtlety
+  opportunity: 5
+
+buffs:
+  motw: false
+  bom: false
+  battle_shout: false
+  juju_power: false
+  juju_might: false
+  mongoose: false
+  grilled_squid: false
+  songflower_serenade: false
+  bok: false

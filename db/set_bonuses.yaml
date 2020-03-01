@@ -1,0 +1,16 @@
+---
+- set_tag: nightslayer armor
+  pieces_needed: 5
+  prim_stats:
+    agility: 0
+    strength: 0
+    stamina: 0
+    sword_skill: 0
+    dagger_skill: 0
+  sec_stats:
+    crit: 0.0
+    hit: 0.0
+    haste: 0.0
+    attack_power: 0
+  special_bonus: 
+    NewEnergyCap: 110

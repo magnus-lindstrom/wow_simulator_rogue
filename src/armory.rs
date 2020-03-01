@@ -6,9 +6,10 @@ use std::fs;
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
 
-const ARMOR_COLLECTION_PATH: &str = "src/databases/armor.yaml";
-const WEAPON_COLLECTION_PATH: &str = "src/databases/weapons.yaml";
-const ENCHANT_COLLECTION_PATH: &str = "src/databases/enchants.yaml";
+const ARMOR_COLLECTION_PATH: &str = "db/armor.yaml";
+const ENCHANT_COLLECTION_PATH: &str = "db/enchants.yaml";
+const SET_BONUSES_COLLECTION_PATH: &str = "db/set_bonuses.yaml";
+const WEAPON_COLLECTION_PATH: &str = "db/weapons.yaml";
 
 
 #[derive(Debug,Serialize,Deserialize)]
@@ -54,10 +55,6 @@ pub struct PrimStats {
     agility: i32,
     strength: i32,
     stamina: i32,
-    arcane_resistance: i32,
-    fire_resistance: i32,
-    frost_resistance: i32,
-    shadow_resistance: i32,
     pub sword_skill: i32,
     pub dagger_skill: i32
 }
@@ -69,10 +66,6 @@ impl PrimStats {
                 agility: 130,
                 strength: 80,
                 stamina: 75,
-                arcane_resistance: 0,
-                fire_resistance: 0,
-                frost_resistance: 0,
-                shadow_resistance: 0,
                 sword_skill: 305,
                 dagger_skill: 300
             }
@@ -81,10 +74,6 @@ impl PrimStats {
                 agility: 0,
                 strength: 0,
                 stamina: 0,
-                arcane_resistance: 0,
-                fire_resistance: 0,
-                frost_resistance: 0,
-                shadow_resistance: 0,
                 sword_skill: 0,
                 dagger_skill: 0
             }
@@ -152,7 +141,7 @@ impl SecStats {
         
         let hit = self.hit + 0.01 * talents.precision as f32;
 
-        let msg = format!("\n*** Secondary stats ***\n\
+        let msg = format!("\n*** Secondary stats vs lvl 60 ***\n\
         Crit: {}\n\
         Hit: {}\n\
         Haste: {}\n\
@@ -204,6 +193,7 @@ pub enum HitProcc {
 pub struct Weapon {
     name: String,
     weapon_type: WeaponType,
+    set_tag: String,
     prim_stats: PrimStats,
     sec_stats: SecStats,
     swing_interval: f32,
@@ -218,6 +208,7 @@ impl Weapon {
         Weapon {
             name: "".to_string(),
             weapon_type: WeaponType::None,
+            set_tag: "".to_string(),
             prim_stats: PrimStats::new_from_race(Race::None),
             sec_stats: SecStats::new_from_race(Race::None),
             swing_interval: 0.0,
@@ -232,6 +223,7 @@ impl Weapon {
         Weapon {
             name: self.name.to_string(),
             weapon_type: self.weapon_type.clone(),
+            set_tag: self.set_tag.to_string(),
             prim_stats: self.prim_stats.clone(),
             sec_stats: self.sec_stats.clone(),
             swing_interval: self.swing_interval,
@@ -265,8 +257,8 @@ impl Weapon {
         
 #[derive(Debug,Serialize,Deserialize)]
 pub struct Armor {
-    // todo: add item slots and sets
     name: String,
+    set_tag: String,
     prim_stats: PrimStats,
     sec_stats: SecStats,
     pub hit_procc: HitProcc
@@ -276,10 +268,31 @@ impl Armor {
     fn copy(&self) -> Armor {
         Armor {
             name: self.name.to_string(),
+            set_tag: self.set_tag.to_string(),
             prim_stats: self.prim_stats.clone(),
             sec_stats: self.sec_stats.clone(),
             hit_procc: self.hit_procc.clone()
         }
+    }
+}
+
+#[derive(Debug,Serialize,Deserialize)]
+struct CharacterSpecification {
+    items: ItemSpecification,
+    enchants: EnchantSpecification,
+    buffs: Buffs,
+    talents: Talents
+}
+
+impl CharacterSpecification {
+    pub fn get_char_spec(args: &Args) -> CharacterSpecification {
+
+        let character_spec_string = fs::read_to_string(&args.spec_file)
+            .expect(&format!("Something went wrong items from {}.",
+                    args.spec_file));
+        let character_spec: CharacterSpecification = serde_yaml::from_str(
+            &character_spec_string).unwrap();
+        return character_spec;
     }
 }
 
@@ -290,18 +303,6 @@ struct ItemSpecification {
     armor_names: Vec<String>
 }
 
-impl ItemSpecification {
-    pub fn get_item_specification(args: &Args) -> ItemSpecification {
-
-        let character_spec_string = fs::read_to_string(&args.items_file)
-            .expect(&format!("Something went wrong items from {}.",
-                    args.items_file));
-        let character_spec: ItemSpecification = serde_yaml::from_str(
-            &character_spec_string).unwrap();
-        return character_spec;
-    }
-}
-
 #[derive(Debug,Serialize,Deserialize)]
 struct EnchantSpecification {
     armor_enchant_names: Vec<String>,
@@ -309,20 +310,9 @@ struct EnchantSpecification {
     oh_enchant_names: Vec<String>
 }
 
-impl EnchantSpecification {
-    fn get_enchant_spec(args: &Args) -> EnchantSpecification {
-        let enchant_spec_string = fs::read_to_string(&args.enchants_file)
-            .expect(&format!("Something went wrong reading enchants from {}.",
-                    args.enchants_file));
-        let enchant_spec: EnchantSpecification = serde_yaml::from_str(
-            &enchant_spec_string).unwrap();
-        return enchant_spec;
-    }
-}
-
 #[derive(Debug,Serialize,Deserialize)]
 pub struct Enchant {
-    name: String,
+    pub name: String,
     prim_stats: PrimStats,
     sec_stats: SecStats,
     pub hit_procc: HitProcc,
@@ -388,6 +378,33 @@ impl Talents {
     }
 }
 
+#[derive(Debug,Clone,Serialize,Deserialize)]
+pub enum SpecialBonus {
+    NewEnergyCap(i32),
+    None
+}
+
+#[derive(Debug,Serialize,Deserialize)]
+pub struct SetBonus {
+    pub set_tag: String,
+    pub pieces_needed: i32,
+    pub prim_stats: PrimStats,
+    pub sec_stats: SecStats,
+    pub special_bonus: SpecialBonus
+}
+
+impl SetBonus {
+    fn copy(&self) -> SetBonus {
+        SetBonus {
+            set_tag: self.set_tag.to_string(),
+            pieces_needed: self.pieces_needed,
+            prim_stats: self.prim_stats.clone(),
+            sec_stats: self.sec_stats.clone(),
+            special_bonus: self.special_bonus.clone()
+        }
+    }
+}
+
 #[derive(Clone,Debug,Serialize,Deserialize)]
 pub enum CooldownEffect {
     EnergyRegenMultiplier(i32, f32), // multiplier, duration
@@ -399,6 +416,7 @@ pub enum CooldownEffect {
 pub struct Cooldown {
     pub name: String,
     pub effect: CooldownEffect,
+    pub is_active: bool,
     pub time_left: f32,
     pub cd: f32,
     pub cd_left: f32,
@@ -413,6 +431,7 @@ impl Cooldown {
             Cooldown {
                 name: "Adrenaline rush".to_string(),
                 effect: CooldownEffect::EnergyRegenMultiplier(2, 15.0),
+                is_active: false,
                 time_left: 0.0,
                 cd: 5.0 * 60.0,
                 cd_left: 0.0,
@@ -423,6 +442,7 @@ impl Cooldown {
             Cooldown {
                 name: "Blade flurry".to_string(),
                 effect: CooldownEffect::AttackSpeedMultiplier(1.2, 15.0),
+                is_active: false,
                 time_left: 0.0,
                 cd: 2.0 * 60.0,
                 cd_left: 0.0,
@@ -433,6 +453,7 @@ impl Cooldown {
             Cooldown {
                 name: "Thistle tea".to_string(),
                 effect: CooldownEffect::InstantEnergyRefill(100),
+                is_active: false,
                 time_left: 0.0,
                 cd: 5.0 * 60.0,
                 cd_left: 0.0,
@@ -455,6 +476,7 @@ pub struct Character {
     pub mh: Weapon,
     pub oh: Weapon,
     pub armor: Vec<Armor>,
+    pub set_bonuses: Vec<SetBonus>,
     pub talents: Talents,
     pub cooldowns: Vec<Cooldown>
 }
@@ -463,13 +485,15 @@ impl Character {
     pub fn create_character(args: &Args) -> Character {
         let mut character = Character::new(Race::Human);
 
-        let item_spec = ItemSpecification::get_item_specification(args);
-        character.set_armor_and_weapons(item_spec);
-        let enchant_spec = EnchantSpecification::get_enchant_spec(args);
-        character.set_enchants(enchant_spec);
+        let char_spec = CharacterSpecification::get_char_spec(args);
+        // let item_spec = ItemSpecification::get_item_specification(args);
+        character.set_armor_and_weapons(char_spec.items);
+        character.apply_set_bonuses();
+        // let enchant_spec = EnchantSpecification::get_enchant_spec(args);
+        character.set_enchants(char_spec.enchants);
 
-        character.set_buffs(args);
-        character.set_talents(args);
+        character.set_buffs(char_spec.buffs);
+        character.set_talents(char_spec.talents);
         character.apply_stats_from_armor_and_weapons();
         character.apply_stats_from_buffs();
         character.apply_stats_from_enchants();
@@ -501,6 +525,7 @@ impl Character {
             mh: Weapon::new(),
             oh: Weapon::new(),
             armor: Vec::new(),
+            set_bonuses: Vec::new(),
             talents: Talents::new(),
             cooldowns: Vec::new()
         }
@@ -556,22 +581,11 @@ impl Character {
 
     }
 
-    fn set_talents(&mut self, args: &Args) {
-        let talents_string = fs::read_to_string(&args.talents_file)
-                .expect(&format!("Something went wrong reading talents from {}.",
-                        args.talents_file));
-        let talents: Talents = serde_yaml::from_str(&talents_string)
-                .expect("Something went wrong deserializing talents");
-
+    fn set_talents(&mut self, talents: Talents) {
         self.talents = talents;
     }
 
-    fn set_buffs(&mut self, args: &Args) {
-        let buffs_string = fs::read_to_string(&args.buffs_file)
-                .expect(&format!("Something went wrong reading buffs from {}.", 
-                        args.buffs_file));
-        let buffs: Buffs = serde_yaml::from_str(&buffs_string)
-                .expect("Something went wrong deserializing buffs");
+    fn set_buffs(&mut self, buffs: Buffs) {
         self.buffs = buffs;
     }
 
@@ -607,25 +621,68 @@ impl Character {
         }
     }
 
-    fn set_armor_and_weapons(&mut self, item_spec: ItemSpecification) {
+    fn get_armor_by_name(&self, name: String) -> Armor {
         let item_collection: ItemCollection = 
             ItemCollection::initialize_item_collection();
+        let armor = item_collection.armor.get(&name).
+            expect(&format!("Could not find {} in item file.", name));
+        return armor.copy();
+    }
 
+    fn get_weapon_by_name(&self, name: String) -> Weapon {
+        let item_collection: ItemCollection = 
+            ItemCollection::initialize_item_collection();
+        let weapon = item_collection.weapons.get(&name).
+            expect(&format!("Could not find {} in item file.", name));
+        return weapon.copy();
+    }
+
+    fn set_armor_and_weapons(&mut self, item_spec: ItemSpecification) {
         for armor_name in &item_spec.armor_names {
-            let armor = item_collection.armor.get(&armor_name.to_string()).
-                expect(&format!("Could not find {} in item file.", armor_name));
+            let armor = self.get_armor_by_name(armor_name.to_string());
             self.armor.push(armor.copy());
         }
-        let mh = item_collection.weapons.get(&item_spec.mh_name.to_string()).
-            expect(&format!("Could not find {} in item file.", 
-                            &item_spec.mh_name.to_string()));
+        let mh = self.get_weapon_by_name(item_spec.mh_name.to_string());
         self.mh = mh.copy();
         self.mh.set_mean_dmg();
-        let oh = item_collection.weapons.get(&item_spec.oh_name.to_string()).
-            expect(&format!("Could not find {} in item file.", 
-                            &item_spec.oh_name.to_string()));
+        let oh = self.get_weapon_by_name(item_spec.oh_name.to_string());
         self.oh = oh.copy();
         self.oh.set_mean_dmg();
+    }
+
+    fn get_set_bonus_db(&self) -> Vec<SetBonus> {
+        let set_bonuses_string = fs::read_to_string(SET_BONUSES_COLLECTION_PATH)
+                .expect("Something went wrong reading items from file.");
+        let set_bonuses: Vec<SetBonus> = serde_yaml::from_str(
+            &set_bonuses_string).expect("Could not parse set bonus db");
+        return set_bonuses;
+    }
+
+    fn count_set_pieces_worn(&self) -> HashMap<String,i32> {
+        let mut equipped_sets: HashMap<String,i32> = HashMap::new();
+        for i in 0..self.armor.len() {
+            if self.armor[i].set_tag == "" { continue; }
+            let count = equipped_sets.entry(self.armor[i].set_tag.to_string())
+                .or_insert(0);
+            *count += 1;
+        }
+        return equipped_sets;
+    }
+
+    fn apply_set_bonuses(&mut self) {
+        let pieces_worn = self.count_set_pieces_worn();
+
+        let db: Vec<SetBonus> = self.get_set_bonus_db();
+        for i in 0..db.len() {
+            match pieces_worn.get(&db[i].set_tag) {
+                Some(nr) => {
+                    if nr >= &db[i].pieces_needed {
+                        self.set_bonuses.push(db[i].copy());
+                    }
+                },
+                None => continue
+            }
+        }
     }
 
     fn apply_stats_from_enchants(&mut self) {
@@ -659,10 +716,6 @@ impl Character {
         self.prim_stats.agility += prim_stats.agility;
         self.prim_stats.strength += prim_stats.strength;
         self.prim_stats.stamina += prim_stats.stamina;
-        self.prim_stats.arcane_resistance += prim_stats.arcane_resistance;
-        self.prim_stats.fire_resistance += prim_stats.fire_resistance;
-        self.prim_stats.frost_resistance += prim_stats.frost_resistance;
-        self.prim_stats.shadow_resistance += prim_stats.shadow_resistance;
         self.prim_stats.sword_skill += prim_stats.sword_skill;
         self.prim_stats.dagger_skill += prim_stats.dagger_skill;
     }

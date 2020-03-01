@@ -32,10 +32,6 @@ arcanum_of_rapidity:
     agility: 0
     strength: 0
     stamina: 0
-    arcane_resistance: 0
-    fire_resistance: 0
-    frost_resistance: 0
-    shadow_resistance: 0
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
@@ -52,10 +48,6 @@ lesser_agility:
     agility: 3
     strength: 0
     stamina: 0
-    arcane_resistance: 0
-    fire_resistance: 0
-    frost_resistance: 0
-    shadow_resistance: 0
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
@@ -72,10 +64,6 @@ greater_stats:
     agility: 4
     strength: 4
     stamina: 4
-    arcane_resistance: 0
-    fire_resistance: 0
-    frost_resistance: 0
-    shadow_resistance: 0
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
@@ -92,10 +80,6 @@ superior_strength:
     agility: 0
     strength: 9
     stamina: 0
-    arcane_resistance: 0
-    fire_resistance: 0
-    frost_resistance: 0
-    shadow_resistance: 0
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
@@ -112,10 +96,6 @@ greater_agility:
     agility: 7
     strength: 0
     stamina: 0
-    arcane_resistance: 0
-    fire_resistance: 0
-    frost_resistance: 0
-    shadow_resistance: 0
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
@@ -131,10 +111,6 @@ minor_haste:
     agility: 0
     strength: 0
     stamina: 0
-    arcane_resistance: 0
-    fire_resistance: 0
-    frost_resistance: 0
-    shadow_resistance: 0
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
@@ -151,10 +127,6 @@ agility:
     agility: 15
     strength: 0
     stamina: 0
-    arcane_resistance: 0
-    fire_resistance: 0
-    frost_resistance: 0
-    shadow_resistance: 0
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
@@ -170,10 +142,6 @@ superior_striking:
     agility: 0
     strength: 0
     stamina: 0
-    arcane_resistance: 0
-    fire_resistance: 0
-    frost_resistance: 0
-    shadow_resistance: 0
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
@@ -189,10 +157,6 @@ greater_striking:
     agility: 0
     strength: 0
     stamina: 0
-    arcane_resistance: 0
-    fire_resistance: 0
-    frost_resistance: 0
-    shadow_resistance: 0
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
@@ -208,10 +172,6 @@ instant_poison_vi:
     agility: 0
     strength: 0
     stamina: 0
-    arcane_resistance: 0
-    fire_resistance: 0
-    frost_resistance: 0
-    shadow_resistance: 0
     sword_skill: 0
     dagger_skill: 0
   sec_stats:
@@ -225,4 +185,34 @@ instant_poison_vi:
       - 95
       - 0.15
       - 0.2
-  extra_damage: 4
+  extra_damage: 0
+dense_grinding_stone:
+  name: dense_grinding_stone
+  prim_stats:
+    agility: 0
+    strength: 0
+    stamina: 0
+    sword_skill: 0
+    dagger_skill: 0
+  sec_stats:
+    crit: 0.0
+    hit: 0.0
+    haste: 0.0
+    attack_power: 0
+  hit_procc: None
+  extra_damage: 8
+elemental_grinding_stone:
+  name: elemental_grinding_stone
+  prim_stats:
+    agility: 0
+    strength: 0
+    stamina: 0
+    sword_skill: 0
+    dagger_skill: 0
+  sec_stats:
+    crit: 0.02
+    hit: 0.0
+    haste: 0.0
+    attack_power: 0
+  hit_procc: None
+  extra_damage: 0

@@ -35,10 +35,7 @@ pub struct Args {
     pub enemy_lvl: i32,
     pub fight_length: f32,
     pub iterations: i32,
-    pub items_file: String,
-    pub talents_file: String,
-    pub enchants_file: String,
-    pub buffs_file: String,
+    pub spec_file: String,
     pub verb: i32,
     pub weight_mult: i32,
     pub weights: bool
@@ -51,10 +48,7 @@ impl Args {
             enemy_lvl: 0,
             fight_length: 0.0,
             iterations: 0,
-            items_file: "".to_string(),
-            talents_file: "".to_string(),
-            enchants_file: "".to_string(),
-            buffs_file: "".to_string(),
+            spec_file: "".to_string(),
             verb: 0,
             weight_mult: 0,
             weights: false
@@ -73,26 +67,11 @@ pub fn get_arguments() -> Args {
              .short("s") 
              .long("step").takes_value(true) 
              .help("The time step. Default is 0.01s."))
-        .arg(Arg::with_name("Items file") 
+        .arg(Arg::with_name("Specs file") 
              .required(true)
-             .short("I") 
-             .long("items").takes_value(true) 
-             .help("Parameter file that contains items to equip."))
-        .arg(Arg::with_name("Talents file") 
-             .required(true)
-             .short("T") 
-             .long("talents").takes_value(true) 
-             .help("Parameter file with specc of character."))
-        .arg(Arg::with_name("Enchants file") 
-             .required(true)
-             .short("E") 
-             .long("enchants").takes_value(true) 
-             .help("Parameter file with buffs to use."))
-        .arg(Arg::with_name("Buffs file") 
-             .required(true)
-             .short("B") 
-             .long("buffs").takes_value(true) 
-             .help("Parameter file with buffs to use."))
+             .short("f") 
+             .long("file").takes_value(true) 
+             .help("Parameter file that specifies entire character."))
         .arg(Arg::with_name("Nr of iterations") 
              .short("i") 
              .long("iterations").takes_value(true) 
@@ -129,10 +108,7 @@ pub fn get_arguments() -> Args {
         .get_matches();
 
     let dt = matches.value_of("Step length").unwrap_or("0.01");
-    let items = matches.value_of("Items file").unwrap();
-    let talents = matches.value_of("Talents file").unwrap();
-    let enchants = matches.value_of("Enchants file").unwrap();
-    let buffs = matches.value_of("Buffs file").unwrap();
+    let spec_file = matches.value_of("Specs file").unwrap();
     let iterations = matches.value_of("Nr of iterations").unwrap_or("1");
     let fight_length = matches.value_of("Fight length").unwrap_or("60");
     let enemy_lvl = matches.value_of("Enemy level").unwrap_or("63");
@@ -142,10 +118,7 @@ pub fn get_arguments() -> Args {
 
     let mut args = Args::default_args();
     args.dt = dt.parse().unwrap();
-    args.items_file = items.to_string();
-    args.talents_file = talents.to_string();
-    args.enchants_file = enchants.to_string();
-    args.buffs_file = buffs.to_string();
+    args.spec_file = spec_file.to_string();
     args.verb = verb as i32;
     args.weights = weights;
     args.weight_mult = weight_mult.parse().unwrap();
@@ -153,11 +126,6 @@ pub fn get_arguments() -> Args {
     args.iterations = iterations.parse().unwrap();
     let fl: u32 = fight_length.parse().unwrap();
     args.fight_length = fl as f32;
-
-    if args.fight_length > 120.0 {
-        println!("WARNING: fight longer than 2min, no cooldown for");
-        println!("blade flurry implemented.");
-    }
 
     return args;
 }

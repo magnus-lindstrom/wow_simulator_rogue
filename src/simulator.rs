@@ -1,6 +1,6 @@
 use std::fmt::Display;
-use crate::utils::{Args,deb,min_f32,max_f32,min_i32,max_i32,roll_die};
-use crate::armory::{Character,Cooldown,HitProcc,Weapon,WeaponType};
+use crate::utils::{Args,min_f32,max_f32,min_i32,max_i32,roll_die};
+use crate::armory::{Character,Cooldown,HitProcc,SpecialBonus,Weapon,WeaponType};
 use crate::armory::CooldownEffect::{EnergyRegenMultiplier,AttackSpeedMultiplier,
 InstantEnergyRefill};
 use crate::stats::CurrentStats;
@@ -16,6 +16,7 @@ pub struct Simulator {
     ability_costs: AbilityCosts,
     modifiers: Modifiers,
     cooldowns: Vec<Cooldown>,
+    active_buffs: ActiveBuffs,
     stats: CurrentStats,
     extra_attacks: i32,
     energy: i32,
@@ -34,6 +35,7 @@ impl Simulator {
             ability_costs: AbilityCosts::new(),
             modifiers: Modifiers::new(),
             cooldowns: Vec::new(),
+            active_buffs: ActiveBuffs::new(),
             stats: CurrentStats::new(),
             extra_attacks: 0,
             energy: 0,
@@ -326,12 +328,26 @@ impl Simulator {
         else if self.combo_points == 0 { dur = 0.0; }
         else { panic!("Can only have 0-5 combo points."); }
 
+        self.enable_slice_and_dice();
         dur *= self.modifiers.general.slice_and_dice_duration_modifier;
         self.timekeep.timers.slice_and_dice = dur;
         self.start_global_cd();
         self.subtract_energy(self.ability_costs.slice_and_dice);
         self.clear_combo_points_and_roll_for_finisher_procs();
         if self.verb > 0 { self.show_slice_and_dice() } 
+    }
+
+    fn enable_slice_and_dice(&mut self) {
+        if self.active_buffs.slice_and_dice { return; }
+        self.modifiers.general.attack_speed_modifier *= 1.3;
+        self.active_buffs.slice_and_dice = true;
+    }
+
+    fn disable_slice_and_dice(&mut self) {
+        if ! self.active_buffs.slice_and_dice { return; }
+        self.modifiers.general.attack_speed_modifier /= 1.3;
+        self.active_buffs.slice_and_dice = false;
+        self.print_slice_and_dice_wearing_off();
     }
 
     fn clear_combo_points_and_roll_for_finisher_procs(&mut self) {
@@ -552,52 +568,64 @@ impl Simulator {
         if self.verb > 1 { self.stats.print_stats(); }
     }
 
-    fn cd_lacks_prerequisite(&mut self, cooldown: &Cooldown) -> bool {
+    fn cd_by_nr_lacks_prerequisite(&mut self, nr: usize) -> bool {
         let mut lacks_req = false;
-        if cooldown.cd_left > 0.0 { lacks_req = true; }
-        else if cooldown.cost > self.energy { lacks_req = true; }
-        else if self.energy > cooldown.use_below_energy { lacks_req = true; }
-        else if cooldown.cost > 0 && self.timekeep.timers.global_cd > 0.0 {
-            lacks_req = true;
+        if self.cooldowns[nr].cd_left > 0.0 { lacks_req = true; }
+        else if self.cooldowns[nr].is_active { lacks_req = true; }
+        else if self.cooldowns[nr].cost > self.energy { lacks_req = true; }
+        else if self.energy > self.cooldowns[nr].use_below_energy { 
+            lacks_req = true; 
         }
+        else if self.cooldowns[nr].cost > 0 
+            && self.timekeep.timers.global_cd > 0.0 {
+                lacks_req = true;
+            }
         return lacks_req;
+    }
+
+    fn enable_cd_by_nr(&mut self, nr: usize) {
+        self.subtract_energy(self.cooldowns[nr].cost);
+        if self.cooldowns[nr].cost > 0 { self.start_global_cd(); }
+        match self.cooldowns[nr].effect {
+            EnergyRegenMultiplier(mult, duration) => {
+                self.modifiers.general.energy_regen_modifier *= mult;
+                self.cooldowns[nr].is_active = true;
+                self.cooldowns[nr].cd_left = self.cooldowns[nr].cd;
+                self.cooldowns[nr].time_left = duration;
+            },
+            AttackSpeedMultiplier(mult, duration) => {
+                self.modifiers.general.attack_speed_modifier *= mult;
+                self.cooldowns[nr].is_active = true;
+                self.cooldowns[nr].cd_left = self.cooldowns[nr].cd;
+                self.cooldowns[nr].time_left = duration;
+            },
+            InstantEnergyRefill(energy) => {
+                self.add_energy(energy);
+                self.cooldowns[nr].cd_left = self.cooldowns[nr].cd;
+            }
+        }
+    }
+
+    fn use_cd_by_nr(&mut self, nr: usize) {
+        if self.cd_by_nr_lacks_prerequisite(nr) { return; }
+        self.enable_cd_by_nr(nr);
+        if self.verb > 0 { self.print_cd_usage_by_nr(nr); }
     }
 
     fn use_ready_cooldowns(&mut self) {
         for i in 0..self.cooldowns.len() {
-            let temp_cd = self.cooldowns[i].clone();
-            if self.cd_lacks_prerequisite(&temp_cd) { continue }
-            self.subtract_energy(self.cooldowns[i].cost);
-            if self.cooldowns[i].cost > 0 { self.start_global_cd(); }
-            match self.cooldowns[i].effect {
-                EnergyRegenMultiplier(mult, duration) => {
-                    self.modifiers.general.energy_regen_modifier *= mult;
-                    self.cooldowns[i].cd_left = self.cooldowns[i].cd;
-                    self.cooldowns[i].time_left = duration;
-                },
-                AttackSpeedMultiplier(mult, duration) => {
-                    self.modifiers.general.attack_speed_modifier *= mult;
-                    self.cooldowns[i].cd_left = self.cooldowns[i].cd;
-                    self.cooldowns[i].time_left = duration;
-                },
-                InstantEnergyRefill(energy) => {
-                    self.add_energy(energy);
-                    self.cooldowns[i].cd_left = self.cooldowns[i].cd;
-                }
-            }
-            if self.verb > 1 { self.print_cd_usage(temp_cd); }
+            self.use_cd_by_nr(i);
         }
-
     }
 
-    fn print_cd_usage(&self, cd: Cooldown) {
-        let sub_msg = match cd.effect {
+    fn print_cd_usage_by_nr(&self, nr: usize) {
+        let sub_msg = match self.cooldowns[nr].effect {
             EnergyRegenMultiplier(_,_) => {
-                format!(", energy regen multiplied by {}!", 
+                format!(", total energy regen multiplier is {}!", 
                         self.modifiers.general.energy_regen_modifier)
             },
             AttackSpeedMultiplier(_,_) => {
-                format!(", attack speed increased by {}!", 
+                format!(", total attack speed multiplier is {:.3}!", 
                         self.modifiers.general.attack_speed_modifier)
             },
             InstantEnergyRefill(energy) => {
@@ -605,12 +633,22 @@ impl Simulator {
             }
         };
         let msg = format!("{:.1}: Used {}{}", self.timekeep.timers.time_left, 
-                          cd.name, sub_msg);
+                          self.cooldowns[nr].name, sub_msg);
         println!("{}", msg);
     }
 
     fn reset_char(&mut self) {
         self.energy = self.modifiers.general.energy_max;
+        self.reset_cooldowns();
+        if self.active_buffs.slice_and_dice {
+            self.disable_slice_and_dice();
+        }
+    }
+
+    fn reset_cooldowns(&mut self) {
+        for i in 0..self.cooldowns.len() {
+            self.reset_cd_by_nr(i);
+        }
     }
 
     pub fn simulate(&mut self) {
@@ -627,7 +665,7 @@ impl Simulator {
 
             self.check_energy_timer_and_refill_energy();
 
-            self.take_time_step();
+            self.take_time_step_and_remove_buffs();
 
         }
         self.print_at_end_of_simulation();
@@ -640,42 +678,92 @@ impl Simulator {
         }
     }
 
-    fn take_time_step(&mut self) {
-        self.timekeep.take_time_step();
-        self.check_cooldowns_wearing_off();
+    fn set_max_time_step_possible(&mut self) {
+        self.timekeep.set_time_step();
     }
 
-    fn check_cooldowns_wearing_off(&mut self) {
+    fn take_time_step_and_remove_buffs(&mut self) {
+        self.set_max_time_step_possible();
+        self.timekeep.take_time_step();
+        self.check_cds_wearing_off();
+        self.check_slice_and_dice_wearing_off();
+    }
+
+    fn check_slice_and_dice_wearing_off(&mut self) {
+        let is_active = self.active_buffs.slice_and_dice;
+        let should_not_be_active = self.timekeep.timers.slice_and_dice < 0.0;
+        if is_active && should_not_be_active {
+            self.disable_slice_and_dice();
+        }
+    }
+
+    fn print_slice_and_dice_wearing_off(&mut self) {
+        if self.verb > 1 {
+            println!("{:.1}: Slice and dice wore off.", 
+                     self.timekeep.timers.time_left);
+        }
+    }
+
+    fn reset_cd_by_nr(&mut self, nr: usize) {
+        let is_active = self.cooldowns[nr].is_active;
+        self.cooldowns[nr].is_active = false;
+        match self.cooldowns[nr].effect {
+            EnergyRegenMultiplier(mult,_) => {
+                if is_active {
+                    self.modifiers.general.energy_regen_modifier /= mult;
+                }
+                self.cooldowns[nr].cd_left = 0.0;
+                self.cooldowns[nr].time_left = 0.0;
+            },
+            AttackSpeedMultiplier(mult,_) => {
+                if is_active {
+                    self.modifiers.general.attack_speed_modifier /= mult;
+                }
+                self.cooldowns[nr].cd_left = 0.0;
+                self.cooldowns[nr].time_left = 0.0;
+            },
+            InstantEnergyRefill(_) => {
+                self.cooldowns[nr].cd_left = 0.0;
+            }
+        }
+    }
+
+    fn disable_cd_by_nr(&mut self, nr: usize) {
+        self.cooldowns[nr].is_active = false;
+        match self.cooldowns[nr].effect {
+            EnergyRegenMultiplier(mult,_) => {
+                self.modifiers.general.energy_regen_modifier /= mult;
+            }
+            AttackSpeedMultiplier(mult,_) => {
+                self.modifiers.general.attack_speed_modifier /= mult;
+            }
+            InstantEnergyRefill(_) => (),
+        }
+    }
+
+    fn check_cds_wearing_off(&mut self) {
         for i in 0..self.cooldowns.len() {
             if self.cooldowns[i].cd_left > 0.0 { 
                 self.cooldowns[i].cd_left -= self.timekeep.dt; 
             }
             if self.cooldowns[i].time_left > 0.0 { 
                 self.cooldowns[i].time_left -= self.timekeep.dt; 
-
-                if self.cooldowns[i].time_left <= 0.0 {
-
-                    match self.cooldowns[i].effect {
-                        EnergyRegenMultiplier(mult,_) => {
-                            self.modifiers.general.energy_regen_modifier /= mult;
-                        }
-                        AttackSpeedMultiplier(mult,_) => {
-                            self.modifiers.general.attack_speed_modifier /= mult;
-                        }
-                        InstantEnergyRefill(_) => ( continue ),
-                    }
-                    self.print_cd_wearing_off(self.cooldowns[i].clone());
-                }
-
             }
+            if self.cooldowns[i].time_left <= 0.0 && 
+                self.cooldowns[i].is_active {
+                    self.disable_cd_by_nr(i);
+                    self.print_cd_wearing_off_by_nr(i);
+                }
         }
     }
 
 
-    fn print_cd_wearing_off(&mut self, cd: Cooldown) {
+    fn print_cd_wearing_off_by_nr(&mut self, nr: usize) {
+        let name = &self.cooldowns[nr].name;
+        let cd = self.cooldowns[nr].cd;
         if self.verb > 1 {
             println!("{:.1}: {} wore off, {}s cooldown.", 
-                     self.timekeep.timers.time_left, cd.name, cd.cd);
+                     self.timekeep.timers.time_left, name, cd);
         }
     }
 
@@ -715,6 +803,19 @@ impl Simulator {
 }
 
 #[derive(Debug)]
+struct ActiveBuffs {
+    slice_and_dice: bool
+}
+
+impl ActiveBuffs {
+    fn new() -> ActiveBuffs {
+        ActiveBuffs {
+            slice_and_dice: false
+        }
+    }
+}
+
+#[derive(Debug)]
 struct AbilityCosts {
     sinister_strike: i32,
     backstab: i32,
@@ -742,7 +843,8 @@ struct Timers {
     time_left: f32,
     global_cd: f32,
     mh_swing: f32,
-    oh_swing: f32
+    oh_swing: f32,
+    glob_cd_previously_available: bool
 }
 
 impl Timers {
@@ -753,8 +855,42 @@ impl Timers {
             time_left: 0.0,
             global_cd: 0.0,
             mh_swing: 0.0,
-            oh_swing: 0.0
+            oh_swing: 0.0,
+            glob_cd_previously_available: true
         }
+    }
+
+    fn _debug_dynamic_step(&self, step_size: f32) {
+        println!("energy refill: {}\n\
+                 global cd: {}\n\
+                 mh swing: {}\n\
+                 oh swing: {}\n\
+                 global cd available last time step: {}", 
+                 self.energy_refill, 
+                 self.global_cd, 
+                 self.mh_swing, 
+                 self.oh_swing,
+                 self.glob_cd_previously_available
+                 );
+        println!("taking step: {}\n", step_size);
+    }
+
+    fn get_max_time_step(&mut self) -> f32 { 
+        let mut max_time_step = 10.0;
+        max_time_step = min_f32(max_time_step, self.energy_refill);
+        max_time_step = min_f32(max_time_step, self.mh_swing);
+        max_time_step = min_f32(max_time_step, self.oh_swing);
+        if ! self.glob_cd_previously_available {
+            max_time_step = min_f32(max_time_step, self.global_cd);
+        }
+        max_time_step = max_f32(max_time_step, 0.01);
+        if self.global_cd <= 0.0 { 
+            self.glob_cd_previously_available = true; 
+        } else {
+            self.glob_cd_previously_available = false; 
+        }
+        // self._debug_dynamic_step(max_time_step);
+        return max_time_step;
     }
 
     fn reset_with_fight_length(&mut self, fight_length: f32) {
@@ -762,6 +898,7 @@ impl Timers {
         self.slice_and_dice = 0.0;
         self.time_left = fight_length;
         self.global_cd = 0.0;
+        self.glob_cd_previously_available = true;
         self.mh_swing = 0.0;
         self.oh_swing = 0.0;
     }
@@ -789,6 +926,10 @@ impl TimeKeeper {
             oh_swing_interval: 0.0,
             verb: 0
         }
+    }
+
+    fn set_time_step(&mut self) { 
+        self.dt = self.timers.get_max_time_step();
     }
 
     fn set_mh_swing_interval(&mut self, weapon: &Weapon) {
@@ -1303,6 +1444,16 @@ impl GeneralModifiers {
 
     fn set_modifiers(&mut self, character: &Character) {
         self.attack_speed_modifier *= 1.0 + character.sec_stats.haste;
+        for set_bonus in &character.set_bonuses {
+            match set_bonus.special_bonus {
+                SpecialBonus::NewEnergyCap(max) => {
+                    self.energy_max = max;
+                }
+                SpecialBonus::None => {
+                    panic!("Can't have 'None' set bonuses");
+                }
+            }
+        }
     }
 }
 
