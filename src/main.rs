@@ -13,6 +13,7 @@ mod armory;
 mod utils;
 mod simulator;
 mod stats;
+mod weights;
 
 extern crate rand;
 extern crate clap;
@@ -25,27 +26,34 @@ extern crate enum_display_derive;
 use armory::Character;
 use simulator::Simulator;
 use stats::OverallStats;
+use weights::StatShift;
 
 
 fn main() {
 
     let args = utils::get_arguments();
-    let character = Character::create_character(&args);
-    let mut simulator: Simulator = Simulator::new();
-    simulator.apply_input_arguments(&args);
-    simulator.configure_with_character(&character);
+    let stat_shifts = StatShift::new(&args);
+    for stat_shift in stat_shifts {
 
-    let mut stats = OverallStats::new_from_args(&args);
+        let mut character = Character::create_character(&args, &stat_shift);
+        let mut simulator: Simulator = Simulator::new();
+        simulator.apply_input_arguments(&args);
+        simulator.configure_with_character(&character);
 
-    for _iter in 0..args.iterations {
-        simulator.simulate();
-        simulator.print_stats();
-        stats.import_current_data(simulator.get_stats());
+        let mut stats = OverallStats::new_from_args(&args);
+
+        for _iter in 0..args.iterations {
+            simulator.simulate();
+            simulator.print_stats();
+            stats.import_current_data(simulator.get_stats());
+        }
+        if args.weights {
+            stats.print_stat_weight(&stat_shift.text);
+        } else {
+            stats.print();
+        }
+
+        character.print_all_stats(&args);
     }
-    stats.print();
-    character.print_all_stats(&args);
-
-    // println!("args: {:?}\n", args);
-    // println!("character: {:?}\n", character);
 
 }

@@ -1,7 +1,8 @@
 extern crate serde;
 extern crate serde_yaml;
 
-use crate::utils::{Args};
+use crate::utils::Args;
+use crate::weights::StatShift;
 use std::fs;
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
@@ -52,15 +53,15 @@ pub enum Race {
 
 #[derive(Clone,Copy,Debug,Serialize,Deserialize)]
 pub struct PrimStats {
-    agility: i32,
-    strength: i32,
+    pub agility: i32,
+    pub strength: i32,
     stamina: i32,
     pub sword_skill: i32,
     pub dagger_skill: i32
 }
 
 impl PrimStats {
-    fn new_from_race(race: Race) -> PrimStats {
+    pub fn new_from_race(race: Race) -> PrimStats {
         if race == Race::Human {
             PrimStats {
                 agility: 130,
@@ -112,7 +113,7 @@ pub struct SecStats {
 }
 
 impl SecStats {
-    fn new_from_race(race: Race) -> SecStats {
+    pub fn new_from_race(race: Race) -> SecStats {
         if race == Race::Human {
             SecStats {
                 crit: 0.0,
@@ -482,7 +483,7 @@ pub struct Character {
 }
 
 impl Character {
-    pub fn create_character(args: &Args) -> Character {
+    pub fn create_character(args: &Args, stat_shift: &StatShift) -> Character {
         let mut character = Character::new(Race::Human);
 
         let char_spec = CharacterSpecification::get_char_spec(args);
@@ -497,9 +498,15 @@ impl Character {
         character.apply_stats_from_armor_and_weapons();
         character.apply_stats_from_buffs();
         character.apply_stats_from_enchants();
+        character.apply_stat_shift(stat_shift);
         character.convert_primary_stats_to_secondary();
         character.set_common_cooldowns();
         return character;
+    }
+
+    pub fn apply_stat_shift(&mut self, stat_shift: &StatShift) {
+        self.apply_prim_stats(stat_shift.prim_stats);
+        self.apply_sec_stats(stat_shift.sec_stats);
     }
 
     pub fn print_all_stats(&self, args: &Args) {

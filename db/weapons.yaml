@@ -66,3 +66,28 @@ gutgore_ripper:
       - 95.0
       - 0.15
       - 0.04
+perditions_blade:
+  name: perditions_blade
+  weapon_type: Dagger
+  set_tag: ''
+  prim_stats:
+    agility: 0
+    strength: 0
+    stamina: 0
+    sword_skill: 0
+    dagger_skill: 0
+  sec_stats:
+    crit: 0.0
+    hit: 0.0
+    haste: 0.0
+    attack_power: 0
+  swing_interval: 1.8
+  min_dmg: 73.0
+  max_dmg: 137.0
+  mean_dmg: 0.0
+  hit_procc:
+    Dmg: 
+      - Perdition's blade
+      - 48.0
+      - 0.15 # resist chance
+      - 0.04 # procc chance

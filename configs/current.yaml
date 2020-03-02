@@ -21,7 +21,6 @@ items:
     - bloodfang_pants
   ### boots
     - boots_of_the_shadow_flame
-    #  - shadowcraft_boots
   ### rings
     - master_dragonslayers_ring
     - tarnished_elven_ring
@@ -81,12 +80,12 @@ talents:
   opportunity: 5
 
 buffs:
-  motw: false
-  bom: false
-  battle_shout: false
-  juju_power: false
-  juju_might: false
-  mongoose: false
-  grilled_squid: false
+  motw: true
+  bom: true
+  battle_shout: true
+  juju_power: true
+  juju_might: true
+  mongoose: true
+  grilled_squid: true
   songflower_serenade: false
-  bok: false
+  bok: true

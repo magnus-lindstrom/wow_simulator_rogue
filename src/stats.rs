@@ -48,6 +48,16 @@ impl OverallStats {
         }
     }
 
+    pub fn print_stat_weight(&self, stat_shift_text: &String) {
+
+        let mean_dps = mean(&self.dps);
+        let dps_within_std = std_dev(&self.dps);
+        let mean_dps_std = 1.96 * dps_within_std / (self.n_runs as f32).sqrt();
+
+        println!("{}{:.2}dps ±{:.2}",stat_shift_text, mean_dps, 
+               mean_dps_std);
+    }
+
     pub fn print(&self) {
 
         let mean_dps = mean(&self.dps);
@@ -227,7 +237,6 @@ impl CurrentStats {
     }
 
     fn print_dps(&self) {
-        println!("Dps:\t\t\t{:.2}", self.dmg / self.fight_length);
         if self.backstab.dmg > 0.0 {
             println!("Backstab:\t\t{:.2}%", 100.0 * self.backstab.dmg / self.dmg);
         }
@@ -262,7 +271,7 @@ impl CurrentStats {
         self.mh_white.print_with_name("MH white");
         self.oh_white.print_with_name("OH white");
     }
-
+     
     pub fn clear(&mut self) {
         self.dmg = 0.0;
         self.backstab.clear();

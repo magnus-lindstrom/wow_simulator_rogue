@@ -21,7 +21,8 @@ pub struct Simulator {
     extra_attacks: i32,
     energy: i32,
     combo_points: i32,
-    verb: i32
+    verb: i32,
+    stat_weights: bool
 }
 
 impl Simulator {
@@ -40,7 +41,8 @@ impl Simulator {
             extra_attacks: 0,
             energy: 0,
             combo_points: 0,
-            verb: 0
+            verb: 0,
+            stat_weights: false
         }
     }
 
@@ -53,6 +55,8 @@ impl Simulator {
         self.timekeep.verb = args.verb;
         self.mh.enemy_lvl = args.enemy_lvl;
         self.oh.enemy_lvl = args.enemy_lvl;
+        self.stat_weights = args.weights;
+        self.timekeep.stat_weights = args.weights;
     }
 
     pub fn get_stats(&self) -> CurrentStats {
@@ -261,16 +265,22 @@ impl Simulator {
     fn sin_strike_evis_rotation(&mut self) {
     }
 
-    fn show_slice_and_dice(&self) {
-        let msg = format!("{:.1}: Slice and dice applied for {:.1}s", 
-                          self.timekeep.timers.time_left,
-                          self.timekeep.timers.slice_and_dice);
-        println!("{}", msg);
+    fn print_slice_and_dice(&self) {
+        if self.verb > 0 && ! self.stat_weights {
+            let msg = format!("{:.1}: Slice and dice applied for {:.1}s", 
+                              self.timekeep.timers.time_left,
+                              self.timekeep.timers.slice_and_dice);
+            println!("{}", msg);
+        }
     }
 
     fn subtract_energy(&mut self, energy: i32) {
         self.energy = max_i32(0, self.energy - energy);
-        if self.verb > 1 && energy > 0 {
+        self.print_subtract_energy(energy);
+    }
+
+    fn print_subtract_energy(&self, energy: i32) {
+        if energy > 0 && self.verb > 1 && ! self.stat_weights {
             let msg = format!("{:.1}: Energy down to {}.", 
                               self.timekeep.timers.time_left,
                               self.energy);
@@ -311,7 +321,10 @@ impl Simulator {
         dmg = self.modifiers.armor_reduction(dmg);
         self.stats.record_eviscerate_dmg_and_hit(dmg, &hit);
 
-        if self.verb > 0 {
+    }
+
+    fn print_evis_hit_and_dmg(&self, hit: Hit, dmg: f32) {
+        if self.verb > 0 && ! self.stat_weights {
             let msg = format!("{:.1}: Eviscerate {} for {:.0} dmg.", 
                               self.timekeep.timers.time_left, hit, dmg);
             println!("{}", msg);
@@ -334,7 +347,7 @@ impl Simulator {
         self.start_global_cd();
         self.subtract_energy(self.ability_costs.slice_and_dice);
         self.clear_combo_points_and_roll_for_finisher_procs();
-        if self.verb > 0 { self.show_slice_and_dice() } 
+        self.print_slice_and_dice();
     }
 
     fn enable_slice_and_dice(&mut self) {
@@ -350,37 +363,32 @@ impl Simulator {
         self.print_slice_and_dice_wearing_off();
     }
 
-    fn clear_combo_points_and_roll_for_finisher_procs(&mut self) {
-        let mut new_combo_points = 0;
-        if self.modifiers.finisher.gets_extra_combo_point() {
-            new_combo_points = 1; 
-            if self.verb > 0 { println!("Got extra combo point from finisher!"); }
+    fn print_extra_combo_point_from_finisher(&self) {
+        if self.verb > 0 && ! self.stat_weights {
+            println!("Got extra combo point from finisher!"); 
         }
+    }
+
+    fn print_extra_energy_from_finisher(&self) {
+        if self.verb > 0 && ! self.stat_weights {
+            println!("Got 25 energy from finisher!"); 
+        }
+    }
+
+    fn clear_combo_points_and_roll_for_finisher_procs(&mut self) {
+        if self.modifiers.finisher.gets_extra_combo_point() {
+            self.combo_points = 1; 
+            self.print_extra_combo_point_from_finisher();
+        } else { self.combo_points = 0; }
+
         if self.modifiers.finisher.gets_extra_energy(self.combo_points) {
             self.add_energy(25);
-            if self.verb > 0 { println!("Got 25 energy from finisher!"); }
+            self.print_extra_energy_from_finisher();
         }
-
-        self.combo_points = new_combo_points;
     }
 
     fn add_combo_point(&mut self) {
         self.combo_points = min_i32(5, self.combo_points + 1);
-    }
-
-    fn print_procc(&mut self, procc: &HitProcc) {
-        let sub_msg = match procc {
-            HitProcc::Dmg(name,dmg,_,_) => 
-                format!("{} procc for {:.0} dmg!", name, dmg),
-            HitProcc::Strength(name,_,_,_) =>
-                format!("Strength procc from {}!", name),
-            HitProcc::ExtraAttack(name,_) =>
-                format!("Extra swing procc from {}!", name),
-            HitProcc::None => panic!("'None' proccs not allowed in simulation.")
-        };
-        let msg = format!("{:.1}: {}", 
-                          self.timekeep.timers.time_left, sub_msg);
-        println!("{}", msg);
     }
 
     fn extra_attack_procc(&mut self) {
@@ -404,34 +412,55 @@ impl Simulator {
         self.extra_attacks += 1;
     }
 
-    fn roll_for_procc(&mut self, procc: &HitProcc) {
+    fn roll_for_procc(&mut self, hit_procc: &HitProcc) {
         let die = roll_die();
-        let does_procc = match procc {
+        let proccs: bool;
+        match hit_procc {
             HitProcc::Dmg(_,_,resist_chance,procc_chance) => {
-                if die < *procc_chance { 
-                    let die_resist = roll_die();
-                    if die_resist > *resist_chance {true }
-                    else { false }
-                } else { false }
+                if die > *procc_chance { proccs = false; }
+                else {
+                    let resist_roll = roll_die();
+                    if resist_roll > *resist_chance { proccs = true; }
+                    else { proccs = false; }
+                }
             },
             HitProcc::Strength(_,_,_,procc_chance) => {
-                if die < *procc_chance { true }
-                else { false }
+                if die < *procc_chance { proccs = true; }
+                else { proccs = false; }
             },
             HitProcc::ExtraAttack(_,procc_chance) => {
                 if die < *procc_chance { 
                     self.extra_attack_procc();
-                    true 
+                    proccs = true; 
                 }
-                else { false }
+                else { proccs = false; }
             },
             HitProcc::None => panic!("'None' proccs not allowed in simulation.")
         };
-        if does_procc {
-            if self.verb > 0 { self.print_procc(procc); }
-            self.stats.record_procc(procc); 
+        if proccs { 
+            self.print_procc(hit_procc); 
+            self.stats.record_procc(hit_procc); 
         }
     }
+
+    fn print_procc(&mut self, procc: &HitProcc) {
+        if self.verb > 0 && ! self.stat_weights {
+            let sub_msg = match procc {
+                HitProcc::Dmg(name,dmg,_,_) => 
+                    format!("{} procc for {:.0} dmg!", name, dmg),
+                HitProcc::Strength(name,_,_,_) =>
+                    format!("Strength procc from {}!", name),
+                HitProcc::ExtraAttack(name,_) =>
+                    format!("Extra swing procc from {}!", name),
+                HitProcc::None => 
+                    panic!("'None' proccs not allowed in simulation.")
+            };
+            let msg = format!("{:.1}: {}", self.timekeep.timers.time_left, 
+                              sub_msg);
+            println!("{}", msg);
+        }
+    }
+
 
     fn trigger_hit_procc_mh(&mut self) {
         for i in 0..self.mh.hit_proccs.len() {
@@ -469,7 +498,7 @@ impl Simulator {
         self.stats.record_backstab_dmg_and_hit(dmg, &hit);
         self.start_global_cd();
 
-        if self.verb > 0 {
+        if self.verb > 0 && ! self.stat_weights {
             let msg = format!("{:.1}: Backstab {} for {:.0} dmg.", 
                               self.timekeep.timers.time_left, hit, dmg);
             println!("{}", msg);
@@ -517,7 +546,7 @@ impl Simulator {
     }
 
     fn print_mh_hit_and_dmg(&mut self, hit: Hit, dmg: f32) {
-        if self.verb > 0 {
+        if self.verb > 0 && ! self.stat_weights {
             let msg = format!("{:.1}: MH {} for {:.0} dmg.", 
                               self.timekeep.timers.time_left, hit, dmg);
             println!("{}", msg);
@@ -525,7 +554,7 @@ impl Simulator {
     }
 
     fn print_oh_hit_and_dmg(&mut self, hit: Hit, dmg: f32) {
-        if self.verb > 0 {
+        if self.verb > 0 && ! self.stat_weights {
             let msg = format!("{:.1}: OH {} for {:.0} dmg.", 
                               self.timekeep.timers.time_left, hit, dmg);
             println!("{}", msg);
@@ -565,7 +594,7 @@ impl Simulator {
     }
 
     pub fn print_stats(&mut self) {
-        if self.verb > 1 { self.stats.print_stats(); }
+        if self.verb > 1 && ! self.stat_weights { self.stats.print_stats(); }
     }
 
     fn cd_by_nr_lacks_prerequisite(&mut self, nr: usize) -> bool {
@@ -609,7 +638,7 @@ impl Simulator {
     fn use_cd_by_nr(&mut self, nr: usize) {
         if self.cd_by_nr_lacks_prerequisite(nr) { return; }
         self.enable_cd_by_nr(nr);
-        if self.verb > 0 { self.print_cd_usage_by_nr(nr); }
+        if self.verb > 0 && ! self.stat_weights { self.print_cd_usage_by_nr(nr); }
     }
 
     fn use_ready_cooldowns(&mut self) {
@@ -698,7 +727,7 @@ impl Simulator {
     }
 
     fn print_slice_and_dice_wearing_off(&mut self) {
-        if self.verb > 1 {
+        if self.verb > 1 && ! self.stat_weights {
             println!("{:.1}: Slice and dice wore off.", 
                      self.timekeep.timers.time_left);
         }
@@ -761,14 +790,14 @@ impl Simulator {
     fn print_cd_wearing_off_by_nr(&mut self, nr: usize) {
         let name = &self.cooldowns[nr].name;
         let cd = self.cooldowns[nr].cd;
-        if self.verb > 1 {
+        if self.verb > 1 && ! self.stat_weights {
             println!("{:.1}: {} wore off, {}s cooldown.", 
                      self.timekeep.timers.time_left, name, cd);
         }
     }
 
     fn print_at_end_of_simulation(&mut self) {
-        if self.verb > 2 {
+        if self.verb > 2 && ! self.stat_weights {
             println!("\nSimulator object at the end of simulation:\n{:?}",
                      self);
             self.mh.print_hit_tables();
@@ -791,7 +820,7 @@ impl Simulator {
         else { refill = 20; }
         refill *= self.modifiers.general.energy_regen_modifier;
         self.add_energy(refill);
-        if self.verb > 1 { self.show_energy_refill(); }
+        if self.verb > 1 && ! self.stat_weights { self.show_energy_refill(); }
     }
 
     fn show_energy_refill(&mut self) {
@@ -913,7 +942,8 @@ struct TimeKeeper {
     dt: f32,
     mh_swing_interval: f32,
     oh_swing_interval: f32,
-    verb: i32
+    verb: i32,
+    stat_weights: bool
 }
 
 impl TimeKeeper {
@@ -924,7 +954,8 @@ impl TimeKeeper {
             dt: 0.0,
             mh_swing_interval: 0.0,
             oh_swing_interval: 0.0,
-            verb: 0
+            verb: 0,
+            stat_weights: false
         }
     }
 
@@ -942,7 +973,7 @@ impl TimeKeeper {
 
     fn reset_mh_swing_timer(&mut self, factor: f32) {
         self.timers.mh_swing = self.mh_swing_interval / factor;
-        if self.verb > 1 {
+        if self.verb > 1 && ! self.stat_weights {
             let msg = format!("{:.1}: Reset MH swing timer to {:.2}s.", 
                               self.timers.time_left, self.timers.mh_swing);
             println!("{}", msg);
@@ -951,7 +982,7 @@ impl TimeKeeper {
 
     fn reset_oh_swing_timer(&mut self, factor: f32) {
         self.timers.oh_swing = self.oh_swing_interval / factor;
-        if self.verb > 1 {
+        if self.verb > 1 && ! self.stat_weights {
             let msg = format!("{:.1}: Reset OH swing timer to {:.2}s.", 
                               self.timers.time_left, self.timers.oh_swing);
             println!("{}", msg);
@@ -1121,6 +1152,9 @@ impl WepSimulator {
             }
         }
         self.set_white_hit_table(character);
+        if self.is_main_hand() {
+            println!("white hit table:\n{:?}", self.hit_table_white);
+        }
     }
 
     fn set_yellow_hit_table(&mut self, character: &Character) {
@@ -1139,7 +1173,7 @@ impl WepSimulator {
         // miss chance
         let hit_chance = self.get_effective_hit_chance_from_hit_and_skill_delta(
             character.sec_stats.hit, skill_delta);
-        let mut miss_chance = get_miss_from_level_delta(skill_delta);
+        let mut miss_chance = get_miss_chance_from_skill_delta(skill_delta);
         miss_chance = miss_chance - hit_chance;
         self.hit_table_yellow.miss_value = miss_chance;
 
@@ -1206,7 +1240,8 @@ impl WepSimulator {
         // miss chance
         let hit_chance = self.get_effective_hit_chance_from_hit_and_skill_delta(
             character.sec_stats.hit, skill_delta);
-        let mut miss_chance = get_miss_from_level_delta(skill_delta);
+        println!("skill delta when setting white table: {}", skill_delta);
+        let mut miss_chance = get_miss_chance_from_skill_delta(skill_delta);
         miss_chance = 0.8 * miss_chance + 0.2;
         miss_chance = miss_chance - hit_chance;
         self.hit_table_white.miss_value = miss_chance;
@@ -1271,7 +1306,7 @@ impl WepSimulator {
 
 }
 
-fn get_miss_from_level_delta(delta: i32) -> f32 {
+fn get_miss_chance_from_skill_delta(delta: i32) -> f32 {
     if delta < 0 { return 0.05; }
     else if delta <= 10 && delta >= 0 { return 0.05 + 0.001 * delta as f32; }
     else if delta <= 15 { return 0.07 + 0.002 * ((delta - 10) as f32); }
