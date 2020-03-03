@@ -14,7 +14,6 @@ impl StatShift {
         let mut vec = Vec::new();
         vec.push(StatShift::get_zero_object());
         if args.weights {
-            /*
             vec.push(StatShift::get_agility_object_from_sign(
                     Sign::Negative, args));
             vec.push(StatShift::get_agility_object_from_sign(
@@ -27,10 +26,13 @@ impl StatShift {
                     Sign::Negative, args));
             vec.push(StatShift::get_crit_object_from_sign(
                     Sign::Positive, args));
-                    */
             vec.push(StatShift::get_hit_object_from_sign(
                     Sign::Negative, args));
             vec.push(StatShift::get_hit_object_from_sign(
+                    Sign::Positive, args));
+            vec.push(StatShift::get_dagger_skill_object_from_sign(
+                    Sign::Negative, args));
+            vec.push(StatShift::get_dagger_skill_object_from_sign(
                     Sign::Positive, args));
         }
         return vec;
@@ -49,10 +51,15 @@ impl StatShift {
         let mut obj = StatShift::get_zero_object();
 
         let mut value: i32 = 10;
-        if sign == Sign::Positive { value *= args.weight_mult; } 
-        else { value *= -1 * args.weight_mult; }
+        if sign == Sign::Positive { 
+            value *= args.weight_mult; 
+            obj.text = format!("{:+} agility:\t", value);
+        } 
+        else { 
+            value *= -1 * args.weight_mult; 
+            obj.text = format!("\n{:+} agility:\t", value);
+        }
 
-        obj.text = format!("{:+} agility:\t", value);
         obj.prim_stats.agility = value;
 
         return obj;
@@ -63,10 +70,15 @@ impl StatShift {
         let mut obj = StatShift::get_zero_object();
 
         let mut value: i32 = 10;
-        if sign == Sign::Positive { value *= args.weight_mult; } 
-        else { value *= -1 * args.weight_mult; }
+        if sign == Sign::Positive { 
+            value *= args.weight_mult; 
+            obj.text = format!("{:+} strength:\t", value);
+        } 
+        else { 
+            value *= -1 * args.weight_mult; 
+            obj.text = format!("\n{:+} strength:\t", value);
+        }
 
-        obj.text = format!("{:+} strength:\t", value);
         obj.prim_stats.strength = value;
 
         return obj;
@@ -77,10 +89,15 @@ impl StatShift {
         let mut obj = StatShift::get_zero_object();
 
         let mut value: f32 = 0.01;
-        if sign == Sign::Positive { value *= args.weight_mult as f32; } 
-        else { value *= -1.0 * args.weight_mult as f32; }
+        if sign == Sign::Positive { 
+            value *= args.weight_mult as f32; 
+            obj.text = format!("{:+} hit:\t", value);
+        } 
+        else { 
+            value *= -1.0 * args.weight_mult as f32; 
+            obj.text = format!("\n{:+} hit:\t", value);
+        }
 
-        obj.text = format!("{:+} hit:\t", value);
         obj.sec_stats.hit = value;
 
         return obj;
@@ -91,11 +108,35 @@ impl StatShift {
         let mut obj = StatShift::get_zero_object();
 
         let mut value: f32 = 0.01;
-        if sign == Sign::Positive { value *= args.weight_mult as f32; } 
-        else { value *= -1.0 * args.weight_mult as f32; }
+        if sign == Sign::Positive { 
+            value *= args.weight_mult as f32; 
+            obj.text = format!("{:+} crit:\t", value);
+        } 
+        else { 
+            value *= -1.0 * args.weight_mult as f32; 
+            obj.text = format!("\n{:+} crit:\t", value);
+        }
 
-        obj.text = format!("{:+} crit:\t", value);
         obj.sec_stats.crit = value;
+
+        return obj;
+    }
+
+    fn get_dagger_skill_object_from_sign(sign: Sign, args: &Args) -> StatShift {
+
+        let mut obj = StatShift::get_zero_object();
+
+        let mut value: i32 = 1;
+        if sign == Sign::Positive { 
+            value *= args.weight_mult; 
+            obj.text = format!("{:+} dagger skill:\t", value);
+        } 
+        else { 
+            value *= -1 * args.weight_mult; 
+            obj.text = format!("\n{:+} dagger skill:\t", value);
+        }
+
+        obj.prim_stats.dagger_skill = value;
 
         return obj;
     }

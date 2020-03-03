@@ -1152,9 +1152,6 @@ impl WepSimulator {
             }
         }
         self.set_white_hit_table(character);
-        if self.is_main_hand() {
-            println!("white hit table:\n{:?}", self.hit_table_white);
-        }
     }
 
     fn set_yellow_hit_table(&mut self, character: &Character) {
@@ -1240,7 +1237,6 @@ impl WepSimulator {
         // miss chance
         let hit_chance = self.get_effective_hit_chance_from_hit_and_skill_delta(
             character.sec_stats.hit, skill_delta);
-        println!("skill delta when setting white table: {}", skill_delta);
         let mut miss_chance = get_miss_chance_from_skill_delta(skill_delta);
         miss_chance = 0.8 * miss_chance + 0.2;
         miss_chance = miss_chance - hit_chance;
@@ -1394,7 +1390,7 @@ impl WhiteHitTable {
     }
 
     fn add_hit(&mut self, hit: f32) {
-        let hit_to_subtract = max_f32(0.0, self.miss_value - hit);
+        let hit_to_subtract = min_f32(self.miss_value, hit);
         self.miss_value -= hit_to_subtract;
         self.dodge_value -= hit_to_subtract;
         self.glancing_value -= hit_to_subtract;

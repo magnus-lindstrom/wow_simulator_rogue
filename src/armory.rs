@@ -483,30 +483,29 @@ pub struct Character {
 }
 
 impl Character {
-    pub fn create_character(args: &Args, stat_shift: &StatShift) -> Character {
+    pub fn create_character(args: &Args) -> Character {
         let mut character = Character::new(Race::Human);
 
         let char_spec = CharacterSpecification::get_char_spec(args);
-        // let item_spec = ItemSpecification::get_item_specification(args);
         character.set_armor_and_weapons(char_spec.items);
         character.apply_set_bonuses();
-        // let enchant_spec = EnchantSpecification::get_enchant_spec(args);
         character.set_enchants(char_spec.enchants);
-
         character.set_buffs(char_spec.buffs);
         character.set_talents(char_spec.talents);
         character.apply_stats_from_armor_and_weapons();
         character.apply_stats_from_buffs();
         character.apply_stats_from_enchants();
-        character.apply_stat_shift(stat_shift);
-        character.convert_primary_stats_to_secondary();
-        character.set_common_cooldowns();
         return character;
     }
 
     pub fn apply_stat_shift(&mut self, stat_shift: &StatShift) {
         self.apply_prim_stats(stat_shift.prim_stats);
         self.apply_sec_stats(stat_shift.sec_stats);
+    }
+
+    pub fn convert_stats_and_set_cooldowns(&mut self) {
+        self.convert_primary_stats_to_secondary();
+        self.set_common_cooldowns();
     }
 
     pub fn print_all_stats(&self, args: &Args) {

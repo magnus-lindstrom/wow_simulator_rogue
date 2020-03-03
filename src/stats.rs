@@ -15,7 +15,8 @@ pub struct OverallStats {
     eviscerate_ratio: Vec<f32>,
     mh_white_ratio: Vec<f32>,
     oh_white_ratio: Vec<f32>,
-    procc_dps_ratios: HashMap<String,Vec<f32>>
+    procc_dps_ratios: HashMap<String,Vec<f32>>,
+    weights_text: String
 }
 
 impl OverallStats {
@@ -29,7 +30,8 @@ impl OverallStats {
             eviscerate_ratio: Vec::new(),
             mh_white_ratio: Vec::new(),
             oh_white_ratio: Vec::new(),
-            procc_dps_ratios: HashMap::new()
+            procc_dps_ratios: HashMap::new(),
+            weights_text: "".to_string()
         }
     }
 
@@ -48,14 +50,33 @@ impl OverallStats {
         }
     }
 
-    pub fn print_stat_weight(&self, stat_shift_text: &String) {
+    pub fn get_mean_dps(&self) -> f32 { return mean(&self.dps); }
+
+    pub fn add_weights_text(&mut self, text: &String) {
+        self.weights_text = text.to_string();
+    }
+
+    pub fn print_stat_weight_default_run(&self) {
 
         let mean_dps = mean(&self.dps);
         let dps_within_std = std_dev(&self.dps);
         let mean_dps_std = 1.96 * dps_within_std / (self.n_runs as f32).sqrt();
 
-        println!("{}{:.2}dps ±{:.2}",stat_shift_text, mean_dps, 
+        println!("{}{:.2}dps ±{:.2}", self.weights_text, mean_dps, 
                mean_dps_std);
+    }
+
+    pub fn print_stat_weight_minus_default_dps(&self, default_dps: f32) {
+
+        let mean_dps = mean(&self.dps);
+        let diff_dps = mean_dps - default_dps;
+        let dps_within_std = std_dev(&self.dps);
+        let mean_dps_std = 1.96 * dps_within_std / (self.n_runs as f32).sqrt();
+        let mean_dps_diff_std = 1.41 * mean_dps_std;
+
+        println!("{}{:+.2}% ±{:.2}%", self.weights_text, 
+                 100.0 * diff_dps / default_dps, 
+                 100.0 * mean_dps_diff_std / default_dps);
     }
 
     pub fn print(&self) {
