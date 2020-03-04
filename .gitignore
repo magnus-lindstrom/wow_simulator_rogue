@@ -2,4 +2,8 @@
 **/*.rs.bk
 *.swp
 .idea
+
+# python-related
 venv/
+__pycache__/
+*.py[cod]
