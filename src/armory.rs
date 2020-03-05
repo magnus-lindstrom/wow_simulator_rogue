@@ -255,11 +255,29 @@ impl Weapon {
         return self.hit_procc.clone();
     }
 }
-        
+
+#[derive(Debug,Clone,Serialize,Deserialize)]
+enum Slot {
+    Head,
+    Neck,
+    Shoulders,
+    Back,
+    Chest,
+    Wrists,
+    Hands,
+    Waist,
+    Legs,
+    Feet,
+    Ring,
+    Trinket,
+    Ranged,
+}
+ 
 #[derive(Debug,Serialize,Deserialize)]
 pub struct Armor {
     name: String,
     set_tag: String,
+    slot: Slot,
     prim_stats: PrimStats,
     sec_stats: SecStats,
     pub hit_procc: HitProcc
@@ -270,6 +288,7 @@ impl Armor {
         Armor {
             name: self.name.to_string(),
             set_tag: self.set_tag.to_string(),
+            slot: self.slot.clone(),
             prim_stats: self.prim_stats.clone(),
             sec_stats: self.sec_stats.clone(),
             hit_procc: self.hit_procc.clone()
