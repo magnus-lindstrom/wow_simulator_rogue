@@ -21,7 +21,6 @@
 #     - name
 #     - procc_chance
 ---
-# head
 bloodfang_hood:
   name: bloodfang_hood
   set_tag: 'bloodfang armor'
@@ -38,7 +37,6 @@ bloodfang_hood:
     haste: 0.0
     attack_power: 0
   hit_procc: None
-# neck
 onyxia_tooth_pendant:
   name: onyxia_tooth_pendant
   set_tag: ''
@@ -55,7 +53,6 @@ onyxia_tooth_pendant:
     haste: 0.0
     attack_power: 0
   hit_procc: None
-# shoulders
 nightslayer_shoulder_pads:
   name: nightslayer_shoulder_pads
   set_tag: 'nightslayer armor'
@@ -72,7 +69,6 @@ nightslayer_shoulder_pads:
     haste: 0.0
     attack_power: 0
   hit_procc: None
-# back
 cape_of_the_black_baron:
   name: cape_of_the_black_baron
   set_tag: ''
@@ -89,7 +85,6 @@ cape_of_the_black_baron:
     haste: 0.0
     attack_power: 20
   hit_procc: None
-# chest
 nightslayer_chestpiece:
   name: nightslayer_chestpiece
   set_tag: 'nightslayer armor'
@@ -106,7 +101,6 @@ nightslayer_chestpiece:
     haste: 0.0
     attack_power: 0
   hit_procc: None
-# bracers
 nightslayer_bracelets:
   name: nightslayer_bracelets
   set_tag: 'nightslayer armor'
@@ -123,7 +117,6 @@ nightslayer_bracelets:
     haste: 0.0
     attack_power: 0
   hit_procc: None
-# hands
 nightslayer_gloves:
   name: nightslayer_gloves
   set_tag: 'nightslayer armor'
@@ -140,7 +133,6 @@ nightslayer_gloves:
     haste: 0.0
     attack_power: 0
   hit_procc: None
-# waist
 nightslayer_belt:
   name: nightslayer_belt
   set_tag: 'nightslayer armor'
@@ -173,7 +165,6 @@ muggers_belt:
     haste: 0.0
     attack_power: 0
   hit_procc: None
-# pants
 bloodfang_pants:
   name: bloodfang_pants
   set_tag: 'bloodfang armor'
@@ -190,7 +181,6 @@ bloodfang_pants:
     haste: 0.0
     attack_power: 0
   hit_procc: None
-# boots
 shadowcraft_boots:
   name: shadowcraft_boots
   set_tag: ''
@@ -223,9 +213,6 @@ boots_of_the_shadow_flame:
     haste: 0.0
     attack_power: 44
   hit_procc: None
-
-
-# ring
 master_dragonslayers_ring:
   name: master_dragonslayers_ring
   set_tag: ''
@@ -258,7 +245,6 @@ tarnished_elven_ring:
     haste: 0.0
     attack_power: 0
   hit_procc: None
-# trinket
 royal_seal_of_eldre_thalas:
   name: royal_seal_of_eldre_thalas
   set_tag: ''
@@ -310,7 +296,6 @@ hand_of_justice:
     ExtraAttack:
       - Hand of justice
       - 0.02
-# Ranged weapons
 satyrs_bow:
   name: satyrs_bow
   set_tag: ''
