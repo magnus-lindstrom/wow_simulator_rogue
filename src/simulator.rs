@@ -10,7 +10,7 @@ use crate::stats::CurrentStats;
 pub struct Simulator {
     timekeep: TimeKeeper,
     fight_length: f32,
-    mh: WepSimulator, 
+    mh: WepSimulator,
     oh: WepSimulator,
     rotation: Rotation,
     ability_costs: AbilityCosts,
@@ -62,75 +62,33 @@ impl Simulator {
     pub fn get_stats(&self) -> CurrentStats {
         return self.stats.copy();
     }
-    
+
+    fn get_glancing_red_factor_from_skill_delta(&self, skill_delta: i32) -> f32 {
+        let glancing_red_factor = match skill_delta {
+            15 => 1.0 - 0.35,
+            14 => 1.0 - 0.31,
+            13 => 1.0 - 0.27,
+            12 => 1.0 - 0.23,
+            11 => 1.0 - 0.19,
+            10 => 1.0 - 0.15,
+            9  => 1.0 - 0.11,
+            8  => 1.0 - 0.07,
+            -300..=7 =>  1.0 - 0.05,
+            _ => panic!("Skill delta not implemented")
+        };
+        return glancing_red_factor;
+    }
+
     fn set_glancing_reduction(&mut self, character: &Character) {
         // Main hand
-        let mut skill_delta: i32;
-        if self.mh.get_weapon_type() == WeaponType::Dagger {
-            skill_delta = 5 * self.mh.enemy_lvl 
-                - character.prim_stats.dagger_skill;
-        } else if character.mh.get_weapon_type() == WeaponType::Sword {
-            skill_delta = 5 * self.mh.enemy_lvl 
-                - character.prim_stats.sword_skill;
-        } else { panic!("Weapon type not initialized or implemented yet!"); }
+        let skill_delta_mh = self.mh.get_skill_delta(character);
+        let skill_delta_oh = self.oh.get_skill_delta(character);
 
-        // weapon expertise
-        if self.mh.get_weapon_type() == WeaponType::Dagger 
-            || self.mh.get_weapon_type() == WeaponType::Sword {
-                skill_delta -= match character.talents.weapon_expertise {
-                    0 => 0,
-                    1 => 3,
-                    2 => 5,
-                    _ => panic!("Invalid value of weapon expertise.")
-                };
-        }
+        self.modifiers.hit.glancing_mh =
+            self.get_glancing_red_factor_from_skill_delta(skill_delta_mh);
+        self.modifiers.hit.glancing_oh =
+            self.get_glancing_red_factor_from_skill_delta(skill_delta_oh);
 
-        self.modifiers.hit.glancing_mh = match skill_delta {
-            15 => 1.0 - 0.35,
-            14 => 1.0 - 0.31,
-            13 => 1.0 - 0.27,
-            12 => 1.0 - 0.23,
-            11 => 1.0 - 0.19,
-            10 => 1.0 - 0.15,
-            9  => 1.0 - 0.11,
-            8  => 1.0 - 0.07,
-            -300..=7 =>  1.0 - 0.05,
-            _ => panic!("Skill delta not implemented")
-        };
-
-        // Off hand
-        let mut skill_delta: i32;
-        if self.oh.get_weapon_type() == WeaponType::Dagger {
-            skill_delta = 5 * self.oh.enemy_lvl 
-                - character.prim_stats.dagger_skill;
-        } else if character.oh.get_weapon_type() == WeaponType::Sword {
-            skill_delta = 5 * self.oh.enemy_lvl 
-                - character.prim_stats.sword_skill;
-        } else { panic!("Weapon type not initialized yet!"); }
-
-        // weapon expertise
-        if self.oh.get_weapon_type() == WeaponType::Dagger 
-            || self.oh.get_weapon_type() == WeaponType::Sword {
-                skill_delta -= match character.talents.weapon_expertise {
-                    0 => 0,
-                    1 => 3,
-                    2 => 5,
-                    _ => panic!("Invalid value of weapon expertise.")
-                };
-        }
-
-        self.modifiers.hit.glancing_oh = match skill_delta {
-            15 => 1.0 - 0.35,
-            14 => 1.0 - 0.31,
-            13 => 1.0 - 0.27,
-            12 => 1.0 - 0.23,
-            11 => 1.0 - 0.19,
-            10 => 1.0 - 0.15,
-            9  => 1.0 - 0.11,
-            8  => 1.0 - 0.07,
-            -300..=7 =>  1.0 - 0.05,
-            _ => panic!("Skill delta not implemented")
-        };
     }
 
     pub fn configure_with_character(&mut self, character: &Character) {
@@ -167,33 +125,33 @@ impl Simulator {
 
         // assassination table
         // imp evis
-        self.modifiers.hit.eviscerate += 0.05 * 
+        self.modifiers.hit.eviscerate += 0.05 *
             character.talents.improved_eviscerate as f32;
-       
+
         // malice
-        self.mh.add_crit(0.01 * character.talents.malice as f32);
-        self.oh.add_crit(0.01 * character.talents.malice as f32);
+        // self.mh.add_crit(0.01 * character.talents.malice as f32);
+        // self.oh.add_crit(0.01 * character.talents.malice as f32);
 
         // relentless strikes
         match character.talents.relentless_strikes {
-            1 => self.modifiers.finisher.restore_energy_chance_per_combo_point = 
+            1 => self.modifiers.finisher.restore_energy_chance_per_combo_point =
                 0.2,
             0 => (),
             _ => panic!("Relentless strikes can only have one talent point")
         }
 
         // ruthlessness
-        self.modifiers.finisher.add_combo_point_chance = 
+        self.modifiers.finisher.add_combo_point_chance =
             0.2 * character.talents.ruthlessness as f32;
 
         // improved slice and dice
-        self.modifiers.general.slice_and_dice_duration_modifier += 
+        self.modifiers.general.slice_and_dice_duration_modifier +=
             0.15 * character.talents.improved_slice_and_dice as f32;
-        
+
         // lethality
-        self.modifiers.crit.backstab += 
+        self.modifiers.crit.backstab +=
             0.06 * character.talents.lethality as f32;
-        self.modifiers.crit.sinister_strike += 
+        self.modifiers.crit.sinister_strike +=
             0.06 * character.talents.lethality as f32;
 
         // combat table
@@ -210,8 +168,8 @@ impl Simulator {
             0.1 * character.talents.improved_backstab as f32);
 
         // precision
-        self.mh.add_hit(0.01 * character.talents.precision as f32);
-        self.oh.add_hit(0.01 * character.talents.precision as f32);
+        // self.mh.add_hit(0.01 * character.talents.precision as f32);
+        // self.oh.add_hit(0.01 * character.talents.precision as f32);
 
         // dagger specialization
         if self.mh.weapon_type == WeaponType::Dagger {
@@ -222,25 +180,25 @@ impl Simulator {
             self.oh.add_crit(
                 0.01 * character.talents.dagger_specialization as f32);
         }
-        
+
         // dual wield specialization
-        self.modifiers.hit.oh *= 
+        self.modifiers.hit.oh *=
             1.0 + 0.1 * character.talents.dual_wield_specialization as f32;
-        
+
         // sword specialization
         if character.talents.sword_specialization > 0 {
             panic!("Sword specialization not implemented yet.");
         }
 
         // aggression
-        self.modifiers.hit.eviscerate *= 
+        self.modifiers.hit.eviscerate *=
             1.0 + 0.02 * character.talents.aggression as f32;
-        self.modifiers.hit.sinister_strike *= 
+        self.modifiers.hit.sinister_strike *=
             1.0 + 0.02 * character.talents.aggression as f32;
-        
+
         // subtlety
         // opportunity
-        self.modifiers.hit.backstab *= 
+        self.modifiers.hit.backstab *=
             1.0 + 0.04 * character.talents.opportunity as f32;
     }
 
@@ -267,7 +225,7 @@ impl Simulator {
 
     fn print_slice_and_dice(&self) {
         if self.verb > 0 && ! self.stat_weights {
-            let msg = format!("{:.1}: Slice and dice applied for {:.1}s", 
+            let msg = format!("{:.1}: Slice and dice applied for {:.1}s",
                               self.timekeep.timers.time_left,
                               self.timekeep.timers.slice_and_dice);
             println!("{}", msg);
@@ -281,7 +239,7 @@ impl Simulator {
 
     fn print_subtract_energy(&self, energy: i32) {
         if energy > 0 && self.verb > 1 && ! self.stat_weights {
-            let msg = format!("{:.1}: Energy down to {}.", 
+            let msg = format!("{:.1}: Energy down to {}.",
                               self.timekeep.timers.time_left,
                               self.energy);
             println!("{}", msg);
@@ -289,7 +247,7 @@ impl Simulator {
     }
 
     fn add_energy(&mut self, energy_refill: i32) {
-        self.energy = min_i32(self.modifiers.general.energy_max, 
+        self.energy = min_i32(self.modifiers.general.energy_max,
                               self.energy + energy_refill);
     }
 
@@ -307,7 +265,7 @@ impl Simulator {
         else if self.combo_points == 5 { dmg = 851.0; }
         else { panic!("Can only eviscerate with 1-5 combo points."); }
 
-        if hit == Hit::Hit || hit == Hit::Crit { 
+        if hit == Hit::Hit || hit == Hit::Crit {
             self.trigger_hit_procc_mh();
             self.clear_combo_points_and_roll_for_finisher_procs();
 
@@ -325,7 +283,7 @@ impl Simulator {
 
     fn print_evis_hit_and_dmg(&self, hit: Hit, dmg: f32) {
         if self.verb > 0 && ! self.stat_weights {
-            let msg = format!("{:.1}: Eviscerate {} for {:.0} dmg.", 
+            let msg = format!("{:.1}: Eviscerate {} for {:.0} dmg.",
                               self.timekeep.timers.time_left, hit, dmg);
             println!("{}", msg);
         }
@@ -365,19 +323,19 @@ impl Simulator {
 
     fn print_extra_combo_point_from_finisher(&self) {
         if self.verb > 0 && ! self.stat_weights {
-            println!("Got extra combo point from finisher!"); 
+            println!("Got extra combo point from finisher!");
         }
     }
 
     fn print_extra_energy_from_finisher(&self) {
         if self.verb > 0 && ! self.stat_weights {
-            println!("Got 25 energy from finisher!"); 
+            println!("Got 25 energy from finisher!");
         }
     }
 
     fn clear_combo_points_and_roll_for_finisher_procs(&mut self) {
         if self.modifiers.finisher.gets_extra_combo_point() {
-            self.combo_points = 1; 
+            self.combo_points = 1;
             self.print_extra_combo_point_from_finisher();
         } else { self.combo_points = 0; }
 
@@ -395,7 +353,7 @@ impl Simulator {
         self.reset_mh_swing();
         self.add_extra_attack();
     }
-    
+
     fn reset_mh_swing(&mut self) {
         self.timekeep.reset_mh_swing_timer(
             self.modifiers.general.attack_speed_modifier
@@ -429,33 +387,33 @@ impl Simulator {
                 else { proccs = false; }
             },
             HitProcc::ExtraAttack(_,procc_chance) => {
-                if die < *procc_chance { 
+                if die < *procc_chance {
                     self.extra_attack_procc();
-                    proccs = true; 
+                    proccs = true;
                 }
                 else { proccs = false; }
             },
             HitProcc::None => panic!("'None' proccs not allowed in simulation.")
         };
-        if proccs { 
-            self.print_procc(hit_procc); 
-            self.stats.record_procc(hit_procc); 
+        if proccs {
+            self.print_procc(hit_procc);
+            self.stats.record_procc(hit_procc);
         }
     }
 
     fn print_procc(&mut self, procc: &HitProcc) {
         if self.verb > 0 && ! self.stat_weights {
             let sub_msg = match procc {
-                HitProcc::Dmg(name,dmg,_,_) => 
+                HitProcc::Dmg(name,dmg,_,_) =>
                     format!("{} procc for {:.0} dmg!", name, dmg),
                 HitProcc::Strength(name,_,_,_) =>
                     format!("Strength procc from {}!", name),
                 HitProcc::ExtraAttack(name,_) =>
                     format!("Extra swing procc from {}!", name),
-                HitProcc::None => 
+                HitProcc::None =>
                     panic!("'None' proccs not allowed in simulation.")
             };
-            let msg = format!("{:.1}: {}", self.timekeep.timers.time_left, 
+            let msg = format!("{:.1}: {}", self.timekeep.timers.time_left,
                               sub_msg);
             println!("{}", msg);
         }
@@ -479,15 +437,15 @@ impl Simulator {
     fn backstab(&mut self) {
         let hit: Hit = self.mh.hit_table_backstab.roll_for_hit();
         let mut dmg = 0.0;
-        if hit == Hit::Miss || hit == Hit::Dodge { 
+        if hit == Hit::Miss || hit == Hit::Dodge {
             let energy_cost = (0.2 * self.ability_costs.backstab as f32) as i32;
             self.subtract_energy(energy_cost);
         }
-        if hit == Hit::Hit || hit == Hit::Crit { 
+        if hit == Hit::Hit || hit == Hit::Crit {
             self.trigger_hit_procc_mh();
             self.subtract_energy(self.ability_costs.backstab);
             self.add_combo_point();
-            dmg = 1.5 * self.mh.mean_dmg + 210.0;
+            dmg = 1.5 * self.mh.mean_yellow_dmg + 210.0;
             dmg *= self.modifiers.hit.backstab;
 
             if hit == Hit::Crit {
@@ -499,7 +457,7 @@ impl Simulator {
         self.start_global_cd();
 
         if self.verb > 0 && ! self.stat_weights {
-            let msg = format!("{:.1}: Backstab {} for {:.0} dmg.", 
+            let msg = format!("{:.1}: Backstab {} for {:.0} dmg.",
                               self.timekeep.timers.time_left, hit, dmg);
             println!("{}", msg);
         }
@@ -513,16 +471,16 @@ impl Simulator {
     fn backstab_evis_rotation(&mut self) {
         let can_backstab = self.energy >= self.ability_costs.backstab;
         let can_eviscerate = self.energy >= self.ability_costs.eviscerate;
-        let can_slice_and_dice = 
+        let can_slice_and_dice =
             self.energy >= self.ability_costs.slice_and_dice;
         let active_slice_and_dice = self.timekeep.timers.slice_and_dice > 0.0;
 
-        if self.combo_points == 2 && ! active_slice_and_dice 
+        if self.combo_points == 2 && ! active_slice_and_dice
             && can_slice_and_dice { self.slice_and_dice() }
         else if self.combo_points < 5 && can_backstab { self.backstab(); }
-        else if self.combo_points == 5 && ! active_slice_and_dice 
+        else if self.combo_points == 5 && ! active_slice_and_dice
             && can_slice_and_dice { self.slice_and_dice(); }
-        else if self.combo_points == 5 && active_slice_and_dice 
+        else if self.combo_points == 5 && active_slice_and_dice
             && can_eviscerate { self.eviscerate(); }
     }
 
@@ -530,9 +488,9 @@ impl Simulator {
 
         let hit: Hit = self.mh.hit_table_white.roll_for_hit();
         let mut dmg = 0.0;
-        if hit == Hit::Hit || hit == Hit::Crit || hit == Hit::Glancing { 
+        if hit == Hit::Hit || hit == Hit::Crit || hit == Hit::Glancing {
             self.trigger_hit_procc_mh();
-            dmg = self.mh.mean_dmg;
+            dmg = self.mh.mean_white_dmg;
 
             if hit == Hit::Glancing {
                 dmg *= self.modifiers.hit.glancing_mh;
@@ -547,7 +505,7 @@ impl Simulator {
 
     fn print_mh_hit_and_dmg(&mut self, hit: Hit, dmg: f32) {
         if self.verb > 0 && ! self.stat_weights {
-            let msg = format!("{:.1}: MH {} for {:.0} dmg.", 
+            let msg = format!("{:.1}: MH {} for {:.0} dmg.",
                               self.timekeep.timers.time_left, hit, dmg);
             println!("{}", msg);
         }
@@ -555,7 +513,7 @@ impl Simulator {
 
     fn print_oh_hit_and_dmg(&mut self, hit: Hit, dmg: f32) {
         if self.verb > 0 && ! self.stat_weights {
-            let msg = format!("{:.1}: OH {} for {:.0} dmg.", 
+            let msg = format!("{:.1}: OH {} for {:.0} dmg.",
                               self.timekeep.timers.time_left, hit, dmg);
             println!("{}", msg);
         }
@@ -565,9 +523,9 @@ impl Simulator {
 
         let hit: Hit = self.oh.hit_table_white.roll_for_hit();
         let mut dmg = 0.0;
-        if hit == Hit::Hit || hit == Hit::Crit || hit == Hit::Glancing { 
+        if hit == Hit::Hit || hit == Hit::Crit || hit == Hit::Glancing {
             self.trigger_hit_procc_oh();
-            dmg = self.oh.mean_dmg;
+            dmg = self.oh.mean_white_dmg;
             dmg *= self.modifiers.hit.oh;
 
             if hit == Hit::Glancing {
@@ -584,7 +542,7 @@ impl Simulator {
     fn check_mh_swing_timer_and_strike(&mut self) {
         if self.timekeep.timers.mh_swing > 0.0 { return; }
         self.perform_mh_strike();
-        self.reset_mh_swing(); 
+        self.reset_mh_swing();
     }
 
     fn check_oh_swing_timer_and_strike(&mut self) {
@@ -602,10 +560,10 @@ impl Simulator {
         if self.cooldowns[nr].cd_left > 0.0 { lacks_req = true; }
         else if self.cooldowns[nr].is_active { lacks_req = true; }
         else if self.cooldowns[nr].cost > self.energy { lacks_req = true; }
-        else if self.energy > self.cooldowns[nr].use_below_energy { 
-            lacks_req = true; 
+        else if self.energy > self.cooldowns[nr].use_below_energy {
+            lacks_req = true;
         }
-        else if self.cooldowns[nr].cost > 0 
+        else if self.cooldowns[nr].cost > 0
             && self.timekeep.timers.global_cd > 0.0 {
                 lacks_req = true;
             }
@@ -650,18 +608,18 @@ impl Simulator {
     fn print_cd_usage_by_nr(&self, nr: usize) {
         let sub_msg = match self.cooldowns[nr].effect {
             EnergyRegenMultiplier(_,_) => {
-                format!(", total energy regen multiplier is {}!", 
+                format!(", total energy regen multiplier is {}!",
                         self.modifiers.general.energy_regen_modifier)
             },
             AttackSpeedMultiplier(_,_) => {
-                format!(", total attack speed multiplier is {:.3}!", 
+                format!(", total attack speed multiplier is {:.3}!",
                         self.modifiers.general.attack_speed_modifier)
             },
             InstantEnergyRefill(energy) => {
                 format!(", gaining {} energy!", energy)
             }
         };
-        let msg = format!("{:.1}: Used {}{}", self.timekeep.timers.time_left, 
+        let msg = format!("{:.1}: Used {}{}", self.timekeep.timers.time_left,
                           self.cooldowns[nr].name, sub_msg);
         println!("{}", msg);
     }
@@ -728,7 +686,7 @@ impl Simulator {
 
     fn print_slice_and_dice_wearing_off(&mut self) {
         if self.verb > 1 && ! self.stat_weights {
-            println!("{:.1}: Slice and dice wore off.", 
+            println!("{:.1}: Slice and dice wore off.",
                      self.timekeep.timers.time_left);
         }
     }
@@ -772,13 +730,13 @@ impl Simulator {
 
     fn check_cds_wearing_off(&mut self) {
         for i in 0..self.cooldowns.len() {
-            if self.cooldowns[i].cd_left > 0.0 { 
-                self.cooldowns[i].cd_left -= self.timekeep.dt; 
+            if self.cooldowns[i].cd_left > 0.0 {
+                self.cooldowns[i].cd_left -= self.timekeep.dt;
             }
-            if self.cooldowns[i].time_left > 0.0 { 
-                self.cooldowns[i].time_left -= self.timekeep.dt; 
+            if self.cooldowns[i].time_left > 0.0 {
+                self.cooldowns[i].time_left -= self.timekeep.dt;
             }
-            if self.cooldowns[i].time_left <= 0.0 && 
+            if self.cooldowns[i].time_left <= 0.0 &&
                 self.cooldowns[i].is_active {
                     self.disable_cd_by_nr(i);
                     self.print_cd_wearing_off_by_nr(i);
@@ -791,7 +749,7 @@ impl Simulator {
         let name = &self.cooldowns[nr].name;
         let cd = self.cooldowns[nr].cd;
         if self.verb > 1 && ! self.stat_weights {
-            println!("{:.1}: {} wore off, {}s cooldown.", 
+            println!("{:.1}: {} wore off, {}s cooldown.",
                      self.timekeep.timers.time_left, name, cd);
         }
     }
@@ -824,7 +782,7 @@ impl Simulator {
     }
 
     fn show_energy_refill(&mut self) {
-        let msg = format!("{:.1}: Energy refilled to {}.", 
+        let msg = format!("{:.1}: Energy refilled to {}.",
                           self.timekeep.timers.time_left,
                           self.energy);
         println!("{}", msg);
@@ -894,17 +852,17 @@ impl Timers {
                  global cd: {}\n\
                  mh swing: {}\n\
                  oh swing: {}\n\
-                 global cd available last time step: {}", 
-                 self.energy_refill, 
-                 self.global_cd, 
-                 self.mh_swing, 
+                 global cd available last time step: {}",
+                 self.energy_refill,
+                 self.global_cd,
+                 self.mh_swing,
                  self.oh_swing,
                  self.glob_cd_previously_available
                  );
         println!("taking step: {}\n", step_size);
     }
 
-    fn get_max_time_step(&mut self) -> f32 { 
+    fn get_max_time_step(&mut self) -> f32 {
         let mut max_time_step = 10.0;
         max_time_step = min_f32(max_time_step, self.energy_refill);
         max_time_step = min_f32(max_time_step, self.mh_swing);
@@ -913,10 +871,10 @@ impl Timers {
             max_time_step = min_f32(max_time_step, self.global_cd);
         }
         max_time_step = max_f32(max_time_step, 0.01);
-        if self.global_cd <= 0.0 { 
-            self.glob_cd_previously_available = true; 
+        if self.global_cd <= 0.0 {
+            self.glob_cd_previously_available = true;
         } else {
-            self.glob_cd_previously_available = false; 
+            self.glob_cd_previously_available = false;
         }
         // self._debug_dynamic_step(max_time_step);
         return max_time_step;
@@ -959,7 +917,7 @@ impl TimeKeeper {
         }
     }
 
-    fn set_time_step(&mut self) { 
+    fn set_time_step(&mut self) {
         self.dt = self.timers.get_max_time_step();
     }
 
@@ -974,7 +932,7 @@ impl TimeKeeper {
     fn reset_mh_swing_timer(&mut self, factor: f32) {
         self.timers.mh_swing = self.mh_swing_interval / factor;
         if self.verb > 1 && ! self.stat_weights {
-            let msg = format!("{:.1}: Reset MH swing timer to {:.2}s.", 
+            let msg = format!("{:.1}: Reset MH swing timer to {:.2}s.",
                               self.timers.time_left, self.timers.mh_swing);
             println!("{}", msg);
         }
@@ -983,7 +941,7 @@ impl TimeKeeper {
     fn reset_oh_swing_timer(&mut self, factor: f32) {
         self.timers.oh_swing = self.oh_swing_interval / factor;
         if self.verb > 1 && ! self.stat_weights {
-            let msg = format!("{:.1}: Reset OH swing timer to {:.2}s.", 
+            let msg = format!("{:.1}: Reset OH swing timer to {:.2}s.",
                               self.timers.time_left, self.timers.oh_swing);
             println!("{}", msg);
         }
@@ -997,23 +955,23 @@ impl TimeKeeper {
 
     fn take_time_step(&mut self) {
 
-        if self.timers.energy_refill > 0.0 { 
-            self.timers.energy_refill -= self.dt; 
+        if self.timers.energy_refill > 0.0 {
+            self.timers.energy_refill -= self.dt;
         }
-        if self.timers.slice_and_dice > 0.0 { 
-            self.timers.slice_and_dice -= self.dt; 
+        if self.timers.slice_and_dice > 0.0 {
+            self.timers.slice_and_dice -= self.dt;
         }
-        if self.timers.time_left > 0.0 { 
-            self.timers.time_left -= self.dt; 
+        if self.timers.time_left > 0.0 {
+            self.timers.time_left -= self.dt;
         }
-        if self.timers.global_cd > 0.0 { 
-            self.timers.global_cd -= self.dt; 
+        if self.timers.global_cd > 0.0 {
+            self.timers.global_cd -= self.dt;
         }
-        if self.timers.mh_swing > 0.0 { 
-            self.timers.mh_swing -= self.dt; 
+        if self.timers.mh_swing > 0.0 {
+            self.timers.mh_swing -= self.dt;
         }
-        if self.timers.oh_swing > 0.0 { 
-            self.timers.oh_swing -= self.dt; 
+        if self.timers.oh_swing > 0.0 {
+            self.timers.oh_swing -= self.dt;
         }
 
     }
@@ -1022,7 +980,8 @@ impl TimeKeeper {
 #[derive(Debug)]
 struct WepSimulator {
     weapon_type: WeaponType,
-    mean_dmg: f32,
+    mean_white_dmg: f32,
+    mean_yellow_dmg: f32,
     normalized_speed: f32,
     hit_table_yellow: YellowHitTable,
     hit_table_backstab: YellowHitTable,
@@ -1036,7 +995,8 @@ impl WepSimulator {
     fn new() -> WepSimulator {
         WepSimulator {
             weapon_type: WeaponType::None,
-            mean_dmg: 0.0,
+            mean_white_dmg: 0.0,
+            mean_yellow_dmg: 0.0,
             normalized_speed: 0.0,
             hit_table_yellow: YellowHitTable::new(),
             hit_table_backstab: YellowHitTable::new(),
@@ -1056,8 +1016,8 @@ impl WepSimulator {
 
     fn set_normalized_speed(&mut self) {
         if self.weapon_type == WeaponType::Dagger { self.normalized_speed = 1.7; }
-        else if self.weapon_type == WeaponType::Sword { 
-            self.normalized_speed = 2.4; 
+        else if self.weapon_type == WeaponType::Sword {
+            self.normalized_speed = 2.4;
         }
         else { panic!("Weapon type not yet implemented."); }
     }
@@ -1066,34 +1026,37 @@ impl WepSimulator {
 
     fn set_off_hand(&mut self) { self.weapon_slot = WeaponSlot::Oh; }
 
-    fn is_main_hand(&self) -> bool { 
+    fn is_main_hand(&self) -> bool {
         if self.weapon_slot == WeaponSlot::Mh { return true; }
         else if self.weapon_slot == WeaponSlot::Oh { return false; }
         else { panic!("Weapon type not initialized yet."); }
     }
 
-    fn is_off_hand(&self) -> bool { 
+    fn is_off_hand(&self) -> bool {
         if self.weapon_slot == WeaponSlot::Oh { return true; }
         else if self.weapon_slot == WeaponSlot::Mh { return false; }
         else { panic!("Weapon not initialized yet."); }
     }
 
     fn set_mechanics_from_character(&mut self, character: &Character) {
-        self.set_wep_dmg(character);
+        self.set_wep_white_dmg(character);
+        self.set_wep_yellow_dmg(character);
         self.set_hit_tables(character);
 
         self.set_hit_proccs(&character);
-        self.apply_enchant_dmg(&character); 
+        self.apply_enchant_dmg(&character);
     }
 
     fn apply_enchant_dmg(&mut self, character: &Character) {
         if self.is_main_hand() {
             for i in 0..character.mh_enchants.len() {
-                self.mean_dmg += character.mh_enchants[i].extra_damage;
+                self.mean_white_dmg += character.mh_enchants[i].extra_damage;
+                self.mean_yellow_dmg += character.mh_enchants[i].extra_damage;
             }
         } else if self.is_off_hand() {
             for i in 0..character.oh_enchants.len() {
-                self.mean_dmg += character.oh_enchants[i].extra_damage;
+                self.mean_white_dmg += character.oh_enchants[i].extra_damage;
+                self.mean_yellow_dmg += character.oh_enchants[i].extra_damage;
             }
         } else { panic!("Uninitialized weapon"); }
     }
@@ -1131,24 +1094,40 @@ impl WepSimulator {
         }
     }
 
-    fn set_wep_dmg(&mut self, character: &Character) {
+    fn set_wep_white_dmg(&mut self, character: &Character) {
 
-        if self.is_off_hand() {
-            self.mean_dmg = character.oh.get_mean_dmg();
+        let swing_speed: f32;
+        let mean_dmg: f32;
+        if self.is_main_hand() {
+            mean_dmg = character.mh.get_mean_dmg();
+            swing_speed = character.mh.get_swing_interval();
         } else {
-            self.mean_dmg = character.mh.get_mean_dmg();
+            mean_dmg = character.oh.get_mean_dmg();
+            swing_speed = character.oh.get_swing_interval();
         }
-        self.mean_dmg += self.normalized_speed 
-                       * character.sec_stats.attack_power as f32
-                       / 14.0;
+         self.mean_white_dmg = mean_dmg
+            + swing_speed * character.sec_stats.attack_power as f32 / 14.0;
+    }
 
+    fn set_wep_yellow_dmg(&mut self, character: &Character) {
+
+        let mean_dmg: f32;
+        if self.is_off_hand() {
+            mean_dmg = character.oh.get_mean_dmg();
+        } else {
+            mean_dmg = character.mh.get_mean_dmg();
+        }
+        let extra_portion =  self.normalized_speed
+            * character.sec_stats.attack_power as f32
+            / 14.0;
+        self.mean_yellow_dmg = mean_dmg + extra_portion;
     }
 
     fn set_hit_tables(&mut self, character: &Character) {
-        if self.is_main_hand() { 
+        if self.is_main_hand() {
             self.set_yellow_hit_table(character);
             if self.weapon_type == WeaponType::Dagger {
-                self.set_backstab_hit_table(); 
+                self.set_backstab_hit_table();
             }
         }
         self.set_white_hit_table(character);
@@ -1160,18 +1139,13 @@ impl WepSimulator {
                    creating hit tables.");
         }
 
-        let skill_delta: i32;
-        if character.mh.get_weapon_type() == WeaponType::Dagger {
-            skill_delta = 5 * self.enemy_lvl - character.prim_stats.dagger_skill;
-        } else if character.mh.get_weapon_type() == WeaponType::Sword {
-            skill_delta = 5 * self.enemy_lvl - character.prim_stats.sword_skill;
-        } else { panic!("Weapon type not implemented!"); }
+        let skill_delta = self.get_skill_delta(character);
 
         // miss chance
         let hit_chance = self.get_effective_hit_chance_from_hit_and_skill_delta(
             character.sec_stats.hit, skill_delta);
         let mut miss_chance = get_miss_chance_from_skill_delta(skill_delta);
-        miss_chance = miss_chance - hit_chance;
+        miss_chance = max_f32(0.0, miss_chance - hit_chance);
         self.hit_table_yellow.miss_value = miss_chance;
 
         // dodge chance
@@ -1181,15 +1155,15 @@ impl WepSimulator {
 
         // crit chance
         let mut crit_chance = character.sec_stats.crit;
-        crit_chance = max_f32( 0.0, 
+        crit_chance = max_f32( 0.0,
             crit_chance - 0.01 * (self.enemy_lvl - 60) as f32 );
-        if self.enemy_lvl == 63 { 
+        if self.enemy_lvl == 63 {
             crit_chance = max_f32( 0.0, crit_chance - 0.018 );
         }
         let crit_value = dodge_value + crit_chance;
         self.hit_table_yellow.crit_value = crit_value;
     }
-    
+
     fn set_backstab_hit_table(&mut self) {
         self.hit_table_backstab = self.hit_table_yellow.clone();
     }
@@ -1197,16 +1171,30 @@ impl WepSimulator {
     fn get_effective_hit_chance_from_hit_and_skill_delta(
         &self, hit: f32, skill_delta: i32) -> f32 {
 
-        let mut hit_chance = hit;
-        if skill_delta > 10 { 
-            if hit_chance < 0.01 { 
-                panic!("A hit application in two parts require that the hit \
-                       from items alone is higher than 1% if the skill delta \
-                       is greater than 10");
-            }
-            hit_chance -= 0.01;
+        if skill_delta > 10 { return max_f32(0.0, hit - 0.01); }
+        else { return hit; }
+    }
+
+    fn get_skill_delta(&self, character: &Character) -> i32 {
+        let skill_delta: i32;
+        if self.is_off_hand() {
+            if character.oh.get_weapon_type() == WeaponType::Dagger {
+                skill_delta = 5 * self.enemy_lvl
+                    - character.prim_stats.dagger_skill;
+            } else if character.oh.get_weapon_type() == WeaponType::Sword {
+                skill_delta = 5 * self.enemy_lvl
+                    - character.prim_stats.sword_skill;
+            } else { panic!("Weapon type not implemented!"); }
+        } else {
+            if character.mh.get_weapon_type() == WeaponType::Dagger {
+                skill_delta = 5 * self.enemy_lvl
+                    - character.prim_stats.dagger_skill;
+            } else if character.mh.get_weapon_type() == WeaponType::Sword {
+                skill_delta = 5 * self.enemy_lvl
+                    - character.prim_stats.sword_skill;
+            } else { panic!("Weapon type not implemented!"); }
         }
-        return hit_chance;
+        return skill_delta;
     }
 
     fn set_white_hit_table(&mut self, character: &Character) {
@@ -1215,24 +1203,7 @@ impl WepSimulator {
                    creating hit tables.");
         }
 
-        let skill_delta: i32;
-        if self.is_off_hand() {
-            if character.oh.get_weapon_type() == WeaponType::Dagger {
-                skill_delta = 5 * self.enemy_lvl 
-                    - character.prim_stats.dagger_skill;
-            } else if character.oh.get_weapon_type() == WeaponType::Sword {
-                skill_delta = 5 * self.enemy_lvl 
-                    - character.prim_stats.sword_skill;
-            } else { panic!("Weapon type not implemented!"); }
-        } else {
-            if character.mh.get_weapon_type() == WeaponType::Dagger {
-                skill_delta = 5 * self.enemy_lvl 
-                    - character.prim_stats.dagger_skill;
-            } else if character.mh.get_weapon_type() == WeaponType::Sword {
-                skill_delta = 5 * self.enemy_lvl 
-                    - character.prim_stats.sword_skill;
-            } else { panic!("Weapon type not implemented!"); }
-        }
+        let skill_delta = self.get_skill_delta(character);
 
         // miss chance
         let hit_chance = self.get_effective_hit_chance_from_hit_and_skill_delta(
@@ -1248,39 +1219,29 @@ impl WepSimulator {
         self.hit_table_white.dodge_value = dodge_value;
 
         // glancing chance
-        if self.enemy_lvl < 60 || self.enemy_lvl > 63 { 
+        if self.enemy_lvl < 60 || self.enemy_lvl > 63 {
             panic!("No reliable glancing numbers outside 60-63");
         }
-        let glancing_chance = 0.1 + 0.1 * (self.enemy_lvl - 60) as f32; 
+        let glancing_chance = 0.1 + 0.1 * (self.enemy_lvl - 60) as f32;
         let glancing_value = dodge_value + glancing_chance;
         self.hit_table_white.glancing_value = glancing_value;
 
         // crit chance
         let mut crit_chance = character.sec_stats.crit;
-        crit_chance = max_f32( 0.0, 
+        crit_chance = max_f32( 0.0,
             crit_chance - 0.01 * (self.enemy_lvl - 60) as f32 );
-        if self.enemy_lvl == 63 { 
+        if self.enemy_lvl == 63 {
             crit_chance = max_f32( 0.0, crit_chance - 0.018 );
         }
         let crit_value = glancing_value + crit_chance;
         self.hit_table_white.crit_value = crit_value;
-        
-    }
 
-    fn add_hit(&mut self, hit: f32) {
-        self.hit_table_white.add_hit(hit);
-        if self.is_main_hand() { 
-            self.hit_table_yellow.add_hit(hit); 
-            if self.weapon_type == WeaponType::Dagger {
-                self.hit_table_backstab.add_hit(hit);
-            }
-        }
     }
 
     fn add_crit(&mut self, crit: f32) {
         self.hit_table_white.add_crit(crit);
-        if self.is_main_hand() { 
-            self.hit_table_yellow.add_crit(crit); 
+        if self.is_main_hand() {
+            self.hit_table_yellow.add_crit(crit);
             if self.weapon_type == WeaponType::Dagger {
                 self.hit_table_backstab.add_crit(crit);
             }
@@ -1311,7 +1272,7 @@ fn get_miss_chance_from_skill_delta(delta: i32) -> f32 {
 
 #[derive(Debug,Clone)]
 struct YellowHitTable {
-    // a random number is rolled, the first of the below entries that exceeds 
+    // a random number is rolled, the first of the below entries that exceeds
     // that number determines the hit type
     miss_value: f32,
     dodge_value: f32,
@@ -1339,20 +1300,13 @@ impl YellowHitTable {
         self.crit_value += crit;
     }
 
-    fn add_hit(&mut self, hit: f32) {
-        let hit_to_subtract = min_f32(self.miss_value, hit);
-        self.miss_value -= hit_to_subtract;
-        self.dodge_value -= hit_to_subtract;
-        self.crit_value -= hit_to_subtract;
-    }
-
     fn print_table(&self) {
         println!("Miss chance:\t\t{:.1}%", 100.0 * self.miss_value);
-        println!("Dodge chance:\t\t{:.1}%", 
+        println!("Dodge chance:\t\t{:.1}%",
                  100.0 * (self.dodge_value - self.miss_value));
-        println!("Crit chance:\t\t{:.1}%", 
+        println!("Crit chance:\t\t{:.1}%",
                  100.0 * (self.crit_value - self.dodge_value));
-        println!("Hit chance:\t\t{:.1}%", 
+        println!("Hit chance:\t\t{:.1}%",
                  100.0 * (1.0 - self.crit_value));
     }
 
@@ -1389,23 +1343,15 @@ impl WhiteHitTable {
         self.crit_value += crit;
     }
 
-    fn add_hit(&mut self, hit: f32) {
-        let hit_to_subtract = min_f32(self.miss_value, hit);
-        self.miss_value -= hit_to_subtract;
-        self.dodge_value -= hit_to_subtract;
-        self.glancing_value -= hit_to_subtract;
-        self.crit_value -= hit_to_subtract;
-    }
-
     fn print_table(&self) {
         println!("Miss chance:\t\t{:.1}%", 100.0 * self.miss_value);
-        println!("Dodge chance:\t\t{:.1}%", 
+        println!("Dodge chance:\t\t{:.1}%",
                  100.0 * (self.dodge_value - self.miss_value));
-        println!("Glancing chance:\t{:.1}%", 
+        println!("Glancing chance:\t{:.1}%",
                  100.0 * (self.glancing_value - self.dodge_value));
-        println!("Crit chance:\t\t{:.1}%", 
+        println!("Crit chance:\t\t{:.1}%",
                  100.0 * (self.crit_value - self.glancing_value));
-        println!("Hit chance:\t\t{:.1}%", 
+        println!("Hit chance:\t\t{:.1}%",
                  100.0 * (1.0 - self.crit_value));
     }
 }
@@ -1550,9 +1496,9 @@ impl FinisherModifiers {
 
     fn gets_extra_energy(&self, combo_points: i32) -> bool {
         let die = roll_die();
-        if die < combo_points as f32 
-            * self.restore_energy_chance_per_combo_point { 
-            return true; 
+        if die < combo_points as f32
+            * self.restore_energy_chance_per_combo_point {
+            return true;
         }
         else { return false; }
     }

@@ -50,13 +50,12 @@ impl StatShift {
 
         let mut obj = StatShift::get_zero_object();
 
-        let mut value: i32 = 10;
+        let mut value: i32 = 10 * args.weight_mult;
         if sign == Sign::Positive { 
-            value *= args.weight_mult; 
             obj.text = format!("{:+} agility:\t", value);
         } 
         else { 
-            value *= -1 * args.weight_mult; 
+            value *= -1; 
             obj.text = format!("\n{:+} agility:\t", value);
         }
 
@@ -69,13 +68,12 @@ impl StatShift {
 
         let mut obj = StatShift::get_zero_object();
 
-        let mut value: i32 = 10;
+        let mut value: i32 = 10 * args.weight_mult;
         if sign == Sign::Positive { 
-            value *= args.weight_mult; 
             obj.text = format!("{:+} strength:\t", value);
         } 
         else { 
-            value *= -1 * args.weight_mult; 
+            value *= -1; 
             obj.text = format!("\n{:+} strength:\t", value);
         }
 
@@ -88,13 +86,12 @@ impl StatShift {
 
         let mut obj = StatShift::get_zero_object();
 
-        let mut value: f32 = 0.01;
+        let mut value: f32 = 0.01 * args.weight_mult as f32;
         if sign == Sign::Positive { 
-            value *= args.weight_mult as f32; 
             obj.text = format!("{:+} hit:\t", value);
         } 
         else { 
-            value *= -1.0 * args.weight_mult as f32; 
+            value *= -1.0; 
             obj.text = format!("\n{:+} hit:\t", value);
         }
 
@@ -107,13 +104,12 @@ impl StatShift {
 
         let mut obj = StatShift::get_zero_object();
 
-        let mut value: f32 = 0.01;
+        let mut value: f32 = 0.01 * args.weight_mult as f32;
         if sign == Sign::Positive { 
-            value *= args.weight_mult as f32; 
             obj.text = format!("{:+} crit:\t", value);
         } 
         else { 
-            value *= -1.0 * args.weight_mult as f32; 
+            value *= -1.0; 
             obj.text = format!("\n{:+} crit:\t", value);
         }
 
@@ -126,13 +122,12 @@ impl StatShift {
 
         let mut obj = StatShift::get_zero_object();
 
-        let mut value: i32 = 1;
+        let mut value: i32 = 1 * args.weight_mult;
         if sign == Sign::Positive { 
-            value *= args.weight_mult; 
             obj.text = format!("{:+} dagger skill:\t", value);
         } 
         else { 
-            value *= -1 * args.weight_mult; 
+            value *= -1; 
             obj.text = format!("\n{:+} dagger skill:\t", value);
         }
 
