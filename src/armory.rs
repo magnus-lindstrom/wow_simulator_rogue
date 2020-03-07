@@ -55,7 +55,6 @@ pub enum Race {
 pub struct PrimStats {
     pub agility: i32,
     pub strength: i32,
-    stamina: i32,
     pub sword_skill: i32,
     pub dagger_skill: i32
 }
@@ -66,7 +65,6 @@ impl PrimStats {
             PrimStats {
                 agility: 130,
                 strength: 80,
-                stamina: 75,
                 sword_skill: 305,
                 dagger_skill: 300
             }
@@ -74,32 +72,19 @@ impl PrimStats {
             PrimStats {
                 agility: 0,
                 strength: 0,
-                stamina: 0,
                 sword_skill: 0,
                 dagger_skill: 0
             }
         } else { panic!("Race not implemented"); }
     }
 
-    fn print_stats(&self, talents: &Talents) {
-        let mut dagger_skill = self.dagger_skill;
-        let mut sword_skill = self.sword_skill;
-
-        if talents.weapon_expertise == 1 { 
-            dagger_skill += 3; 
-            sword_skill += 3; 
-        }
-        else if talents.weapon_expertise == 2 { 
-            dagger_skill += 5; 
-            sword_skill += 5; 
-        }
+    fn print_stats(&self) {
         let msg = format!("\n*** Primary stats ***\n\
         Strength: {}\n\
         Agility: {}\n\
-        Stamina: {}\n\
         Sword skill: {}\n\
-        Dagger_skill: {}", self.strength, self.agility, self.stamina, 
-        sword_skill, dagger_skill);
+        Dagger_skill: {}", self.strength, self.agility,
+        self.sword_skill, self.dagger_skill);
         println!("{}", msg);
     }
 }
@@ -131,22 +116,18 @@ impl SecStats {
         } else { panic!("Race not implemented"); }
     }
 
-    fn print_stats(&self, prim_stats: &PrimStats, talents: &Talents) {
-        let mut weapon_skill = prim_stats.dagger_skill;
-        if talents.weapon_expertise == 1 { weapon_skill += 3; }
-        else if talents.weapon_expertise == 2 { weapon_skill += 5; }
+    fn print_stats(&self, prim_stats: &PrimStats) {
+        // TODO make this nicer
+        let weapon_skill = prim_stats.dagger_skill;
 
-        let mut crit = self.crit + 0.01 * talents.malice as f32;
-        crit += 0.01 * talents.dagger_specialization as f32;
-        crit += 0.0004 * (weapon_skill - 300) as f32;
-        
-        let hit = self.hit + 0.01 * talents.precision as f32;
+        let crit = self.crit + 0.0004 * (weapon_skill - 300) as f32;
 
-        let msg = format!("\n*** Secondary stats vs lvl 60 ***\n\
+        let msg = format!("\n*** Secondary stats vs lvl 60 \
+        (excluding +crit from dagger specialization) ***\n\
         Crit: {}\n\
         Hit: {}\n\
         Haste: {}\n\
-        Attack power: {}", crit, hit, self.haste, 
+        Attack power: {}", crit, self.hit, self.haste,
         self.attack_power);
         println!("{}", msg);
     }
@@ -255,11 +236,29 @@ impl Weapon {
         return self.hit_procc.clone();
     }
 }
-        
+
+#[derive(Debug,Clone,Serialize,Deserialize)]
+enum Slot {
+    Head,
+    Neck,
+    Shoulders,
+    Back,
+    Chest,
+    Wrists,
+    Hands,
+    Waist,
+    Legs,
+    Feet,
+    Ring,
+    Trinket,
+    Ranged,
+}
+
 #[derive(Debug,Serialize,Deserialize)]
 pub struct Armor {
     name: String,
     set_tag: String,
+    slot: Slot,
     prim_stats: PrimStats,
     sec_stats: SecStats,
     pub hit_procc: HitProcc
@@ -270,6 +269,7 @@ impl Armor {
         Armor {
             name: self.name.to_string(),
             set_tag: self.set_tag.to_string(),
+            slot: self.slot.clone(),
             prim_stats: self.prim_stats.clone(),
             sec_stats: self.sec_stats.clone(),
             hit_procc: self.hit_procc.clone()
@@ -493,8 +493,9 @@ impl Character {
         character.set_buffs(char_spec.buffs);
         character.set_talents(char_spec.talents);
         character.apply_stats_from_armor_and_weapons();
-        character.apply_stats_from_buffs();
         character.apply_stats_from_enchants();
+        character.apply_stats_from_talents();
+        character.apply_stats_from_buffs();
         return character;
     }
 
@@ -510,8 +511,8 @@ impl Character {
 
     pub fn print_all_stats(&self, args: &Args) {
         if args.verb > 2 {
-            self.prim_stats.print_stats(&self.talents);
-            self.sec_stats.print_stats(&self.prim_stats, &self.talents);
+            self.prim_stats.print_stats();
+            self.sec_stats.print_stats(&self.prim_stats);
         }
     }
 
@@ -562,7 +563,7 @@ impl Character {
         for enchant_name in &enchant_spec.armor_enchant_names {
             let enchant = enchant_collection
                 .get(&enchant_name.to_string())
-                .expect(&format!("Could not find {} in enchants file.", 
+                .expect(&format!("Could not find {} in enchants file.",
                                  enchant_name));
             self.armor_enchants.push(enchant.copy());
         }
@@ -571,7 +572,7 @@ impl Character {
         for enchant_name in &enchant_spec.mh_enchant_names {
             let enchant = enchant_collection
                 .get(&enchant_name.to_string())
-                .expect(&format!("Could not find {} in enchants file.", 
+                .expect(&format!("Could not find {} in enchants file.",
                                 enchant_name));
             self.mh_enchants.push(enchant.copy());
         }
@@ -580,7 +581,7 @@ impl Character {
         for enchant_name in &enchant_spec.oh_enchant_names {
             let enchant = enchant_collection
                 .get(&enchant_name.to_string())
-                .expect(&format!("Could not find {} in enchants file.", 
+                .expect(&format!("Could not find {} in enchants file.",
                                 enchant_name));
             self.oh_enchants.push(enchant.copy());
         }
@@ -615,20 +616,17 @@ impl Character {
         } if self.buffs.songflower_serenade {
             self.prim_stats.agility += 15;
             self.prim_stats.strength += 15;
-            self.prim_stats.stamina += 15;
             self.sec_stats.crit += 0.05;
         } if self.buffs.bok {
-            self.prim_stats.agility = 
+            self.prim_stats.agility =
                 (self.prim_stats.agility as f32 * 1.1) as i32;
-            self.prim_stats.strength = 
+            self.prim_stats.strength =
                 (self.prim_stats.strength as f32 * 1.1) as i32;
-            self.prim_stats.stamina = 
-                (self.prim_stats.stamina as f32 * 1.1) as i32;
         }
     }
 
     fn get_armor_by_name(&self, name: String) -> Armor {
-        let item_collection: ItemCollection = 
+        let item_collection: ItemCollection =
             ItemCollection::initialize_item_collection();
         let armor = item_collection.armor.get(&name).
             expect(&format!("Could not find {} in item file.", name));
@@ -636,7 +634,7 @@ impl Character {
     }
 
     fn get_weapon_by_name(&self, name: String) -> Weapon {
-        let item_collection: ItemCollection = 
+        let item_collection: ItemCollection =
             ItemCollection::initialize_item_collection();
         let weapon = item_collection.weapons.get(&name).
             expect(&format!("Could not find {} in item file.", name));
@@ -691,6 +689,17 @@ impl Character {
         }
     }
 
+    fn apply_stats_from_talents(&mut self) {
+        self.sec_stats.crit += 0.01 * self.talents.malice as f32;
+        self.sec_stats.hit += 0.01 * self.talents.precision as f32;
+        self.prim_stats.dagger_skill += match self.talents.weapon_expertise {
+            0 => 0,
+            1 => 3,
+            2 => 5,
+            _ => panic!("Illegal value of weapon expertise")
+        };
+    }
+
     fn apply_stats_from_enchants(&mut self) {
         for i in 0..self.armor_enchants.len() {
             self.apply_prim_stats(self.armor_enchants[i].prim_stats);
@@ -721,7 +730,6 @@ impl Character {
     fn apply_prim_stats(&mut self, prim_stats: PrimStats) {
         self.prim_stats.agility += prim_stats.agility;
         self.prim_stats.strength += prim_stats.strength;
-        self.prim_stats.stamina += prim_stats.stamina;
         self.prim_stats.sword_skill += prim_stats.sword_skill;
         self.prim_stats.dagger_skill += prim_stats.dagger_skill;
     }
@@ -733,13 +741,3 @@ impl Character {
         self.sec_stats.attack_power += sec_stats.attack_power;
     }
 }
-
-
-
-
-            
-
-
-
-
-

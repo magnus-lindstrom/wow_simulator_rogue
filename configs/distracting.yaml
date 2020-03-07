@@ -25,13 +25,13 @@ items:
     - master_dragonslayers_ring
     - tarnished_elven_ring
   ### trinkets
-    - royal_seal_of_eldre_thalas
-   # - hand_of_justice
+  #  - royal_seal_of_eldre_thalas
+    - hand_of_justice
     - blackhands_breadth
   ### ranged
     - satyrs_bow
   mh_name:
-    gutgore_ripper
+    distracting_dagger
   oh_name:
     distracting_dagger
 
@@ -52,17 +52,17 @@ enchants:
     # feet
     - greater_agility
 
-  mh_enchant_names: 
+  mh_enchant_names:
     - superior_striking
     - instant_poison_vi
-  oh_enchant_names: 
+  oh_enchant_names:
     - greater_striking
     - instant_poison_vi
 
 talents:
   # assassination
   improved_eviscerate: 0
-  malice: 5 
+  malice: 5
   ruthlessness: 2
   improved_slice_and_dice: 3
   relentless_strikes: 1
@@ -70,7 +70,7 @@ talents:
   # combat
   improved_sinister_strike: 2
   improved_backstab: 3
-  precision: 5 
+  precision: 5
   dagger_specialization: 5
   dual_wield_specialization: 5
   sword_specialization: 0 # TODO
