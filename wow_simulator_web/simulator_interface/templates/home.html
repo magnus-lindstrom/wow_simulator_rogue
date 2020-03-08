@@ -1,26 +1,27 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container" style="text-align: center">
-    <h1>Home</h1>
-    <br>
+<div class="container-fluid" style="text-align: center">
     <br>
     <form method="post" id="config-form">
         {% csrf_token %}
-        {% for slot, items in armor.items %}
+        <h2>Choose Armor Items</h2>
+        <div class="rounded border border-dark" style="padding-left:50px; padding-right:50px; padding-top:20px; padding-bottom:20px;">
+            {% for slot, items in armor.items %}
             {% if forloop.first %}<div class="row">{% endif %}
             <div class="col-sm-4">
-                <label for="drop" data-toggle="tooltip" data-placement="top" title="Head Items"><b>{{ slot }} Items</b></label>
-                <select class="selectpicker form-control show-tick" data-title="Select something" data-live-search="true" name="drop" id="drop">
+                <label for="drop" data-toggle="tooltip" data-placement="top" title="Head Items">{{ slot }}</label>
+                <select class="selectpicker form-control show-tick" data-title="Select {{ slot }} item..." data-live-search="true" name="drop" id="drop">
                     {% for item in items %}
-                        <option value="{{ item }}">{{ item }}</option>
+                    <option value="{{ item }}">{{ item }}</option>
                     {% endfor %}
                 </select>
                 <br>
             </div>
             {% if forloop.counter|divisibleby:3 %}</div><br><br><div class="row">{% endif %}
             {% if forloop.last %}</div>{% endif %}
-        {% endfor %}
+            {% endfor %}
+        </div>
 
         <br>
         <button type="submit" class="btn btn-primary mb-2">Do Stuff</button>
