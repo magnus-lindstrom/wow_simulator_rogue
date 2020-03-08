@@ -3,18 +3,29 @@
 {% block content %}
 <div class="container" style="text-align: center">
     <h1>Home</h1>
+    <br>
+    <br>
     <form method="post" id="config-form">
-         {% csrf_token %}
-        <label for="drop" data-toggle="tooltip" data-placement="top" title="Head Items"><b>Head Items</b></label>
-        <select class="selectpicker form-control show-tick" data-title="Select something" data-live-search="true" name="drop" id="drop">
-            <option value="A">A</option>
-            <option value="B">B</option>
-            <option value="C">C</option>
-        </select>
-        <br>
+        {% csrf_token %}
+        {% for slot, items in armor.items %}
+            {% if forloop.first %}<div class="row">{% endif %}
+            <div class="col-sm-4">
+                <label for="drop" data-toggle="tooltip" data-placement="top" title="Head Items"><b>{{ slot }} Items</b></label>
+                <select class="selectpicker form-control show-tick" data-title="Select something" data-live-search="true" name="drop" id="drop">
+                    {% for item in items %}
+                        <option value="{{ item }}">{{ item }}</option>
+                    {% endfor %}
+                </select>
+                <br>
+            </div>
+            {% if forloop.counter|divisibleby:3 %}</div><br><br><div class="row">{% endif %}
+            {% if forloop.last %}</div>{% endif %}
+        {% endfor %}
+
         <br>
         <button type="submit" class="btn btn-primary mb-2">Do Stuff</button>
     </form>
+    <div>{{ file_content }}</div>
 </div>
 
 {% endblock %}
