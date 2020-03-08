@@ -4,5 +4,5 @@ $(document).ready(function(){
 
     setTimeout(function(){
        message_elem.style.display = "none";
-    }, 3000);
+    }, 10000);
 });

@@ -11,7 +11,12 @@
             {% if forloop.first %}<div class="row">{% endif %}
             <div class="col-sm-4">
                 <label for="drop" data-toggle="tooltip" data-placement="top" title="Head Items">{{ slot }}</label>
-                <select class="selectpicker form-control show-tick" data-title="Select {{ slot }} item..." data-live-search="true" name="drop" id="drop">
+                {% if slot == "Ring" or slot == "Trinket" %}
+                    <select class="selectpicker form-control show-tick" multiple data-title="Select {{ slot }} items..." data-live-search="true" name="armor" id="drop_mutiple">
+                {% else %}
+                    <select class="selectpicker form-control show-tick" data-title="Select {{ slot }} item..." data-live-search="true" name="armor" id="drop">
+                {% endif %}
+                    <option value="">-</option>
                     {% for item in items %}
                     <option value="{{ item }}">{{ item }}</option>
                     {% endfor %}
@@ -24,9 +29,10 @@
         </div>
 
         <br>
-        <button type="submit" class="btn btn-primary mb-2">Do Stuff</button>
+        <button type="submit" class="btn btn-primary mb-2">Submit</button>
     </form>
-    <div>{{ file_content }}</div>
+<!--    <div>{{ file_content }}</div>-->
+    <div>{{ form_data }}</div>
 </div>
 
 {% endblock %}

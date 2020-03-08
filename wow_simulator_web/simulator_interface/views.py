@@ -1,5 +1,7 @@
 from django.contrib import messages
-from django.shortcuts import render
+from django.http import HttpResponseRedirect
+from django.shortcuts import render, redirect
+from django.urls import reverse
 from django.views.generic import TemplateView
 import os
 import yaml
@@ -8,25 +10,30 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__f
 ARMOR_FILE = os.path.join(REPO_ROOT, 'db', 'armor.yaml')
 ENCHANTS_FILE = os.path.join(REPO_ROOT, 'db', 'enchants.yaml')
 
+CONFIG_FILE = os.path.join(REPO_ROOT, 'configs', 'eugenia_test.yaml')
+
 
 class HomeView(TemplateView):
     template_name = 'home.html'
 
     def get(self, request, *args, **kwargs):
         dropdown_armor_items = self._parse_armor_file()
-        context = {'armor': dropdown_armor_items}
+        enchants = self._parse_enchants_file()
+
+        context = {'armor': dropdown_armor_items,
+                   'file_content': enchants}
 
         return render(request, self.template_name, context=context)
 
     def post(self, request, *args, **kwargs):
-        head_item = request.POST.get('drop')
-        # todo: how to get ALL selected items and dropdown labels dinamically?
-        messages.add_message(request, messages.SUCCESS, 'Form submitted correctly')
+        armor_values = request.POST.getlist('armor')
+        armor_dict = {'items': {'armor_names': [armor_value for armor_value in armor_values if armor_value]}}
 
-        response = {
-            'items': head_item,
-        }
-        return render(request, self.template_name, context=response)
+        with open(CONFIG_FILE, 'w') as config_file:
+            yaml.dump(armor_dict, config_file)
+
+        messages.add_message(request, messages.SUCCESS, f"Config file created at: {CONFIG_FILE}")
+        return redirect('/')
 
     @staticmethod
     def _parse_armor_file():
@@ -45,4 +52,7 @@ class HomeView(TemplateView):
 
     @staticmethod
     def _parse_enchants_file():
-        pass
+        with open(ENCHANTS_FILE, 'r') as enchants_file:
+            content = yaml.load(enchants_file, yaml.FullLoader)
+
+        return content
