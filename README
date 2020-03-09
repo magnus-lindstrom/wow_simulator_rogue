@@ -1,0 +1,16 @@
+Running wow_simulator web server
+
+----------------Alternative 1----------------
+- Install Python 3.x
+- Install Django
+
+- run: python3 manage.py runserver
+
+----------------Alternative 2----------------
+- Install Python 3.x
+- standing on the repo_root, run the following commands, in order:
+	./web_environment_setup 
+	source venv/bin/activate
+	python wow_simulator_web/manage.py runserver
+
+
