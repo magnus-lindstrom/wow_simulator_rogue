@@ -1,0 +1,21 @@
+
+#message-container {
+ animation:signup-response 0.5s 1;
+    -webkit-animation:signup-response 0.5s 1;
+    animation-fill-mode: forwards;
+
+    animation-delay:10s;
+    -webkit-animation-delay:10s; /* Safari and Chrome */
+    -webkit-animation-fill-mode: forwards;
+
+}
+
+@keyframes signup-response{
+    from {opacity :1;}
+    to {opacity :0;}
+}
+
+@-webkit-keyframes signup-response{
+    from {opacity :1;}
+    to {opacity :0;}
+}
