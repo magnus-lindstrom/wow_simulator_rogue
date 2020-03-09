@@ -22,7 +22,7 @@
 #     - procc_chance
 ---
 bloodfang_hood:
-  name: bloodfang_hood
+  name: Bloodfang Hood
   set_tag: 'bloodfang armor'
   slot: Head
   prim_stats:
@@ -37,7 +37,7 @@ bloodfang_hood:
     attack_power: 0
   hit_procc: None
 onyxia_tooth_pendant:
-  name: onyxia_tooth_pendant
+  name: Onyxia Tooth Pendant
   set_tag: ''
   slot: Neck
   prim_stats:
@@ -52,7 +52,7 @@ onyxia_tooth_pendant:
     attack_power: 0
   hit_procc: None
 nightslayer_shoulder_pads:
-  name: nightslayer_shoulder_pads
+  name: Nightslayer Shoulder Pads
   set_tag: 'nightslayer armor'
   slot: Shoulders
   prim_stats:
@@ -67,7 +67,7 @@ nightslayer_shoulder_pads:
     attack_power: 0
   hit_procc: None
 cape_of_the_black_baron:
-  name: cape_of_the_black_baron
+  name: Cape of the Black Baron
   set_tag: ''
   slot: Back
   prim_stats:
@@ -82,7 +82,7 @@ cape_of_the_black_baron:
     attack_power: 20
   hit_procc: None
 nightslayer_chestpiece:
-  name: nightslayer_chestpiece
+  name: Nightslayer Chestpiece
   set_tag: 'nightslayer armor'
   slot: Chest
   prim_stats:
@@ -97,7 +97,7 @@ nightslayer_chestpiece:
     attack_power: 0
   hit_procc: None
 nightslayer_bracelets:
-  name: nightslayer_bracelets
+  name: Nightslayer Bracelets
   set_tag: 'nightslayer armor'
   slot: Wrists
   prim_stats:
@@ -112,7 +112,7 @@ nightslayer_bracelets:
     attack_power: 0
   hit_procc: None
 nightslayer_gloves:
-  name: nightslayer_gloves
+  name: Nightslayer Gloves
   set_tag: 'nightslayer armor'
   slot: Hands
   prim_stats:
@@ -127,7 +127,7 @@ nightslayer_gloves:
     attack_power: 0
   hit_procc: None
 nightslayer_belt:
-  name: nightslayer_belt
+  name: Nightslayer Belt
   set_tag: 'nightslayer armor'
   slot: Waist
   prim_stats:
@@ -142,7 +142,7 @@ nightslayer_belt:
     attack_power: 0
   hit_procc: None
 muggers_belt:
-  name: muggers_belt
+  name: "Mugger's Belt"
   set_tag: ''
   slot: Waist
   prim_stats:
@@ -157,7 +157,7 @@ muggers_belt:
     attack_power: 0
   hit_procc: None
 bloodfang_pants:
-  name: bloodfang_pants
+  name: Bloodfang Pants
   set_tag: 'bloodfang armor'
   slot: Legs
   prim_stats:
@@ -172,7 +172,7 @@ bloodfang_pants:
     attack_power: 0
   hit_procc: None
 shadowcraft_boots:
-  name: shadowcraft_boots
+  name: Shadowcraft Boots
   set_tag: ''
   slot: Feet
   prim_stats:
@@ -187,7 +187,7 @@ shadowcraft_boots:
     attack_power: 0
   hit_procc: None
 boots_of_the_shadow_flame:
-  name: boots_of_the_shadow_flame
+  name: Boots of the Shadow Flame
   set_tag: ''
   slot: Feet
   prim_stats:
@@ -202,7 +202,7 @@ boots_of_the_shadow_flame:
     attack_power: 44
   hit_procc: None
 master_dragonslayers_ring:
-  name: master_dragonslayers_ring
+  name: "Master Dragonslayer's Ring"
   set_tag: ''
   slot: Ring
   prim_stats:
@@ -217,7 +217,7 @@ master_dragonslayers_ring:
     attack_power: 48
   hit_procc: None
 tarnished_elven_ring:
-  name: tarnished_elven_ring
+  name: Tarnished Elven Ring
   set_tag: ''
   slot: Ring
   prim_stats:
@@ -232,7 +232,7 @@ tarnished_elven_ring:
     attack_power: 0
   hit_procc: None
 royal_seal_of_eldre_thalas:
-  name: royal_seal_of_eldre_thalas
+  name: "Royal Seal of Eldre'Thalas"
   set_tag: ''
   slot: Trinket
   prim_stats:
@@ -247,7 +247,7 @@ royal_seal_of_eldre_thalas:
     attack_power: 0
   hit_procc: None
 blackhands_breadth:
-  name: blackhands_breadth
+  name: "Blackhand's Breadth"
   set_tag: ''
   slot: Trinket
   prim_stats:
@@ -262,7 +262,7 @@ blackhands_breadth:
     attack_power: 0
   hit_procc: None
 hand_of_justice:
-  name: hand_of_justice
+  name: Hand of Justice
   set_tag: ''
   slot: Trinket
   prim_stats:
@@ -280,7 +280,7 @@ hand_of_justice:
       - Hand of justice
       - 0.02
 satyrs_bow:
-  name: satyrs_bow
+  name: Satyr's Bow
   set_tag: ''
   slot: Ranged
   prim_stats:

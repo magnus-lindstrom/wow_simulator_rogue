@@ -1,7 +1,48 @@
 ---
 improved_eviscerate:
+  name: Improved Eviscerate
+  max_points: 3
+malice: 
+  name: Malice
   max_points: 5
 ruthlessness:
+  name: Ruthlessness
   max_points: 3
-malice:
+improved_slice_and_dice:
+  name: Improved Slice and Dice
+  max_points: 3
+relentless_strikes:
+  name: Relentless Strikes
   max_points: 1
+lethality:
+  name: Lethality
+  max_points: 5
+
+improved_sinister_strike:
+  name: Improved Sinister Strike
+  max_points: 2
+improved_backstab:
+  name: Improved Backstab
+  max_points: 3
+precision: 
+  name: Precision
+  max_points: 5
+dagger_specialization:
+  name: Dagger Specialization
+  max_points: 5
+dual_wield_specialization:
+  name: Dual Wield Specialization
+  max_points: 5
+sword_specialization:
+  name: Sword Specialization
+  max_points: 5
+weapon_expertise:
+  name: Weapon Expertise
+  max_points: 2
+aggression:
+  name: Aggression
+  max_points: 3
+
+opportunity:
+  name: Opportunity
+  max_points: 5
