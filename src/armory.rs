@@ -174,6 +174,8 @@ pub enum HitProcc {
 #[derive(Debug,Serialize,Deserialize)]
 pub struct Weapon {
     name: String,
+    slot: Vec<Slot>,
+    unique: bool,
     weapon_type: WeaponType,
     set_tag: String,
     prim_stats: PrimStats,
@@ -189,6 +191,8 @@ impl Weapon {
     fn new() -> Weapon {
         Weapon {
             name: "".to_string(),
+            slot: Vec::new(),
+            unique: false,
             weapon_type: WeaponType::None,
             set_tag: "".to_string(),
             prim_stats: PrimStats::new_from_race(Race::None),
@@ -204,6 +208,8 @@ impl Weapon {
     fn copy(&self) -> Weapon {
         Weapon {
             name: self.name.to_string(),
+            slot: self.slot.clone(),
+            unique: self.unique,
             weapon_type: self.weapon_type.clone(),
             set_tag: self.set_tag.to_string(),
             prim_stats: self.prim_stats.clone(),
@@ -252,6 +258,9 @@ enum Slot {
     Ring,
     Trinket,
     Ranged,
+    MH,
+    OH,
+    None
 }
 
 #[derive(Debug,Serialize,Deserialize)]
@@ -314,6 +323,8 @@ struct EnchantSpecification {
 #[derive(Debug,Serialize,Deserialize)]
 pub struct Enchant {
     pub name: String,
+    slot: Vec<Slot>,
+    enchant_type: EnchantType,
     prim_stats: PrimStats,
     sec_stats: SecStats,
     pub hit_procc: HitProcc,
@@ -324,6 +335,8 @@ impl Enchant {
     fn copy(&self) -> Enchant {
         Enchant {
             name: self.name.to_string(),
+            enchant_type: self.enchant_type.clone(),
+            slot: self.slot.clone(),
             prim_stats: self.prim_stats.clone(),
             sec_stats: self.sec_stats.clone(),
             hit_procc: self.hit_procc.clone(),
@@ -377,6 +390,12 @@ impl Talents {
             opportunity: 0
         }
     }
+}
+
+#[derive(Debug,Clone,Serialize,Deserialize)]
+pub enum EnchantType {
+    Permanent,
+    Temporary,
 }
 
 #[derive(Debug,Clone,Serialize,Deserialize)]
