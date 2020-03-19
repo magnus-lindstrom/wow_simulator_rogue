@@ -10,7 +10,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__f
 ARMOR_FILE = os.path.join(REPO_ROOT, 'db', 'armor.yaml')
 ENCHANTS_FILE = os.path.join(REPO_ROOT, 'db', 'enchants.yaml')
 
-CONFIG_FILE = os.path.join(REPO_ROOT, 'configs', 'eugenia_test.yaml')
+CONFIG_FILE_FOLDER = os.path.join(REPO_ROOT, 'configs')
 
 
 class HomeView(TemplateView):
@@ -27,12 +27,18 @@ class HomeView(TemplateView):
 
     def post(self, request, *args, **kwargs):
         armor_values = request.POST.getlist('armor')
+        config_file_name = request.POST.get('configFileName')
+        config_file_path = os.path.join(CONFIG_FILE_FOLDER, config_file_name)
         armor_dict = {'items': {'armor_names': [armor_value for armor_value in armor_values if armor_value]}}
 
-        with open(CONFIG_FILE, 'w') as config_file:
-            yaml.dump(armor_dict, config_file)
+        try:
+            with open(config_file_path, 'w') as config_file:
+                yaml.dump(armor_dict, config_file)
+        except Exception as e:
+            messages.add_message(request, messages.ERROR, f"Error while creating file {e}")
+        else:
+            messages.add_message(request, messages.SUCCESS, f"Config file created at: {config_file_path}")
 
-        messages.add_message(request, messages.SUCCESS, f"Config file created at: {CONFIG_FILE}")
         return redirect('/')
 
     @staticmethod

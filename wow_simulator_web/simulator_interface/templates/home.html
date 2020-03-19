@@ -1,17 +1,16 @@
 {% extends "base.html" %}
 
 {% block content %}
-<link rel="stylesheet" href="../static/css/home.css">
 <div class="container-fluid" style="text-align: center">
     <br>
-    <form method="post" id="config-form" class="needs-validation">
+    <form method="post" id="config-form">
         {% csrf_token %}
         <h2>Choose Armor Items</h2>
         <div class="rounded border border-dark" style="padding-left:50px; padding-right:50px; padding-top:20px; padding-bottom:20px;">
             {% for slot, items in armor.items %}
             {% if forloop.first %}<div class="row">{% endif %}
             <div class="col-sm-4">
-                <label for="drop" data-toggle="tooltip" data-placement="top" title="Head Items">{{ slot }}</label>
+                <label for="drop_{{ slot }}" data-toggle="tooltip" data-placement="top" title="Head Items">{{ slot }}</label>
                 {% if slot == "Ring" or slot == "Trinket" %}
                     <select class="selectpicker form-control show-tick" data-max-options="2" multiple data-title="Select {{ slot }} items..." data-live-search="true" data-style="" name="armor" id="drop_multiple_{{ slot }}">
                 {% else %}
@@ -28,13 +27,18 @@
             {% if forloop.last %}</div>{% endif %}
             {% endfor %}
         </div>
-
+        <br>
+        <br>
+        <div class="row">
+            <div class="col-sm-8 offset-2">
+                <input class="form-control" type="text" name="configFileName" placeholder="Insert config-file name" required>
+            </div>
+        </div>
+        <br>
         <br>
         <button type="submit" class="btn btn-primary mb-2">Submit</button>
     </form>
-<!--    <div>{{ file_content }}</div>-->
-    <div>{{ form_data }}</div>
+
 </div>
 
-<script src="../static/js/home.js"></script>
 {% endblock %}
