@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 
 {% block content %}
+<link rel="stylesheet" href="../static/css/home.css">
 <div class="container-fluid" style="text-align: center">
     <br>
-    <form method="post" id="config-form">
+    <form method="post" id="config-form" class="needs-validation">
         {% csrf_token %}
         <h2>Choose Armor Items</h2>
         <div class="rounded border border-dark" style="padding-left:50px; padding-right:50px; padding-top:20px; padding-bottom:20px;">
@@ -12,11 +13,11 @@
             <div class="col-sm-4">
                 <label for="drop" data-toggle="tooltip" data-placement="top" title="Head Items">{{ slot }}</label>
                 {% if slot == "Ring" or slot == "Trinket" %}
-                    <select class="selectpicker form-control show-tick" multiple data-title="Select {{ slot }} items..." data-live-search="true" name="armor" id="drop_mutiple">
+                    <select class="selectpicker form-control show-tick" data-max-options="2" multiple data-title="Select {{ slot }} items..." data-live-search="true" data-style="" name="armor" id="drop_multiple_{{ slot }}">
                 {% else %}
-                    <select class="selectpicker form-control show-tick" data-title="Select {{ slot }} item..." data-live-search="true" name="armor" id="drop">
-                {% endif %}
+                    <select class="selectpicker form-control show-tick" data-title="Select {{ slot }} item..." data-live-search="true" data-style="" name="armor" id="drop_{{ slot }}">
                     <option value="">-</option>
+                {% endif %}
                     {% for item in items %}
                     <option value="{{ item }}">{{ item }}</option>
                     {% endfor %}
@@ -35,4 +36,5 @@
     <div>{{ form_data }}</div>
 </div>
 
+<script src="../static/js/home.js"></script>
 {% endblock %}
