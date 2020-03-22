@@ -2,79 +2,113 @@
 
 {% block content %}
 <div class="container-fluid" style="text-align: center">
-<!-- ------------------------------------       ARMOR         -------------------------------------- -->
+
     <br>
     <form method="post" id="config-form">
         {% csrf_token %}
-        <h2>Choose Armor Items</h2>
-        <div class="rounded border border-dark" style="padding-left:50px; padding-right:50px; padding-top:20px; padding-bottom:20px;">
-            {% for slot, items in armor.items %}
-            {% if forloop.first %}<div class="row">{% endif %}
-            <div class="col-sm-4">
-                <label for="drop_{{ slot }}" data-toggle="tooltip" data-placement="top" title="Head Items">{{ slot }}</label>
-                {% if slot == "Ring" or slot == "Trinket" %}
-                    <select class="selectpicker form-control show-tick" data-max-options="2" multiple data-title="Select {{ slot }} items..." data-live-search="true" data-style="" name="armor" id="drop_multiple_{{ slot }}">
-                {% else %}
-                    <select class="selectpicker form-control show-tick" data-max-options="1" multiple data-title="Select {{ slot }} item..." data-live-search="true" data-style="" name="armor" id="drop_{{ slot }}">
-                {% endif %}
-                    {% for item in items %}
-                    <option value="{{ item.0 }}">{{ item.1 }}</option>
+        <div class="row">
+            <div class="col-sm-7">
+                <!-- ------------------------------------       ARMOR         -------------------------------------- -->
+                <h2><i>Armor Items</i></h2>
+                <div class="rounded border" style="padding-left:50px; padding-right:50px; padding-top:20px; padding-bottom:20px; border-color: darkgrey !important;">
+                    {% for slot, items in armor.items %}
+                    {% if forloop.first %}<div class="row">{% endif %}
+                    <div class="col-sm-4">
+                        <label for="drop_{{ slot }}" data-toggle="tooltip" data-placement="top" title="{{ slot }} Items">{{ slot }}</label>
+                        {% if slot == "Ring" or slot == "Trinket" %}
+                            <select class="selectpicker form-control show-tick" data-max-options="2" multiple data-title="Select {{ slot }} items..." data-live-search="true" data-style="" name="armor" id="drop_multiple_{{ slot }}">
+                        {% else %}
+                            <select class="selectpicker form-control show-tick" data-max-options="1" multiple data-title="Select {{ slot }} item..." data-live-search="true" data-style="" name="armor" id="drop_{{ slot }}">
+                        {% endif %}
+                            {% for item in items %}
+                            <option value="{{ item.0 }}">{{ item.1 }}</option>
+                            {% endfor %}
+                        </select>
+                        <br>
+                    </div>
+                    {% if forloop.counter|divisibleby:3 %}</div><br><br><div class="row">{% endif %}
+                    {% if forloop.last %}</div>{% endif %}
                     {% endfor %}
-                </select>
-                <br>
+                </div>
             </div>
-            {% if forloop.counter|divisibleby:3 %}</div><br><br><div class="row">{% endif %}
-            {% if forloop.last %}</div>{% endif %}
-            {% endfor %}
+
+            <div class="col-sm-5">
+                <!-- ------------------------------------       ARMOR ENCHANTS         -------------------------------------- -->
+                <h2><i>Armor Enchants</i></h2>
+                <div class="rounded border" style="padding-left:50px; padding-right:50px; padding-top:20px; padding-bottom:20px; border-color: darkgrey !important;">
+                    {% for slot, slot_content in armor_enchant.items %}
+                        {% if forloop.first %}<div class="row">{% endif %}
+                        <div class="col-sm-6">
+                            <label for="drop_{{ slot }}" data-toggle="tooltip" data-placement="top" title="{{ slot }} Items">{{ slot }}</label>
+                            <select class="selectpicker form-control show-tick" multiple data-title="Select {{ slot }} enchant..." data-live-search="true" name="armor-enchant" id="drop_multiple_{{ slot }}">
+                                {% for type, items in slot_content.items %}
+                                    <optgroup label="{{ type }}" data-max-options="1">
+                                        {% for item in items %}
+                                            <option value="{{ item.0 }}">{{ item.1 }}</option>
+                                        {% endfor %}
+                                    </optgroup>
+                                {% endfor %}
+                            </select>
+                            <br>
+                        </div>
+                        {% if forloop.counter|divisibleby:2 %}</div><br><br><div class="row">{% endif %}
+                        {% if forloop.last %}</div>{% endif %}
+                    {% endfor %}
+                </div>
+            </div>
         </div>
 
-<!-- ------------------------------------       ARMOR ENCHANTS         -------------------------------------- -->
         <br>
-        <h2>Choose Armor Enchants</h2>
-        <div class="rounded border border-dark" style="padding-left:50px; padding-right:50px; padding-top:20px; padding-bottom:20px;">
-            {% for slot, slot_content in armor_enchant.items %}
-                {% if forloop.first %}<div class="row">{% endif %}
-                <div class="col-sm-4">
-                    <label for="drop_{{ slot }}" data-toggle="tooltip" data-placement="top" title="{{ slot }} Items">{{ slot }}</label>
-                    <select class="selectpicker form-control show-tick" multiple data-title="Select {{ slot }} item..." data-live-search="true" name="armor-enchant" id="drop_multiple_{{ slot }}">
-                        {% for type, items in slot_content.items %}
-                            <optgroup label="{{ type }}" data-max-options="1">
-                                {% for item in items %}
-                                    <option value="{{ item.0 }}">{{ item.1 }}</option>
-                                {% endfor %}
-                            </optgroup>
-                        {% endfor %}
-                    </select>
-                    <br>
+        <div class="row">
+
+            <!-- ------------------------------------       WEAPON ITEMS         -------------------------------------- -->
+            <div class="col-sm-7">
+                <h2><i>Weapons</i></h2>
+                <div class="rounded border" style="padding-left:50px; padding-right:50px; padding-top:20px; padding-bottom:20px; border-color: darkgrey !important;">
+                    {% for slot, items in weapon.items %}
+                    {% if forloop.first %}<div class="row">{% endif %}
+                    <div class="col-sm-4">
+                        <label for="drop_{{ slot }}" data-toggle="tooltip" data-placement="top" title="{{ slot }} Items">{{ slot }}</label>
+                        <select class="selectpicker form-control show-tick" data-max-options="1" multiple data-title="Select {{ slot }} item..." data-live-search="true" name="weapon" id="drop_{{ slot }}">
+                            {% for item in items %}
+                            <option value="{{ slot }}-{{ item.0 }}">{{ item.1 }}</option>
+                            {% endfor %}
+                        </select>
+                        <br>
+                    </div>
+                    {% if forloop.counter|divisibleby:3 %}</div><br><br><div class="row">{% endif %}
+                    {% if forloop.last %}</div>{% endif %}
+                    {% endfor %}
                 </div>
-                {% if forloop.counter|divisibleby:3 %}</div><br><br><div class="row">{% endif %}
-                {% if forloop.last %}</div>{% endif %}
-            {% endfor %}
+            </div>
+
+            <!-- ------------------------------------       WEAPON ENCHANTS         -------------------------------------- -->
+            <div class="col-sm-5">
+                <h2><i>Weapon Enchants</i></h2>
+                <div class="rounded border" style="padding-left:50px; padding-right:50px; padding-top:20px; padding-bottom:20px; border-color: darkgrey !important;">
+                    {% for slot, slot_content in weapon_enchant.items %}
+                        {% if forloop.first %}<div class="row">{% endif %}
+                        <div class="col-sm-6">
+                            <label for="drop_{{ slot }}" data-toggle="tooltip" data-placement="top" title="{{ slot }} Items">{{ slot }}</label>
+                            <select class="selectpicker form-control show-tick" multiple data-title="Select {{ slot }} enchant..." data-live-search="true" name="weapon-enchant" id="drop_multiple_{{ slot }}">
+                                {% for type, items in slot_content.items %}
+                                    <optgroup label="{{ type }}" data-max-options="1">
+                                        {% for item in items %}
+                                            <option value="{{ slot }}-{{ item.0 }}">{{ item.1 }}</option>
+                                        {% endfor %}
+                                    </optgroup>
+                                {% endfor %}
+                            </select>
+                            <br>
+                        </div>
+                        {% if forloop.last %}</div>{% endif %}
+                        {% if forloop.counter|divisibleby:2 %}</div><br><br><div class="row">{% endif %}
+
+                    {% endfor %}
+                </div>
+            </div>
         </div>
 
-<!-- ------------------------------------       WEAPON ENCHANTS         -------------------------------------- -->
-        <br>
-        <h2>Choose weapon Enchants</h2>
-        <div class="rounded border border-dark" style="padding-left:50px; padding-right:50px; padding-top:20px; padding-bottom:20px;">
-            {% for slot, slot_content in weapon_enchant.items %}
-                {% if forloop.first %}<div class="row">{% endif %}
-                <div class="col-sm-4">
-                    <label for="drop_{{ slot }}" data-toggle="tooltip" data-placement="top" title="{{ slot }} Items">{{ slot }}</label>
-                    <select class="selectpicker form-control show-tick" multiple data-title="Select {{ slot }} item..." data-live-search="true" name="weapon-enchant" id="drop_multiple_{{ slot }}">
-                        {% for type, items in slot_content.items %}
-                            <optgroup label="{{ type }}" data-max-options="1">
-                                {% for item in items %}
-                                    <option value="{{ slot }}-{{ item.0 }}">{{ item.1 }}</option>
-                                {% endfor %}
-                            </optgroup>
-                        {% endfor %}
-                    </select>
-                    <br>
-                </div>
-                {% if forloop.counter|divisibleby:3 %}</div><br><br><div class="row">{% endif %}
-                {% if forloop.last %}</div>{% endif %}
-            {% endfor %}
-        </div>
 
 <!-- ------------------------------------       FILE HANDLING         -------------------------------------- -->
         <br>

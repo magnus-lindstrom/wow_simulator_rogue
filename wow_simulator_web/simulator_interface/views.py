@@ -9,6 +9,7 @@ import yaml
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 ARMOR_FILE = os.path.join(REPO_ROOT, 'db', 'armor.yaml')
 ENCHANTS_FILE = os.path.join(REPO_ROOT, 'db', 'enchants.yaml')
+WEAPON_FILE = os.path.join(REPO_ROOT, 'db', 'weapons.yaml')
 
 CONFIG_FILE_FOLDER = os.path.join(REPO_ROOT, 'configs')
 
@@ -21,20 +22,34 @@ class HomeView(TemplateView):
     def get(self, request, *args, **kwargs):
         armor_items = self._parse_armor_file()
         armor_enchant_items, weapon_enchant_items = self._parse_enchants_file()
+        weapon_items = self._parse_weapon_file()
 
         context = {'armor': armor_items,
+                   'weapon': weapon_items,
                    'armor_enchant': armor_enchant_items,
                    'weapon_enchant': weapon_enchant_items}
 
         return render(request, self.template_name, context=context)
 
     def post(self, request, *args, **kwargs):
+        # input values
         armor_values = request.POST.getlist('armor')
         armor_enchant_values = request.POST.getlist('armor-enchant')
         weapon_enchant_values = request.POST.getlist('weapon-enchant')
+        weapon_values = request.POST.getlist('weapon')
+
+        # output file
         config_file_name = request.POST.get('configFileName')
         config_file_path = os.path.join(CONFIG_FILE_FOLDER, config_file_name)
-        armor_dict = {'items': {'armor_names': [armor_value for armor_value in armor_values if armor_value]}}
+
+        # output dictionaries
+        item_dict = {
+            'items': [
+                {'armor_names': [armor_value for armor_value in armor_values if armor_value]},
+                {'mh_name': [weapon_value.split('-')[1] for weapon_value in weapon_values if weapon_value.split('-')[0] == 'MH']},
+                {'oh_name': [weapon_value.split('-')[1] for weapon_value in weapon_values if weapon_value.split('-')[0] == 'OH']},
+            ]
+        }
         enchant_dict = {
             'enchants': [
                 {'armor_enchant_names': [armor_enchant_value for armor_enchant_value in armor_enchant_values if armor_enchant_value]},
@@ -43,10 +58,10 @@ class HomeView(TemplateView):
             ]
         }
 
-
+        # output file creation
         try:
             with open(config_file_path, 'w') as config_file:
-                yaml.dump(armor_dict, config_file)
+                yaml.dump(item_dict, config_file)
             with open(config_file_path, 'a') as config_file:
                 yaml.dump(enchant_dict, config_file)
         except Exception as e:
@@ -103,3 +118,21 @@ class HomeView(TemplateView):
                     armor_slots = _create_slot_dictionary(armor_slots)
 
         return armor_slots, weapon_slots
+
+    @staticmethod
+    def _parse_weapon_file():
+        with open(WEAPON_FILE, 'r') as weapon_file:
+            content = yaml.load(weapon_file, yaml.FullLoader)
+
+        slots = {}
+        for item in content:
+            slot_list = content[item]['slot']
+            display_name = content[item]['name']
+            item_name = item
+            for slot_name in slot_list:
+                if slot_name in slots:
+                    slots[slot_name].append((item_name, display_name))
+                else:
+                    slots[slot_name] = [(item_name, display_name)]
+        return slots
+
