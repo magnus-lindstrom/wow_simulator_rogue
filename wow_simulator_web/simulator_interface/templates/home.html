@@ -1,38 +1,77 @@
 {% extends "base.html" %}
 
 {% block content %}
+<script src="../static/js/home.js"></script>
+
 <div class="container-fluid" style="text-align: center">
+    <h1>Config File Generator</h1>
     <br>
+    <form method="post" id="load-file-form">
+        <div class="row">
+            <div class="col-sm-4 offset-4">
+                <div class="input-group">
+                    <div class="custom-file">
+                        <input type="file" class="custom-file-input" id="file_to_load" disabled data-toggle="tooltip" data-placement="top" title="Not Yet Iplemented">
+                        <label class="custom-file-label" for="file_to_load">Load Existing Configuration...</label>
+                    </div>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-info mb-2" value="load_file" disabled data-toggle="tooltip" data-placement="top" title="Not Yet Iplemented">Load</button>
+        </div>
+    </form>
+    <br>
+
     <form method="post" id="config-form">
         {% csrf_token %}
-        <h2>Choose Armor Items</h2>
-        <div class="rounded border border-dark" style="padding-left:50px; padding-right:50px; padding-top:20px; padding-bottom:20px;">
-            {% for slot, items in armor.items %}
-            {% if forloop.first %}<div class="row">{% endif %}
-            <div class="col-sm-4">
-                <label for="drop" data-toggle="tooltip" data-placement="top" title="Head Items">{{ slot }}</label>
-                {% if slot == "Ring" or slot == "Trinket" %}
-                    <select class="selectpicker form-control show-tick" multiple data-title="Select {{ slot }} items..." data-live-search="true" name="armor" id="drop_mutiple">
-                {% else %}
-                    <select class="selectpicker form-control show-tick" data-title="Select {{ slot }} item..." data-live-search="true" name="armor" id="drop">
-                {% endif %}
-                    <option value="">-</option>
-                    {% for item in items %}
-                    <option value="{{ item }}">{{ item }}</option>
-                    {% endfor %}
-                </select>
-                <br>
+
+        <div class="row">
+            <div class="col-sm-7">
+                <!-- ARMOR -->
+                {% include "components/armor.html" %}
             </div>
-            {% if forloop.counter|divisibleby:3 %}</div><br><br><div class="row">{% endif %}
-            {% if forloop.last %}</div>{% endif %}
-            {% endfor %}
+            <div class="col-sm-5">
+                <!--  ARMOR ENCHANTS -->
+                {% include "components/armor_enchants.html" %}
+            </div>
         </div>
 
         <br>
-        <button type="submit" class="btn btn-primary mb-2">Submit</button>
+
+        <div class="row">
+            <div class="col-sm-7">
+                 <!-- WEAPONS -->
+                {% include "components/weapons.html" %}
+            </div>
+            <div class="col-sm-5">
+                <!-- WEAPON ENCHANTS -->
+                {% include "components/weapon_enchants.html" %}
+            </div>
+        </div>
+
+        <br>
+        <br>
+
+        <div class="row">
+            <div class="col-sm-8 offset-2">
+                <!-- TALENTS -->
+                {% include "components/talents.html" %}
+            </div>
+        </div>
+
+<!-- ------------------------------------       FILE HANDLING         -------------------------------------- -->
+        <br>
+        <br>
+
+        <div class="row">
+            <div class="col-sm-8 offset-2">
+                <input class="form-control" type="text" name="configFileName" placeholder="Insert config-file name" required>
+            </div>
+        </div>
+
+        <br>
+        <br>
+        <button type="submit" class="btn btn-info mb-2" value="generate_config">Submit</button>
     </form>
-<!--    <div>{{ file_content }}</div>-->
-    <div>{{ form_data }}</div>
 </div>
 
 {% endblock %}

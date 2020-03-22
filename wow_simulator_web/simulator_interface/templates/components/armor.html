@@ -1,0 +1,21 @@
+<h2><i>Armor Items</i></h2>
+<div class="rounded border" style="padding-left:50px; padding-right:50px; padding-top:20px; padding-bottom:20px; border-color: darkgrey !important;">
+    {% for slot, items in armor.items %}
+    {% if forloop.first %}<div class="row">{% endif %}
+    <div class="col-sm-4">
+        <label for="drop_{{ slot }}" data-toggle="tooltip" data-placement="top" title="{{ slot }} Items">{{ slot }}</label>
+        {% if slot == "Ring" or slot == "Trinket" %}
+        <select class="selectpicker form-control show-tick" data-max-options="2" multiple data-title="Select {{ slot }} items..." data-live-search="true" data-style="" name="armor" id="drop_multiple_{{ slot }}">
+            {% else %}
+            <select class="selectpicker form-control show-tick" data-max-options="1" multiple data-title="Select {{ slot }} item..." data-live-search="true" data-style="" name="armor" id="drop_{{ slot }}">
+                {% endif %}
+                {% for item in items %}
+                <option value="{{ item.0 }}">{{ item.1 }}</option>
+                {% endfor %}
+            </select>
+            <br>
+    </div>
+    {% if forloop.counter|divisibleby:3 %}</div><br><br><div class="row">{% endif %}
+    {% if forloop.last %}</div>{% endif %}
+    {% endfor %}
+</div>
