@@ -6,7 +6,7 @@
 <div class="container-fluid" style="text-align: center">
     <h1>Config File Generator</h1>
     <br>
-    <div method="post" id="config-form">
+    <form method="post" id="config-form">
         {% csrf_token %}
         <div class="row">
             <div class="col-sm-7">
@@ -123,6 +123,7 @@
                             <label for="{{ talent.0 }}" data-toggle="tooltip" data-placement="top" title="{{ talent.1 }}" class="control-label"> {{ talent.1 }} </label>
                             <br>
                             <input type="number" id="{{ talent.0 }}" min="0" step="1" max="{{ talent.2 }}" name="talents" value="0"/>
+                            <input type="hidden" value="{{ talent.0 }}" name="talent_names" />
                         </div>
                         {% if forloop.counter|divisibleby:2 %}</div><br><div class="row">{% endif %}
                         {% if forloop.last %}</div>{% endif %}
@@ -143,7 +144,6 @@
         <br>
         <button type="submit" class="btn btn-primary mb-2">Submit</button>
     </form>
-
 </div>
 
 {% endblock %}

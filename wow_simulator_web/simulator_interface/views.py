@@ -42,8 +42,9 @@ class HomeView(TemplateView):
         armor_enchant_values = request.POST.getlist('armor-enchant')
         weapon_enchant_values = request.POST.getlist('weapon-enchant')
         weapon_values = request.POST.getlist('weapon')
-        talents = request.POST.getlist('talents')
-        talents_values = request.POST.getlist('talents_values')
+        talent_values = request.POST.getlist('talents')
+        talent_names = request.POST.getlist('talent_names')
+        talents = dict(zip(talent_names, [int(value) for value in talent_values]))
 
         # output file
         config_file_name = request.POST.get('configFileName')
@@ -51,18 +52,22 @@ class HomeView(TemplateView):
 
         # output dictionaries
         item_dict = {
-            'items': [
-                {'armor_names': [armor_value for armor_value in armor_values if armor_value]},
-                {'mh_name': [weapon_value.split('-')[1] for weapon_value in weapon_values if weapon_value.split('-')[0] == 'MH']},
-                {'oh_name': [weapon_value.split('-')[1] for weapon_value in weapon_values if weapon_value.split('-')[0] == 'OH']},
-            ]
+            'items': {
+                'armor_names': [armor_value for armor_value in armor_values if armor_value],
+                'mh_name': [weapon_value.split('-')[1] for weapon_value in weapon_values if weapon_value.split('-')[0] == 'MH'],
+                'oh_name': [weapon_value.split('-')[1] for weapon_value in weapon_values if weapon_value.split('-')[0] == 'OH'],
+            }
         }
         enchant_dict = {
-            'enchants': [
-                {'armor_enchant_names': [armor_enchant_value for armor_enchant_value in armor_enchant_values if armor_enchant_value]},
-                {'mh_enchant_names': [weapon_enchant_value.split('-')[1] for weapon_enchant_value in weapon_enchant_values if weapon_enchant_value.split('-')[0] == 'MH']},
-                {'oh_enchant_names': [weapon_enchant_value.split('-')[1] for weapon_enchant_value in weapon_enchant_values if weapon_enchant_value.split('-')[0] == 'OH']}
-            ]
+            'enchants': {
+                'armor_enchant_names': [armor_enchant_value for armor_enchant_value in armor_enchant_values if armor_enchant_value],
+                'mh_enchant_names': [weapon_enchant_value.split('-')[1] for weapon_enchant_value in weapon_enchant_values if weapon_enchant_value.split('-')[0] == 'MH'],
+                'oh_enchant_names': [weapon_enchant_value.split('-')[1] for weapon_enchant_value in weapon_enchant_values if weapon_enchant_value.split('-')[0] == 'OH']
+            }
+        }
+
+        talent_dict = {
+            'talents': talents
         }
 
         # output file creation
@@ -71,6 +76,8 @@ class HomeView(TemplateView):
                 yaml.dump(item_dict, config_file)
             with open(config_file_path, 'a') as config_file:
                 yaml.dump(enchant_dict, config_file)
+            with open(config_file_path, 'a') as config_file:
+                yaml.dump(talent_dict, config_file)
         except Exception as e:
             messages.add_message(request, messages.ERROR, f"Error while creating file: {e}")
         else:
