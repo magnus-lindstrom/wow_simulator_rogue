@@ -1,148 +1,76 @@
 {% extends "base.html" %}
 
 {% block content %}
-<!--<script src="../static/js/home.js"></script>-->
+<script src="../static/js/home.js"></script>
 
 <div class="container-fluid" style="text-align: center">
     <h1>Config File Generator</h1>
     <br>
+    <form method="post" id="load-file-form">
+        <div class="row">
+            <div class="col-sm-4 offset-4">
+                <div class="input-group">
+                    <div class="custom-file">
+                        <input type="file" class="custom-file-input" id="file_to_load" disabled data-toggle="tooltip" data-placement="top" title="Not Yet Iplemented">
+                        <label class="custom-file-label" for="file_to_load">Load Existing Configuration...</label>
+                    </div>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-info mb-2" value="load_file" disabled data-toggle="tooltip" data-placement="top" title="Not Yet Iplemented">Load</button>
+        </div>
+    </form>
+    <br>
+
     <form method="post" id="config-form">
         {% csrf_token %}
+
         <div class="row">
             <div class="col-sm-7">
-                <!-- ------------------------------------       ARMOR         -------------------------------------- -->
-                <h2><i>Armor Items</i></h2>
-                <div class="rounded border" style="padding-left:50px; padding-right:50px; padding-top:20px; padding-bottom:20px; border-color: darkgrey !important;">
-                    {% for slot, items in armor.items %}
-                    {% if forloop.first %}<div class="row">{% endif %}
-                    <div class="col-sm-4">
-                        <label for="drop_{{ slot }}" data-toggle="tooltip" data-placement="top" title="{{ slot }} Items">{{ slot }}</label>
-                        {% if slot == "Ring" or slot == "Trinket" %}
-                            <select class="selectpicker form-control show-tick" data-max-options="2" multiple data-title="Select {{ slot }} items..." data-live-search="true" data-style="" name="armor" id="drop_multiple_{{ slot }}">
-                        {% else %}
-                            <select class="selectpicker form-control show-tick" data-max-options="1" multiple data-title="Select {{ slot }} item..." data-live-search="true" data-style="" name="armor" id="drop_{{ slot }}">
-                        {% endif %}
-                            {% for item in items %}
-                            <option value="{{ item.0 }}">{{ item.1 }}</option>
-                            {% endfor %}
-                        </select>
-                        <br>
-                    </div>
-                    {% if forloop.counter|divisibleby:3 %}</div><br><br><div class="row">{% endif %}
-                    {% if forloop.last %}</div>{% endif %}
-                    {% endfor %}
-                </div>
+                <!-- ARMOR -->
+                {% include "components/armor.html" %}
             </div>
-
             <div class="col-sm-5">
-                <!-- ------------------------------------       ARMOR ENCHANTS         -------------------------------------- -->
-                <h2><i>Armor Enchants</i></h2>
-                <div class="rounded border" style="padding-left:50px; padding-right:50px; padding-top:20px; padding-bottom:20px; border-color: darkgrey !important;">
-                    {% for slot, slot_content in armor_enchant.items %}
-                        {% if forloop.first %}<div class="row">{% endif %}
-                        <div class="col-sm-6">
-                            <label for="drop_{{ slot }}" data-toggle="tooltip" data-placement="top" title="{{ slot }} Items">{{ slot }}</label>
-                            <select class="selectpicker form-control show-tick" multiple data-title="Select {{ slot }} enchant..." data-live-search="true" name="armor-enchant" id="drop_multiple_{{ slot }}">
-                                {% for type, items in slot_content.items %}
-                                    <optgroup label="{{ type }}" data-max-options="1">
-                                        {% for item in items %}
-                                            <option value="{{ item.0 }}">{{ item.1 }}</option>
-                                        {% endfor %}
-                                    </optgroup>
-                                {% endfor %}
-                            </select>
-                            <br>
-                        </div>
-                        {% if forloop.counter|divisibleby:2 %}</div><br><br><div class="row">{% endif %}
-                        {% if forloop.last %}</div>{% endif %}
-                    {% endfor %}
-                </div>
+                <!--  ARMOR ENCHANTS -->
+                {% include "components/armor_enchants.html" %}
             </div>
         </div>
 
         <br>
+
         <div class="row">
-
-            <!-- ------------------------------------       WEAPON ITEMS         -------------------------------------- -->
             <div class="col-sm-7">
-                <h2><i>Weapons</i></h2>
-                <div class="rounded border" style="padding-left:50px; padding-right:50px; padding-top:20px; padding-bottom:20px; border-color: darkgrey !important;">
-                    {% for slot, items in weapon.items %}
-                    {% if forloop.first %}<div class="row">{% endif %}
-                    <div class="col-sm-4">
-                        <label for="drop_{{ slot }}" data-toggle="tooltip" data-placement="top" title="{{ slot }} Items">{{ slot }}</label>
-                        <select class="selectpicker form-control show-tick" data-max-options="1" multiple data-title="Select {{ slot }} item..." data-live-search="true" name="weapon" id="drop_{{ slot }}">
-                            {% for item in items %}
-                            <option value="{{ slot }}-{{ item.0 }}">{{ item.1 }}</option>
-                            {% endfor %}
-                        </select>
-                        <br>
-                    </div>
-                    {% if forloop.counter|divisibleby:3 %}</div><br><br><div class="row">{% endif %}
-                    {% if forloop.last %}</div>{% endif %}
-                    {% endfor %}
-                </div>
+                 <!-- WEAPONS -->
+                {% include "components/weapons.html" %}
             </div>
-
-            <!-- ------------------------------------       WEAPON ENCHANTS         -------------------------------------- -->
             <div class="col-sm-5">
-                <h2><i>Weapon Enchants</i></h2>
-                <div class="rounded border" style="padding-left:50px; padding-right:50px; padding-top:20px; padding-bottom:20px; border-color: darkgrey !important;">
-                    {% for slot, slot_content in weapon_enchant.items %}
-                        {% if forloop.first %}<div class="row">{% endif %}
-                        <div class="col-sm-6">
-                            <label for="drop_{{ slot }}" data-toggle="tooltip" data-placement="top" title="{{ slot }} Items">{{ slot }}</label>
-                            <select class="selectpicker form-control show-tick" multiple data-title="Select {{ slot }} enchant..." data-live-search="true" name="weapon-enchant" id="drop_multiple_{{ slot }}">
-                                {% for type, items in slot_content.items %}
-                                    <optgroup label="{{ type }}" data-max-options="1">
-                                        {% for item in items %}
-                                            <option value="{{ slot }}-{{ item.0 }}">{{ item.1 }}</option>
-                                        {% endfor %}
-                                    </optgroup>
-                                {% endfor %}
-                            </select>
-                            <br>
-                        </div>
-                        {% if forloop.last %}</div>{% endif %}
-                        {% if forloop.counter|divisibleby:2 %}</div><br><br><div class="row">{% endif %}
-
-                    {% endfor %}
-                </div>
+                <!-- WEAPON ENCHANTS -->
+                {% include "components/weapon_enchants.html" %}
             </div>
         </div>
+
         <br>
         <br>
-<!-- ------------------------------------       TALENTS         -------------------------------------- -->
+
         <div class="row">
             <div class="col-sm-8 offset-2">
-                <h2><i>Talents</i></h2>
-                <div class="rounded border" style="padding-left:50px; padding-right:50px; padding-top:20px; padding-bottom:20px; border-color: darkgrey !important;">
-                    {% for talent in talents %}
-                        {% if forloop.first %}<div class="row">{% endif %}
-                        <div class="col-sm-6">
-                            <label for="{{ talent.0 }}" data-toggle="tooltip" data-placement="top" title="{{ talent.1 }}" class="control-label"> {{ talent.1 }} </label>
-                            <br>
-                            <input type="number" id="{{ talent.0 }}" min="0" step="1" max="{{ talent.2 }}" name="talents" value="0"/>
-                            <input type="hidden" value="{{ talent.0 }}" name="talent_names" />
-                        </div>
-                        {% if forloop.counter|divisibleby:2 %}</div><br><div class="row">{% endif %}
-                        {% if forloop.last %}</div>{% endif %}
-                    {% endfor %}
-                </div>
+                <!-- TALENTS -->
+                {% include "components/talents.html" %}
             </div>
         </div>
 
 <!-- ------------------------------------       FILE HANDLING         -------------------------------------- -->
         <br>
         <br>
+
         <div class="row">
             <div class="col-sm-8 offset-2">
                 <input class="form-control" type="text" name="configFileName" placeholder="Insert config-file name" required>
             </div>
         </div>
+
         <br>
         <br>
-        <button type="submit" class="btn btn-primary mb-2">Submit</button>
+        <button type="submit" class="btn btn-info mb-2" value="generate_config">Submit</button>
     </form>
 </div>
 

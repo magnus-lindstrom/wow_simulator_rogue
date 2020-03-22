@@ -37,6 +37,11 @@ class HomeView(TemplateView):
         return render(request, self.template_name, context=context)
 
     def post(self, request, *args, **kwargs):
+        # if request.POST.get("load_file"):
+        #     pass
+        #
+        # if request.POST.get("generate_config"):
+
         # input values
         armor_values = request.POST.getlist('armor')
         armor_enchant_values = request.POST.getlist('armor-enchant')
@@ -164,4 +169,10 @@ class HomeView(TemplateView):
             talents.append((item_name, display_name, max_value))
 
         return talents
+
+    @staticmethod
+    def _parse_config_file(config_file):
+        with open(config_file, 'r') as config_file:
+            content = yaml.load(config_file, yaml.FullLoader)
+        return content
 
