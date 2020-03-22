@@ -9,7 +9,8 @@ import yaml
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 ARMOR_FILE = os.path.join(REPO_ROOT, 'db', 'armor.yaml')
 ENCHANTS_FILE = os.path.join(REPO_ROOT, 'db', 'enchants.yaml')
-WEAPON_FILE = os.path.join(REPO_ROOT, 'db', 'weapons.yaml')
+WEAPONS_FILE = os.path.join(REPO_ROOT, 'db', 'weapons.yaml')
+TALENTS_FILE = os.path.join(REPO_ROOT, 'db', 'talents.yaml')
 
 CONFIG_FILE_FOLDER = os.path.join(REPO_ROOT, 'configs')
 
@@ -23,11 +24,15 @@ class HomeView(TemplateView):
         armor_items = self._parse_armor_file()
         armor_enchant_items, weapon_enchant_items = self._parse_enchants_file()
         weapon_items = self._parse_weapon_file()
+        talents_list = self._parse_talent_file()
 
-        context = {'armor': armor_items,
-                   'weapon': weapon_items,
-                   'armor_enchant': armor_enchant_items,
-                   'weapon_enchant': weapon_enchant_items}
+        context = {
+            'armor': armor_items,
+            'weapon': weapon_items,
+            'armor_enchant': armor_enchant_items,
+            'weapon_enchant': weapon_enchant_items,
+            'talents': talents_list
+        }
 
         return render(request, self.template_name, context=context)
 
@@ -37,6 +42,8 @@ class HomeView(TemplateView):
         armor_enchant_values = request.POST.getlist('armor-enchant')
         weapon_enchant_values = request.POST.getlist('weapon-enchant')
         weapon_values = request.POST.getlist('weapon')
+        talents = request.POST.getlist('talents')
+        talents_values = request.POST.getlist('talents_values')
 
         # output file
         config_file_name = request.POST.get('configFileName')
@@ -121,7 +128,7 @@ class HomeView(TemplateView):
 
     @staticmethod
     def _parse_weapon_file():
-        with open(WEAPON_FILE, 'r') as weapon_file:
+        with open(WEAPONS_FILE, 'r') as weapon_file:
             content = yaml.load(weapon_file, yaml.FullLoader)
 
         slots = {}
@@ -135,4 +142,19 @@ class HomeView(TemplateView):
                 else:
                     slots[slot_name] = [(item_name, display_name)]
         return slots
+
+    @staticmethod
+    def _parse_talent_file():
+        with open(TALENTS_FILE, 'r') as talent_file:
+            content = yaml.load(talent_file, yaml.FullLoader)
+
+        talents = []
+        for item in content:
+            max_value = content[item]['max_points']
+            display_name = content[item]['name']
+            item_name = item
+
+            talents.append((item_name, display_name, max_value))
+
+        return talents
 

@@ -1,10 +1,12 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container-fluid" style="text-align: center">
+<!--<script src="../static/js/home.js"></script>-->
 
+<div class="container-fluid" style="text-align: center">
+    <h1>Config File Generator</h1>
     <br>
-    <form method="post" id="config-form">
+    <div method="post" id="config-form">
         {% csrf_token %}
         <div class="row">
             <div class="col-sm-7">
@@ -108,7 +110,26 @@
                 </div>
             </div>
         </div>
-
+        <br>
+        <br>
+<!-- ------------------------------------       TALENTS         -------------------------------------- -->
+        <div class="row">
+            <div class="col-sm-8 offset-2">
+                <h2><i>Talents</i></h2>
+                <div class="rounded border" style="padding-left:50px; padding-right:50px; padding-top:20px; padding-bottom:20px; border-color: darkgrey !important;">
+                    {% for talent in talents %}
+                        {% if forloop.first %}<div class="row">{% endif %}
+                        <div class="col-sm-6">
+                            <label for="{{ talent.0 }}" data-toggle="tooltip" data-placement="top" title="{{ talent.1 }}" class="control-label"> {{ talent.1 }} </label>
+                            <br>
+                            <input type="number" id="{{ talent.0 }}" min="0" step="1" max="{{ talent.2 }}" name="talents" value="0"/>
+                        </div>
+                        {% if forloop.counter|divisibleby:2 %}</div><br><div class="row">{% endif %}
+                        {% if forloop.last %}</div>{% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
 
 <!-- ------------------------------------       FILE HANDLING         -------------------------------------- -->
         <br>
