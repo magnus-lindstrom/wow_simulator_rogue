@@ -14,21 +14,20 @@
         {% endfor %}
         </select>
         {% if slot in armor_enchant %}
-        <br><br>
-        <select class="selectpicker form-control show-tick" multiple data-title="Select {{ slot }} enchant..." data-live-search="true" name="armor-enchant" id="enchant_drop_multiple_{{ slot }}">
-            {% for type in armor_enchant|get_item:slot %}
-            <optgroup label="{{ type }}" data-max-options="1">
-                {% for item in armor_enchant|get_item:slot|get_item:type %}
-                <option value="{{ item.0 }}">{{ item.1 }}</option>
+            <br><br>
+            <select class="selectpicker form-control show-tick" multiple data-title="Select {{ slot }} enchant..." data-live-search="true" name="armor-enchant" id="enchant_drop_multiple_{{ slot }}">
+                {% for type in armor_enchant|get_item:slot %}
+                <optgroup label="{{ type }}" data-max-options="1">
+                    {% for item in armor_enchant|get_item:slot|get_item:type %}
+                    <option value="{{ item.0 }}">{{ item.1 }}</option>
+                    {% endfor %}
+                </optgroup>
                 {% endfor %}
-            </optgroup>
-            {% endfor %}
-        </select>
+            </select>
         {% else %}
             <br><br>
             <p class="text-muted">No Enchants Available</p>
         {% endif %}
-        <br>
     </div>
     {% if forloop.counter|divisibleby:3 %}</div><br><br><div class="row">{% endif %}
     {% if forloop.last %}</div>{% endif %}
