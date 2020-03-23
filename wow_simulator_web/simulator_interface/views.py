@@ -1,3 +1,4 @@
+from django.template.defaulttags import register
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.shortcuts import render, redirect
@@ -193,4 +194,9 @@ class HomeView(TemplateView):
         with open(config_file, 'r') as config_file:
             content = yaml.load(config_file, yaml.FullLoader)
         return content
+
+
+@register.filter
+def get_item(dictionary, key):
+    return dictionary.get(key)
 

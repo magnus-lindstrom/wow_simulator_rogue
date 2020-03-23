@@ -1,19 +1,33 @@
 <h3><i>Armor Items</i></h3>
 <div class="rounded border" style="padding-left:50px; padding-right:50px; padding-top:20px; padding-bottom:20px; border-color: darkgrey !important;">
-    {% for slot, items in armor.items %}
+    {% for slot, armoritems in armor.items %}
     {% if forloop.first %}<div class="row">{% endif %}
     <div class="col-sm-4">
         <label for="drop_{{ slot }}" data-toggle="tooltip" data-placement="top" title="{{ slot }} Items">{{ slot }}</label>
         {% if slot == "Ring" or slot == "Trinket" %}
         <select class="selectpicker form-control show-tick" data-max-options="2" multiple data-title="Select {{ slot }} items..." data-live-search="true" data-style="" name="armor" id="drop_multiple_{{ slot }}">
-            {% else %}
-            <select class="selectpicker form-control show-tick" data-max-options="1" multiple data-title="Select {{ slot }} item..." data-live-search="true" data-style="" name="armor" id="drop_{{ slot }}">
-                {% endif %}
-                {% for item in items %}
-                <option value="{{ item.0 }}">{{ item.1 }}</option>
+        {% else %}
+        <select class="selectpicker form-control show-tick" data-max-options="1" multiple data-title="Select {{ slot }} item..." data-live-search="true" data-style="" name="armor" id="drop_{{ slot }}">
+        {% endif %}
+        {% for item in armoritems %}
+            <option value="{{ item.0 }}">{{ item.1 }}</option>
+        {% endfor %}
+        </select>
+        {% if slot in armor_enchant %}
+            <br><br>
+            <select class="selectpicker form-control show-tick" multiple data-title="Select {{ slot }} enchant..." data-live-search="true" name="armor-enchant" id="enchant_drop_multiple_{{ slot }}">
+                {% for type in armor_enchant|get_item:slot %}
+                <optgroup label="{{ type }}" data-max-options="1">
+                    {% for item in armor_enchant|get_item:slot|get_item:type %}
+                    <option value="{{ item.0 }}">{{ item.1 }}</option>
+                    {% endfor %}
+                </optgroup>
                 {% endfor %}
             </select>
-            <br>
+        {% else %}
+            <br><br>
+            <p class="text-muted">No Enchants Available</p>
+        {% endif %}
     </div>
     {% if forloop.counter|divisibleby:3 %}</div><br><br><div class="row">{% endif %}
     {% if forloop.last %}</div>{% endif %}
