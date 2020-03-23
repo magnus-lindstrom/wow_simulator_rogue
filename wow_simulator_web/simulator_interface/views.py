@@ -58,11 +58,21 @@ class HomeView(TemplateView):
         config_file_path = os.path.join(CONFIG_FILE_FOLDER, config_file_name)
 
         # output dictionaries
+        try:
+            mh_name = [weapon_value.split('-')[1] for weapon_value in weapon_values if weapon_value.split('-')[0] == 'MH'][0]
+        except IndexError:
+            mh_name = None
+
+        try:
+            oh_name = [weapon_value.split('-')[1] for weapon_value in weapon_values if weapon_value.split('-')[0] == 'OH'][0]
+        except IndexError:
+            oh_name = None
+
         item_dict = {
             'items': {
                 'armor_names': [armor_value for armor_value in armor_values if armor_value],
-                'mh_name': [weapon_value.split('-')[1] for weapon_value in weapon_values if weapon_value.split('-')[0] == 'MH'],
-                'oh_name': [weapon_value.split('-')[1] for weapon_value in weapon_values if weapon_value.split('-')[0] == 'OH'],
+                'mh_name': mh_name,
+                'oh_name': oh_name,
             }
         }
         enchant_dict = {
