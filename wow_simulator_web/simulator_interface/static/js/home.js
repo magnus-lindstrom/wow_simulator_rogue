@@ -21,6 +21,15 @@ function load_config() {
     });
 };
 
+function checkBuffs(checkbox){
+    if (checkbox.checked){
+        document.getElementById(checkbox.id + '-hidden').disabled = true;
+    }
+    else {
+        document.getElementById(checkbox.id + '-hidden').disabled = false;
+    }
+};
+
 $( document ).ready(function() {
     $('#file_to_load').on('change',function(){
         //get the file name
