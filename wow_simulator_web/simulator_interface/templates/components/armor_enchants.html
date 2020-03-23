@@ -1,8 +1,8 @@
-<h2><i>Armor Enchants</i></h2>
+<h3><i>Armor Enchants</i></h3>
 <div class="rounded border" style="padding-left:50px; padding-right:50px; padding-top:20px; padding-bottom:20px; border-color: darkgrey !important;">
     {% for slot, slot_content in armor_enchant.items %}
     {% if forloop.first %}<div class="row">{% endif %}
-    <div class="col-sm-6">
+    <div class="col-sm-4">
         <label for="drop_multiple_{{ slot }}" data-toggle="tooltip" data-placement="top" title="{{ slot }} Items">{{ slot }}</label>
         <select class="selectpicker form-control show-tick" multiple data-title="Select {{ slot }} enchant..." data-live-search="true" name="armor-enchant" id="drop_multiple_{{ slot }}">
             {% for type, items in slot_content.items %}
@@ -15,7 +15,7 @@
         </select>
         <br>
     </div>
-    {% if forloop.counter|divisibleby:2 %}</div><br><br><div class="row">{% endif %}
+    {% if forloop.counter|divisibleby:3 %}</div><br><br><div class="row">{% endif %}
     {% if forloop.last %}</div>{% endif %}
     {% endfor %}
 </div>

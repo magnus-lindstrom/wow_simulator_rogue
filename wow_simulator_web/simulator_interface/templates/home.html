@@ -20,54 +20,63 @@
         </div>
     </form>
     <br>
+    <br>
 
     <form method="post" id="config-form">
         {% csrf_token %}
 
         <div class="row">
             <div class="col-sm-7">
-                <!-- ARMOR -->
-                {% include "components/armor.html" %}
+
+                <div class="row">
+                    <div class="col-sm-12">
+                        <!-- ARMOR -->
+                        {% include "components/armor.html" %}
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-sm-12">
+                        <!--  ARMOR ENCHANTS -->
+                        {% include "components/armor_enchants.html" %}
+                    </div>
+                </div>
+                <br>
+                <div class="row">
+                    <div class="col-sm-12">
+                        <!-- WEAPONS -->
+                        {% include "components/weapons.html" %}
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-sm-12">
+                        <!-- WEAPON ENCHANTS -->
+                        {% include "components/weapon_enchants.html" %}
+                    </div>
+                </div>
             </div>
+
             <div class="col-sm-5">
-                <!--  ARMOR ENCHANTS -->
-                {% include "components/armor_enchants.html" %}
-            </div>
-        </div>
-
-        <br>
-
-        <div class="row">
-            <div class="col-sm-7">
-                 <!-- WEAPONS -->
-                {% include "components/weapons.html" %}
-            </div>
-            <div class="col-sm-5">
-                <!-- WEAPON ENCHANTS -->
-                {% include "components/weapon_enchants.html" %}
-            </div>
-        </div>
-
-        <br>
-        <br>
-
-        <div class="row">
-            <div class="col-sm-6">
-                <!-- TALENTS -->
-                {% include "components/talents.html" %}
-            </div>
-            <div class="col-sm-6">
-                <!-- BUFFS -->
-                {% include "components/buffs.html" %}
+                <div class="row">
+                    <div class="col-sm-12">
+                        <!-- TALENTS -->
+                        {% include "components/talents.html" %}
+                    </div>
+                </div>
+                <br>
+                <div class="row">
+                    <div class="col-sm-12">
+                        <!-- BUFFS -->
+                        {% include "components/buffs.html" %}
+                    </div>
+                </div>
             </div>
         </div>
 
 <!-- ------------------------------------       FILE HANDLING         -------------------------------------- -->
         <br>
-        <br>
-
         <div class="row">
             <div class="col-sm-8 offset-2">
+                <h3><i>Config file name</i></h3>
                 <input class="form-control" type="text" name="configFileName" placeholder="Insert config-file name" required>
             </div>
         </div>
