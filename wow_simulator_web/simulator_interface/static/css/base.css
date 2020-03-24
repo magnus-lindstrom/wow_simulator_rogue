@@ -4,8 +4,8 @@
     -webkit-animation:signup-response 0.5s 1;
     animation-fill-mode: forwards;
 
-    animation-delay:10s;
-    -webkit-animation-delay:10s; /* Safari and Chrome */
+    animation-delay:200s;
+    -webkit-animation-delay:200s; /* Safari and Chrome */
     -webkit-animation-fill-mode: forwards;
 
 }
