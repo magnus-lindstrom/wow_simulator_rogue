@@ -241,8 +241,12 @@ class TestView(TemplateView):
             file_name = request.POST.get("file_to_load")
             file_path = os.path.join(self.CONFIG_FILE_FOLDER, file_name)
             content = self._parse_config_file(file_path)
-            messages.add_message(request, messages.SUCCESS, f"Config file content: {content}")
-            return HttpResponseRedirect('/')
+
+            talents = {f'talents-{name}': value for name, value in content['talents'].items()}
+            form = MyForm(initial=talents)
+
+            messages.add_message(request, messages.SUCCESS, f"{content}")
+            return render(request, self.template_name, {'form': form})
 
     def create_config_file(self, request):
         # input values
@@ -254,7 +258,6 @@ class TestView(TemplateView):
         armor_enchant_values = request.POST.getlist('armor-enchant')
         weapon_enchant_values = request.POST.getlist('weapon-enchant')
         weapon_values = request.POST.getlist('weapon')
-        # talents = {name.split('-')[1]: int(value) for name, value in request.POST.items() if name.startswith('talents-')}
         buff_list = request.POST.getlist('buffs')
         buffs = {item.split('-')[0]: bool(strtobool(item.split('-')[1])) for item in buff_list}
 

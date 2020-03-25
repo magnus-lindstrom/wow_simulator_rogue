@@ -4,7 +4,7 @@
         {% if forloop.first %}<div class="row">{% endif %}
         <div class="col-sm-6" style="text-align:left;">
             {{ field }} <label for="{{ field.id }}" class="control-label"> {{ field.label }} </label>
-            <input type="hidden" value="{{ field.id }}" name="talent_names" />
+<!--            <input type="hidden" value="{{ field.id }}" name="talent_names" />-->
         </div>
         {% if forloop.counter|divisibleby:2 %}</div><br><div class="row">{% endif %}
         {% if forloop.last %}</div>{% endif %}
