@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.shortcuts import render, redirect
 from django.urls import reverse
+from copy import deepcopy
 from distutils.util import strtobool
 from django.views.generic import TemplateView
 import os
@@ -224,10 +225,6 @@ class TestView(TemplateView):
 
     def get(self, request, *args, **kwargs):
 
-        # values = {
-        #     'talents': {name: int(value) for name, value in request.GET.items() if name.startswith('talents-')}
-        # }
-
         context = {
             'form': MyForm()
         }
@@ -243,7 +240,13 @@ class TestView(TemplateView):
             content = self._parse_config_file(file_path)
 
             talents = {f'talents-{name}': value for name, value in content['talents'].items()}
-            form = MyForm(initial=talents)
+            buffs = {f'buffs-{name}': value for name, value in content['buffs'].items()}
+
+            initial_values = dict()
+            initial_values.update(talents)
+            initial_values.update(buffs)
+
+            form = MyForm(initial=initial_values)
 
             messages.add_message(request, messages.SUCCESS, f"{content}")
             return render(request, self.template_name, {'form': form})
@@ -253,13 +256,20 @@ class TestView(TemplateView):
         form = MyForm(request.POST)
         if form.is_valid():
             talents = {name.split('-')[1]: int(value) for name, value in form.cleaned_data.items() if name.startswith('talents-')}
+            talent_dict = {
+                'talents': talents
+            }
+
+            buffs = {name.split('-')[1]: bool(strtobool(value)) for name, value in form.cleaned_data.items() if name.startswith('buffs-')}
+            buff_dict = {
+                'buffs': buffs
+            }
+
 
         armor_values = request.POST.getlist('armor')
         armor_enchant_values = request.POST.getlist('armor-enchant')
         weapon_enchant_values = request.POST.getlist('weapon-enchant')
         weapon_values = request.POST.getlist('weapon')
-        buff_list = request.POST.getlist('buffs')
-        buffs = {item.split('-')[0]: bool(strtobool(item.split('-')[1])) for item in buff_list}
 
         # output file
         config_file_name = request.POST.get('configFileName')
@@ -296,14 +306,6 @@ class TestView(TemplateView):
             }
         }
 
-        talent_dict = {
-            'talents': talents
-        }
-
-        buff_dict = {
-            'buffs': buffs
-        }
-
         # output file creation
         try:
             with open(config_file_path, 'w') as config_file:
@@ -334,10 +336,9 @@ def get_item(dictionary, key):
 
 @register.filter
 def filteritems(form_obj, filter_string):
-    filtered = form_obj
-
+    filtered = deepcopy(form_obj)
     for field in form_obj:
         if not field.name.startswith(filter_string):
-            filtered.fields.remove(field.name)
+            del filtered.fields[field.name]
     return filtered
 

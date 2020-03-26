@@ -2,7 +2,7 @@ import os
 
 import yaml
 from django.forms import forms
-from django.forms import CharField, TextInput
+from django.forms import CharField, TextInput, MultipleChoiceField, CheckboxInput, BooleanField
 
 
 class MyForm(forms.Form):
@@ -19,21 +19,45 @@ class MyForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self._create_talent_fields()
+        self._create_buff_fields()
+
         armor_items = self._parse_armor_file()
         armor_enchant_items, weapon_enchant_items = self._parse_enchants_file()
         weapon_items = self._parse_weapon_file()
-        talents_list = self._parse_talent_file()
-        buffs_list = self._parse_buffs_file()
+
 
         context_empty = {
             'armor': armor_items,
             'weapon': weapon_items,
             'armor_enchant': armor_enchant_items,
             'weapon_enchant': weapon_enchant_items,
-            'talents': talents_list,
-            'buffs': buffs_list,
         }
 
+    def _create_buff_fields(self):
+        buffs_list = self._parse_buffs_file()
+
+        for buff in buffs_list:
+            buff_id = buff[0]
+            buff_display_name = buff[1]
+
+            self.fields.update({
+                f'buffs-{buff_id}': CharField(
+                    required=False,
+                    label=buff_display_name,
+                    widget=CheckboxInput(
+                        attrs={
+                            'class': 'custom-control-input',
+                            'label': buff_display_name,
+                            'id': buff_id,
+                            'value': buff_id
+                        }
+                    )
+                )
+            })
+
+    def _create_talent_fields(self):
+        talents_list = self._parse_talent_file()
         for talent in talents_list:
             talent_id = talent[0]
             talent_display_name = talent[1]

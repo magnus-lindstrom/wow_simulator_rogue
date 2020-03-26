@@ -1,15 +1,15 @@
 <h3><i>Buffs</i></h3>
 <div class="rounded border" style="padding-left:50px; padding-right:50px; padding-top:20px; padding-bottom:20px; border-color: darkgrey !important;">
-    {% for buff in buffs %}
-    {% if forloop.first %}<div class="row">{% endif %}
-    <div class="col-sm-6" style="text-align:left">
-        <div class="custom-control custom-checkbox">
-            <input type="checkbox" class="custom-control-input" id="{{ buff.0 }}" name="buffs" value="{{ buff.0 }}-true" onclick="checkBuffs(this);">
-            <label class="custom-control-label" for="{{ buff.0 }}">{{ buff.1 }}</label>
+    {% for field in form|filteritems:'buffs-' %}
+        {% if forloop.first %}<div class="row">{% endif %}
+
+        <div class="col-sm-4" style="text-align:left">
+            <label class="custom-control custom-checkbox">
+                {{ field }} <span for="{{ field.id }}" class="custom-control-label" > {{ field.label }} </span>
+            </label>
         </div>
-        <input type='hidden' id='{{ buff.0 }}-hidden' value="{{ buff.0 }}-false" name='buffs'>
-    </div>
-    {% if forloop.counter|divisibleby:2 %}</div><br><div class="row">{% endif %}
-    {% if forloop.last %}</div>{% endif %}
+
+        {% if forloop.counter|divisibleby:3 %}</div><br><div class="row">{% endif %}
+        {% if forloop.last %}</div>{% endif %}
     {% endfor %}
 </div>
