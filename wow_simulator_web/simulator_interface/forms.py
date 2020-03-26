@@ -2,7 +2,8 @@ import os
 
 import yaml
 from django.forms import forms
-from django.forms import CharField, TextInput, MultipleChoiceField, CheckboxInput, BooleanField
+from django.forms import CharField, TextInput, MultipleChoiceField, CheckboxInput, BooleanField, ChoiceField, Select, \
+    SelectMultiple
 
 
 class MyForm(forms.Form):
@@ -19,20 +20,47 @@ class MyForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        armor_enchant_items, weapon_enchant_items = self._parse_enchants_file()
+
         self._create_talent_fields()
         self._create_buff_fields()
+        self._create_weapon_fields()
 
         armor_items = self._parse_armor_file()
-        armor_enchant_items, weapon_enchant_items = self._parse_enchants_file()
-        weapon_items = self._parse_weapon_file()
-
 
         context_empty = {
             'armor': armor_items,
-            'weapon': weapon_items,
             'armor_enchant': armor_enchant_items,
             'weapon_enchant': weapon_enchant_items,
         }
+
+    def _create_weapon_fields(self):
+        weapon_items = self._parse_weapon_file()
+
+        for slot, weapon_items in weapon_items.items():
+            choices = list()
+            for weapon in weapon_items:
+                weapon_id = f'{weapon[0]}'
+                weapon_display_name = f'{weapon[1]}'
+                choices.append((weapon_id, weapon_display_name))
+
+            choices = tuple(choices)
+
+            self.fields.update({
+                f'weapons-{slot}': MultipleChoiceField(
+                    choices=choices,
+                    label=slot,
+                    widget=SelectMultiple(
+                        attrs={
+                            'class': 'selectpicker form-control show-tick',
+                            'data-max-options': '1',
+                            'data-title': f"Select {slot} item...",
+                            'data-live-search': 'true',
+                            'id': f'drop_{slot}',
+                        },
+                    )
+                )
+            })
 
     def _create_buff_fields(self):
         buffs_list = self._parse_buffs_file()

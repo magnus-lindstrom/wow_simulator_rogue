@@ -233,7 +233,8 @@ class TestView(TemplateView):
 
     def post(self, request, *args, **kwargs):
         if request.POST.get("generate_config"):
-            return self.create_config_file(request)
+            return self.generate_config_file(request)
+
         elif request.POST.get("load_config"):
             file_name = request.POST.get("file_to_load")
             file_path = os.path.join(self.CONFIG_FILE_FOLDER, file_name)
@@ -241,52 +242,53 @@ class TestView(TemplateView):
 
             talents = {f'talents-{name}': value for name, value in content['talents'].items()}
             buffs = {f'buffs-{name}': value for name, value in content['buffs'].items()}
+            oh_name = {'weapons-OH': [content['items']['oh_name']]}
+            mh_name = {'weapons-MH': [content['items']['mh_name']]}
 
             initial_values = dict()
             initial_values.update(talents)
             initial_values.update(buffs)
+            initial_values.update(oh_name)
+            initial_values.update(mh_name)
 
             form = MyForm(initial=initial_values)
 
             messages.add_message(request, messages.SUCCESS, f"{content}")
             return render(request, self.template_name, {'form': form})
 
-    def create_config_file(self, request):
-        # input values
-        form = MyForm(request.POST)
+    def generate_config_file(self, request):
+        form = MyForm(data=request.POST)
+
         if form.is_valid():
-            talents = {name.split('-')[1]: int(value) for name, value in form.cleaned_data.items() if name.startswith('talents-')}
-            talent_dict = {
-                'talents': talents
-            }
+            talent_dict = self._get_talents_from_form(form)
+            buff_dict = self._get_buffs_from_form(form)
+            oh_name = self._get_oh_weapon_from_form(form)
+            mh_name = self._get_mh_weapon_from_form(form)
 
-            buffs = {name.split('-')[1]: bool(strtobool(value)) for name, value in form.cleaned_data.items() if name.startswith('buffs-')}
-            buff_dict = {
-                'buffs': buffs
-            }
-
+        else:
+            raise Exception(form.errors)
 
         armor_values = request.POST.getlist('armor')
         armor_enchant_values = request.POST.getlist('armor-enchant')
         weapon_enchant_values = request.POST.getlist('weapon-enchant')
-        weapon_values = request.POST.getlist('weapon')
+        # weapon_values = request.POST.getlist('weapon')
 
         # output file
         config_file_name = request.POST.get('configFileName')
         config_file_path = os.path.join(self.CONFIG_FILE_FOLDER, config_file_name)
 
-        # output dictionaries
-        try:
-            mh_name = \
-            [weapon_value.split('-')[1] for weapon_value in weapon_values if weapon_value.split('-')[0] == 'MH'][0]
-        except IndexError:
-            mh_name = None
-
-        try:
-            oh_name = \
-            [weapon_value.split('-')[1] for weapon_value in weapon_values if weapon_value.split('-')[0] == 'OH'][0]
-        except IndexError:
-            oh_name = None
+        # # output dictionaries
+        # try:
+        #     mh_name = \
+        #     [weapon_value.split('-')[1] for weapon_value in weapon_values if weapon_value.split('-')[0] == 'MH'][0]
+        # except IndexError:
+        #     mh_name = None
+        #
+        # try:
+        #     oh_name = \
+        #     [weapon_value.split('-')[1] for weapon_value in weapon_values if weapon_value.split('-')[0] == 'OH'][0]
+        # except IndexError:
+        #     oh_name = None
 
         item_dict = {
             'items': {
@@ -323,12 +325,48 @@ class TestView(TemplateView):
         return HttpResponseRedirect('/simulator_interface/test')
 
     @staticmethod
+    def _get_talents_from_form(form):
+        talents = {name.split('-')[1]: int(value) for name, value in form.cleaned_data.items() if
+                   name.startswith('talents-')}
+        talent_dict = {
+            'talents': talents
+        }
+        return talent_dict
+
+    @staticmethod
+    def _get_buffs_from_form(form):
+        buffs = {name.split('-')[1]: bool(strtobool(value)) for name, value in form.cleaned_data.items() if
+                 name.startswith('buffs-')}
+        buff_dict = {
+            'buffs': buffs
+        }
+        return buff_dict
+
+    @staticmethod
+    def _get_oh_weapon_from_form(form):
+        try:
+            oh_name = form.cleaned_data['weapons-OH'][0]
+        except IndexError:
+            oh_name = None
+
+        return oh_name
+
+    @staticmethod
+    def _get_mh_weapon_from_form(form):
+        try:
+            mh_name = form.cleaned_data['weapons-MH'][0]
+        except IndexError:
+            mh_name = None
+        return mh_name
+
+    @staticmethod
     def _parse_config_file(config_file):
         with open(config_file, 'r') as config_file:
             content = yaml.load(config_file, yaml.FullLoader)
         return content
 
 
+# custom filters for django templates
 @register.filter
 def get_item(dictionary, key):
     return dictionary.get(key)
