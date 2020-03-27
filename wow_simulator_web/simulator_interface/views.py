@@ -381,10 +381,19 @@ def get_item(dictionary, key):
 
 
 @register.filter
-def filteritems(form_obj, filter_string):
+def filteritemsstartswith(form_obj, filter_string):
     filtered = deepcopy(form_obj)
     for field in form_obj:
         if not field.name.startswith(filter_string):
+            del filtered.fields[field.name]
+    return filtered
+
+
+@register.filter
+def filteritemsendswith(form_obj, filter_string):
+    filtered = deepcopy(form_obj)
+    for field in form_obj:
+        if not field.name.endswith(filter_string):
             del filtered.fields[field.name]
     return filtered
 

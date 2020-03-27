@@ -1,6 +1,6 @@
 <h3><i>Buffs</i></h3>
 <div class="rounded border" style="padding-left:50px; padding-right:50px; padding-top:20px; padding-bottom:20px; border-color: darkgrey !important;">
-    {% for field in form|filteritems:'buffs-' %}
+    {% for field in form|filteritemsstartswith:'buffs-' %}
         {% if forloop.first %}<div class="row">{% endif %}
 
         <div class="col-sm-4" style="text-align:left">

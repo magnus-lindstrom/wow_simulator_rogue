@@ -56,7 +56,7 @@ class MyForm(forms.Form):
                             'data-max-options': '1',
                             'data-title': f"Select {slot} item...",
                             'data-live-search': 'true',
-                            'id': f'drop_weapons-{slot}',
+                            'id': f'drop-weapons-{slot}',
                         },
                     )
                 )
@@ -78,7 +78,7 @@ class MyForm(forms.Form):
                             'class': 'selectpicker form-control show-tick',
                             'data-title': f"Select {slot} enchant...",
                             'data-live-search': 'true',
-                            'id': f'drop_weaponsenchants-{slot}',
+                            'id': f'drop-weaponsenchants-{slot}',
                         },
                     )
                 )
