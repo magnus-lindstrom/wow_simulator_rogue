@@ -37,6 +37,8 @@ $( document ).ready(function() {
         //replace the "Choose a file" label
         $(this).next('.custom-file-label').html(fileName);
     })
+
+    $("optgroup").attr('data-max-options', '1');
 });
 
 

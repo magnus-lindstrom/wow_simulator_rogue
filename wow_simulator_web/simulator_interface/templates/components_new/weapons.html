@@ -3,10 +3,15 @@
     {% for field in form|filteritems:'weapons-' %}
         {% if forloop.first %}<div class="row">{% endif %}
         <div class="col-sm-6">
+            <label for="drop_weapons{{ field.name }}" data-toggle="tooltip" data-placement="top" title="{{ field.label }} Items">{{ field.label }}</label>
             {{ field }}
         </div>
         {% if forloop.counter|divisibleby:2 %}</div><br><br><div class="row">{% endif %}
         {% if forloop.last %}</div>{% endif %}
+    {% endfor %}
+
+    {% for field in form|filteritems:'weaponsenchants-' %}
+        {{ field }}
     {% endfor %}
 <!--    {% for slot, items in weapon.items %}-->
 <!--        {% if forloop.first %}<div class="row">{% endif %}-->

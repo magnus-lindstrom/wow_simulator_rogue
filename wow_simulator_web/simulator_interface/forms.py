@@ -20,7 +20,7 @@ class MyForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        armor_enchant_items, weapon_enchant_items = self._parse_enchants_file()
+        self.armor_enchant_items, self.weapon_enchant_items = self._parse_enchants_file()
 
         self._create_talent_fields()
         self._create_buff_fields()
@@ -30,25 +30,25 @@ class MyForm(forms.Form):
 
         context_empty = {
             'armor': armor_items,
-            'armor_enchant': armor_enchant_items,
-            'weapon_enchant': weapon_enchant_items,
+            'armor_enchant': self.armor_enchant_items,
+            'weapon_enchant': self.weapon_enchant_items,
         }
 
     def _create_weapon_fields(self):
         weapon_items = self._parse_weapon_file()
 
         for slot, weapon_items in weapon_items.items():
-            choices = list()
+            weapon_choices = list()
             for weapon in weapon_items:
                 weapon_id = f'{weapon[0]}'
                 weapon_display_name = f'{weapon[1]}'
-                choices.append((weapon_id, weapon_display_name))
+                weapon_choices.append((weapon_id, weapon_display_name))
 
-            choices = tuple(choices)
+            weapon_choices = tuple(weapon_choices)
 
             self.fields.update({
                 f'weapons-{slot}': MultipleChoiceField(
-                    choices=choices,
+                    choices=weapon_choices,
                     label=slot,
                     widget=SelectMultiple(
                         attrs={
@@ -56,7 +56,29 @@ class MyForm(forms.Form):
                             'data-max-options': '1',
                             'data-title': f"Select {slot} item...",
                             'data-live-search': 'true',
-                            'id': f'drop_{slot}',
+                            'id': f'drop_weapons-{slot}',
+                        },
+                    )
+                )
+            })
+
+            enchant_choices = list()
+            for type, weapon_enchants in self.weapon_enchant_items[slot].items():
+                enchants_choices_without_type = tuple([(enchant[0], enchant[1]) for enchant in weapon_enchants])
+                enchant_choices.append((type, enchants_choices_without_type))
+
+            enchant_choices = tuple(enchant_choices)
+
+            self.fields.update({
+                f'weaponsenchants-{slot}': MultipleChoiceField(
+                    choices=enchant_choices,
+                    label=slot,
+                    widget=SelectMultiple(
+                        attrs={
+                            'class': 'selectpicker form-control show-tick',
+                            'data-title': f"Select {slot} enchant...",
+                            'data-live-search': 'true',
+                            'id': f'drop_weaponsenchants-{slot}',
                         },
                     )
                 )

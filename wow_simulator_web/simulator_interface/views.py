@@ -233,30 +233,35 @@ class TestView(TemplateView):
 
     def post(self, request, *args, **kwargs):
         if request.POST.get("generate_config"):
-            return self.generate_config_file(request)
+            config_file_name = request.POST.get('configFileName')
+            config_file_path = os.path.join(self.CONFIG_FILE_FOLDER, config_file_name)
+
+            # preserve submitted data
+            form = MyForm(request.POST)
+            context = {
+                'form': form
+            }
+
+            try:
+                self.generate_config_file(request, config_file_path)
+            except Exception as e:
+                messages.add_message(request, messages.ERROR, f"Error while creating file: {e}")
+            else:
+                messages.add_message(request, messages.SUCCESS, f"Config file created at: {config_file_path}")
+
+            return render(request, self.template_name, context=context)
 
         elif request.POST.get("load_config"):
             file_name = request.POST.get("file_to_load")
             file_path = os.path.join(self.CONFIG_FILE_FOLDER, file_name)
-            content = self._parse_config_file(file_path)
 
-            talents = {f'talents-{name}': value for name, value in content['talents'].items()}
-            buffs = {f'buffs-{name}': value for name, value in content['buffs'].items()}
-            oh_name = {'weapons-OH': [content['items']['oh_name']]}
-            mh_name = {'weapons-MH': [content['items']['mh_name']]}
-
-            initial_values = dict()
-            initial_values.update(talents)
-            initial_values.update(buffs)
-            initial_values.update(oh_name)
-            initial_values.update(mh_name)
-
+            initial_values = self._parse_config_file(file_path)
             form = MyForm(initial=initial_values)
 
-            messages.add_message(request, messages.SUCCESS, f"{content}")
+            messages.add_message(request, messages.SUCCESS, f"{initial_values}")
             return render(request, self.template_name, {'form': form})
 
-    def generate_config_file(self, request):
+    def generate_config_file(self, request, config_file_path):
         form = MyForm(data=request.POST)
 
         if form.is_valid():
@@ -272,10 +277,6 @@ class TestView(TemplateView):
         armor_enchant_values = request.POST.getlist('armor-enchant')
         weapon_enchant_values = request.POST.getlist('weapon-enchant')
         # weapon_values = request.POST.getlist('weapon')
-
-        # output file
-        config_file_name = request.POST.get('configFileName')
-        config_file_path = os.path.join(self.CONFIG_FILE_FOLDER, config_file_name)
 
         # # output dictionaries
         # try:
@@ -318,11 +319,7 @@ class TestView(TemplateView):
                 yaml.dump(buff_dict, config_file)
 
         except Exception as e:
-            messages.add_message(request, messages.ERROR, f"Error while creating file: {e}")
-        else:
-            messages.add_message(request, messages.SUCCESS, f"Config file created at: {config_file_path}")
-
-        return HttpResponseRedirect('/simulator_interface/test')
+            raise
 
     @staticmethod
     def _get_talents_from_form(form):
@@ -363,7 +360,18 @@ class TestView(TemplateView):
     def _parse_config_file(config_file):
         with open(config_file, 'r') as config_file:
             content = yaml.load(config_file, yaml.FullLoader)
-        return content
+
+            talents = {f'talents-{name}': value for name, value in content['talents'].items()}
+            buffs = {f'buffs-{name}': value for name, value in content['buffs'].items()}
+            oh_name = {'weapons-OH': [content['items']['oh_name']]}
+            mh_name = {'weapons-MH': [content['items']['mh_name']]}
+
+            initial_values = dict()
+            initial_values.update(talents)
+            initial_values.update(buffs)
+            initial_values.update(oh_name)
+            initial_values.update(mh_name)
+        return initial_values
 
 
 # custom filters for django templates
