@@ -228,7 +228,6 @@ class TestView(TemplateView):
         context = {
             'form': MyForm()
         }
-
         return render(request, self.template_name, context=context)
 
     def post(self, request, *args, **kwargs):
@@ -269,27 +268,16 @@ class TestView(TemplateView):
             buff_dict = self._get_buffs_from_form(form)
             oh_name = self._get_oh_weapon_from_form(form)
             mh_name = self._get_mh_weapon_from_form(form)
+            mh_enchants = self._get_mh_enchants_from_form(form)
+            oh_enchants = self._get_oh_enchants_from_form(form)
 
         else:
             raise Exception(form.errors)
 
         armor_values = request.POST.getlist('armor')
         armor_enchant_values = request.POST.getlist('armor-enchant')
-        weapon_enchant_values = request.POST.getlist('weapon-enchant')
+        # weapon_enchant_values = request.POST.getlist('weapon-enchant')
         # weapon_values = request.POST.getlist('weapon')
-
-        # # output dictionaries
-        # try:
-        #     mh_name = \
-        #     [weapon_value.split('-')[1] for weapon_value in weapon_values if weapon_value.split('-')[0] == 'MH'][0]
-        # except IndexError:
-        #     mh_name = None
-        #
-        # try:
-        #     oh_name = \
-        #     [weapon_value.split('-')[1] for weapon_value in weapon_values if weapon_value.split('-')[0] == 'OH'][0]
-        # except IndexError:
-        #     oh_name = None
 
         item_dict = {
             'items': {
@@ -302,10 +290,8 @@ class TestView(TemplateView):
             'enchants': {
                 'armor_enchant_names': [armor_enchant_value for armor_enchant_value in armor_enchant_values if
                                         armor_enchant_value],
-                'mh_enchant_names': [weapon_enchant_value.split('-')[1] for weapon_enchant_value in
-                                     weapon_enchant_values if weapon_enchant_value.split('-')[0] == 'MH'],
-                'oh_enchant_names': [weapon_enchant_value.split('-')[1] for weapon_enchant_value in
-                                     weapon_enchant_values if weapon_enchant_value.split('-')[0] == 'OH']
+                'mh_enchant_names': mh_enchants,
+                'oh_enchant_names': oh_enchants,
             }
         }
 
@@ -357,6 +343,14 @@ class TestView(TemplateView):
         return mh_name
 
     @staticmethod
+    def _get_mh_enchants_from_form(form):
+        return form.cleaned_data['weaponsenchants-MH']
+
+    @staticmethod
+    def _get_oh_enchants_from_form(form):
+        return form.cleaned_data['weaponsenchants-OH']
+
+    @staticmethod
     def _parse_config_file(config_file):
         with open(config_file, 'r') as config_file:
             content = yaml.load(config_file, yaml.FullLoader)
@@ -365,12 +359,16 @@ class TestView(TemplateView):
             buffs = {f'buffs-{name}': value for name, value in content['buffs'].items()}
             oh_name = {'weapons-OH': [content['items']['oh_name']]}
             mh_name = {'weapons-MH': [content['items']['mh_name']]}
+            oh_enchants = {'weaponsenchants-OH': content['enchants']['oh_enchant_names']}
+            mh_enchants = {'weaponsenchants-MH': content['enchants']['mh_enchant_names']}
 
             initial_values = dict()
             initial_values.update(talents)
             initial_values.update(buffs)
             initial_values.update(oh_name)
             initial_values.update(mh_name)
+            initial_values.update(oh_enchants)
+            initial_values.update(mh_enchants)
         return initial_values
 
 
