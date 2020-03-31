@@ -270,28 +270,35 @@ class TestView(TemplateView):
             mh_name = self._get_mh_weapon_from_form(form)
             mh_enchants = self._get_mh_enchants_from_form(form)
             oh_enchants = self._get_oh_enchants_from_form(form)
+            armor_items_and_slots = self._get_armor_slot_and_items_from_form(form)
+            armor_enchants_and_slots = self._get_armor_slot_and_enchants_from_form(form)
 
         else:
             raise Exception(form.errors)
 
-        armor_values = request.POST.getlist('armor')
-        armor_enchant_values = request.POST.getlist('armor-enchant')
-        # weapon_enchant_values = request.POST.getlist('weapon-enchant')
-        # weapon_values = request.POST.getlist('weapon')
-
         item_dict = {
             'items': {
-                'armor_names': [armor_value for armor_value in armor_values if armor_value],
+                'armor_names': [armor_item[1] for armor_item in armor_items_and_slots],
                 'mh_name': mh_name,
                 'oh_name': oh_name,
             }
         }
         enchant_dict = {
             'enchants': {
-                'armor_enchant_names': [armor_enchant_value for armor_enchant_value in armor_enchant_values if
-                                        armor_enchant_value],
+                'armor_enchant_names': [armor_enchant[1] for armor_enchant in armor_enchants_and_slots],
                 'mh_enchant_names': mh_enchants,
                 'oh_enchant_names': oh_enchants,
+            }
+        }
+
+        web_dict = {
+            'web': {
+                'armor_items': {
+                    slot: armor_item for slot, armor_item in armor_items_and_slots
+                },
+                'armor_enchant_names': {
+                    slot: armor_enchant for slot, armor_enchant in armor_enchants_and_slots
+                }
             }
         }
 
@@ -303,6 +310,7 @@ class TestView(TemplateView):
                 yaml.dump(enchant_dict, config_file)
                 yaml.dump(talent_dict, config_file)
                 yaml.dump(buff_dict, config_file)
+                yaml.dump(web_dict, config_file)
 
         except Exception as e:
             raise
@@ -361,6 +369,8 @@ class TestView(TemplateView):
             mh_name = {'weapons-MH': [content['items']['mh_name']]}
             oh_enchants = {'weaponsenchants-OH': content['enchants']['oh_enchant_names']}
             mh_enchants = {'weaponsenchants-MH': content['enchants']['mh_enchant_names']}
+            armor_items = {f'armors-{slot}': value for slot, value in content['web']['armor_items'].items()}
+            armor_enchants = {f'armorsenchants-{slot}': value for slot, value in content['web']['armor_enchant_names'].items()}
 
             initial_values = dict()
             initial_values.update(talents)
@@ -369,7 +379,33 @@ class TestView(TemplateView):
             initial_values.update(mh_name)
             initial_values.update(oh_enchants)
             initial_values.update(mh_enchants)
+            initial_values.update(armor_items)
+            initial_values.update(armor_enchants)
         return initial_values
+
+    @staticmethod
+    def _get_armor_slot_and_items_from_form(form):
+
+        armor_items = list()
+        for armorslot, items in form.cleaned_data.items():
+            slot = armorslot.split('-')[1]
+            if armorslot.startswith('armors-'):
+                for item in items:
+                    armor_items.append((slot, item))
+
+        return armor_items
+
+    @staticmethod
+    def _get_armor_slot_and_enchants_from_form(form):
+        armor_enchants = list()
+
+        for armorenchantslot, items in form.cleaned_data.items():
+            slot = armorenchantslot.split('-')[1]
+            if armorenchantslot.startswith('armorsenchants-'):
+                for item in items:
+                    armor_enchants.append((slot, item))
+
+        return armor_enchants
 
 
 # custom filters for django templates

@@ -1,9 +1,12 @@
 import os
 
 import yaml
+from django.db.models import TextField
+
+from django.utils.safestring import mark_safe
 from django.forms import forms
 from django.forms import CharField, TextInput, MultipleChoiceField, CheckboxInput, BooleanField, ChoiceField, Select, \
-    SelectMultiple
+    SelectMultiple, Widget
 
 
 class MyForm(forms.Form):
@@ -25,14 +28,74 @@ class MyForm(forms.Form):
         self._create_talent_fields()
         self._create_buff_fields()
         self._create_weapon_fields()
+        self._create_armor_fields()
 
-        armor_items = self._parse_armor_file()
+        # armor_items = self._parse_armor_file()
 
         context_empty = {
-            'armor': armor_items,
+            # 'armor': armor_items,
             'armor_enchant': self.armor_enchant_items,
-            'weapon_enchant': self.weapon_enchant_items,
         }
+
+    def _create_armor_fields(self):
+        armor_items = self._parse_armor_file()
+
+        for slot, armor_item in armor_items.items():
+            armor_choices = list()
+            for armor in armor_item:
+                armor_id = f'{armor[0]}'
+                armor_display_name = f'{armor[1]}'
+                armor_choices.append((armor_id, armor_display_name))
+
+            armor_choices = tuple(armor_choices)
+
+            self.fields.update({
+                f'armors-{slot}': MultipleChoiceField(
+                    choices=armor_choices,
+                    label=slot,
+                    widget=SelectMultiple(
+                        attrs={
+                            'class': 'selectpicker form-control show-tick',
+                            'data-max-options': '2' if slot == 'Ring' or slot == 'Trinket' else '1',
+                            'data-title': f"Select {slot} item...",
+                            'data-live-search': 'true',
+                            'id': f'drop-armors-{slot}',
+                        },
+                    )
+                )
+            })
+
+            enchant_choices = list()
+
+            if slot in self.armor_enchant_items:
+                for enchanttype, armor_enchants in self.armor_enchant_items[slot].items():
+                    enchants_choices_without_type = tuple([(enchant[0], enchant[1]) for enchant in armor_enchants])
+                    enchant_choices.append((enchanttype, enchants_choices_without_type))
+
+                enchant_choices = tuple(enchant_choices)
+
+                self.fields.update({
+                    f'armorsenchants-{slot}': MultipleChoiceField(
+                        choices=enchant_choices,
+                        label=slot,
+                        widget=SelectMultiple(
+                            attrs={
+                                'class': 'selectpicker form-control show-tick',
+                                'data-title': f"Select {slot} enchant...",
+                                'data-live-search': 'true',
+                                'id': f'drop-armorsenchants-{slot}',
+                            },
+                        )
+                    )
+                })
+            else:
+                self.fields.update({
+                    f'armorsenchants-{slot}': CharField(
+                        required=False,
+                        disabled=True,
+                        widget=PlainTextWidget
+                    )
+                })
 
     def _create_weapon_fields(self):
         weapon_items = self._parse_weapon_file()
@@ -63,9 +126,9 @@ class MyForm(forms.Form):
             })
 
             enchant_choices = list()
-            for type, weapon_enchants in self.weapon_enchant_items[slot].items():
+            for enchanttype, weapon_enchants in self.weapon_enchant_items[slot].items():
                 enchants_choices_without_type = tuple([(enchant[0], enchant[1]) for enchant in weapon_enchants])
-                enchant_choices.append((type, enchants_choices_without_type))
+                enchant_choices.append((enchanttype, enchants_choices_without_type))
 
             enchant_choices = tuple(enchant_choices)
 
@@ -219,3 +282,9 @@ class MyForm(forms.Form):
             talents.append((item_name, display_name, max_value))
 
         return talents
+
+
+class PlainTextWidget(Widget):
+    def render(self, name, value, attrs=None, renderer=None):
+        # HACK!! was not able to pass a value
+        return mark_safe("<p class='text-muted'> %s </p>" % value) if value is not None else "<p class='text-muted'> No Enchants Available </p>"
