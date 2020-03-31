@@ -12,12 +12,12 @@
             <div class="col-sm-4 offset-4">
                 <div class="input-group">
                     <div class="custom-file">
-                        <input type="file" class="custom-file-input" id="file_to_load" name="file_to_load" data-toggle="tooltip" data-placement="top" title="Not Yet Iplemented">
+                        <input type="file" class="custom-file-input" id="file_to_load" name="file_to_load" data-toggle="tooltip" data-placement="top" required>
                         <label class="custom-file-label" for="file_to_load">Load Existing Configuration...</label>
                     </div>
                 </div>
             </div>
-            <button type="submit" class="btn btn-info mb-2" name="load_config" value="true" data-toggle="tooltip" data-placement="top" title="Not Yet Iplemented">Load</button>
+            <button type="submit" class="btn btn-info mb-2" name="load_config" value="true">Load</button>
         </div>
     </form>
     <br>
@@ -63,17 +63,18 @@
 
 <!-- ------------------------------------       FILE HANDLING         -------------------------------------- -->
         <br>
+        <h3 style="text-align: center"><i>Config file name</i></h3>
         <div class="row">
-            <div class="col-sm-8 offset-2">
-                <h3><i>Config file name</i></h3>
-                <input class="form-control" type="text" name="configFileName" placeholder="Insert config-file name" required>
+            <div class="col-sm-4 offset-4">
+                <div class="input-group">
+                    <input class="form-control" type="text" name="configFileName" placeholder="Insert config-file name" required>
+                </div>
             </div>
+            <button type="submit" class="btn btn-info mb-2" name="generate_config" value="true">Submit</button>
         </div>
-
-        <br>
-        <br>
-        <button type="submit" class="btn btn-info mb-2" name="generate_config" value="true">Submit</button>
     </form>
+    <br>
+    <hr>
 </div>
 
 {% endblock %}

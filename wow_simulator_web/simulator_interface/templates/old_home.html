@@ -12,7 +12,7 @@
             <div class="col-sm-4 offset-4">
                 <div class="input-group">
                     <div class="custom-file">
-                        <input type="file" class="custom-file-input" id="file_to_load" name="file_to_load" data-toggle="tooltip" data-placement="top" required>
+                        <input type="file" class="custom-file-input" id="file_to_load" name="file_to_load" data-toggle="tooltip" data-placement="top" title="Not Yet Iplemented">
                         <label class="custom-file-label" for="file_to_load">Load Existing Configuration...</label>
                     </div>
                 </div>
@@ -32,14 +32,14 @@
                 <div class="row">
                     <div class="col-sm-12">
                         <!-- ARMOR -->
-                        {% include "components_new/armor.html" %}
+                        {% include "components_old/armor.html" %}
                     </div>
                 </div>
                 <br>
                 <div class="row">
                     <div class="col-sm-12">
                         <!-- WEAPONS -->
-                        {% include "components_new/weapons.html" %}
+                        {% include "components_old/weapons.html" %}
                     </div>
                 </div>
             </div>
@@ -48,14 +48,14 @@
                 <div class="row">
                     <div class="col-sm-12">
                         <!-- TALENTS -->
-                        {% include "components_new/talents.html" %}
+                        {% include "components_old/talents.html" %}
                     </div>
                 </div>
                 <br>
                 <div class="row">
                     <div class="col-sm-12">
                         <!-- BUFFS -->
-                        {% include "components_new/buffs.html" %}
+                        {% include "components_old/buffs.html" %}
                     </div>
                 </div>
             </div>
@@ -64,14 +64,11 @@
 <!-- ------------------------------------       FILE HANDLING         -------------------------------------- -->
         <br>
         <div class="row">
-            <div class="col-sm-8 offset-2">
+            <div class="col-sm-6 offset-3">
                 <h3><i>Config file name</i></h3>
                 <input class="form-control" type="text" name="configFileName" placeholder="Insert config-file name" required>
             </div>
         </div>
-
-        <br>
-        <br>
         <button type="submit" class="btn btn-info mb-2" name="generate_config" value="true">Submit</button>
     </form>
 </div>

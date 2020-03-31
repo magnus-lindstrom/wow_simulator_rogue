@@ -1,13 +1,12 @@
 <h3><i>Talents</i></h3>
 <div class="rounded border" style="padding-left:50px; padding-right:50px; padding-top:20px; padding-bottom:20px; border-color: darkgrey !important;">
-    {% for talent in talents %}
-    {% if forloop.first %}<div class="row">{% endif %}
-    <div class="col-sm-6" style="text-align:left">
-        <input type="number" id="{{ talent.0 }}" min="0" step="1" max="{{ talent.2 }}" name="talents" value="0" class="w-25"/>
-        <label for="{{ talent.0 }}" data-toggle="tooltip" data-placement="top" title="{{ talent.1 }}" class="control-label"> {{ talent.1 }} </label>
-        <input type="hidden" value="{{ talent.0 }}" name="talent_names" />
-    </div>
-    {% if forloop.counter|divisibleby:2 %}</div><br><div class="row">{% endif %}
-    {% if forloop.last %}</div>{% endif %}
+    {% for field in form|filteritemsstartswith:'talents-' %}
+        {% if forloop.first %}<div class="row">{% endif %}
+        <div class="col-sm-6" style="text-align:left;">
+            {{ field }} <label for="{{ field.id }}" class="control-label"> {{ field.label }} </label>
+<!--            <input type="hidden" value="{{ field.id }}" name="talent_names" />-->
+        </div>
+        {% if forloop.counter|divisibleby:2 %}</div><br><div class="row">{% endif %}
+        {% if forloop.last %}</div>{% endif %}
     {% endfor %}
 </div>
