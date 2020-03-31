@@ -51,7 +51,7 @@ class HomeView(TemplateView):
             initial_values = self._parse_config_file(file_path)
             form = MyForm(initial=initial_values)
 
-            messages.add_message(request, messages.SUCCESS, f"{initial_values}")
+            messages.add_message(request, messages.SUCCESS, f"Configuration loaded successfully from {file_path}")
             return render(request, self.template_name, {'form': form})
 
     def generate_config_file(self, request, config_file_path):
@@ -85,14 +85,25 @@ class HomeView(TemplateView):
             }
         }
 
+        # ------------------------- WEB config ------------------------- #
+        armor_item_web_dict = dict()
+        for slot, armor_item in armor_items_and_slots:
+            if slot not in armor_item_web_dict:
+                armor_item_web_dict[slot] = [armor_item]
+            else:
+                armor_item_web_dict[slot].append(armor_item)
+
+        armor_enchant_web_dict = dict()
+        for slot, armor_enchant in armor_enchants_and_slots:
+            if slot not in armor_enchant_web_dict:
+                armor_enchant_web_dict[slot] = [armor_enchant]
+            else:
+                armor_enchant_web_dict[slot].append(armor_enchant)
+
         web_dict = {
             'web': {
-                'armor_items': {
-                    slot: armor_item for slot, armor_item in armor_items_and_slots
-                },
-                'armor_enchant_names': {
-                    slot: armor_enchant for slot, armor_enchant in armor_enchants_and_slots
-                }
+                'armor_items': armor_item_web_dict,
+                'armor_enchant_names': armor_enchant_web_dict
             }
         }
 
@@ -163,8 +174,8 @@ class HomeView(TemplateView):
             mh_name = {'weapons-MH': [content['items']['mh_name']]}
             oh_enchants = {'weaponsenchants-OH': content['enchants']['oh_enchant_names']}
             mh_enchants = {'weaponsenchants-MH': content['enchants']['mh_enchant_names']}
-            armor_items = {f'armors-{slot}': value for slot, value in content['web']['armor_items'].items()}
-            armor_enchants = {f'armorsenchants-{slot}': value for slot, value in content['web']['armor_enchant_names'].items()}
+            armor_items = {f'armors-{slot}': items for slot, items in content['web']['armor_items'].items()}
+            armor_enchants = {f'armorsenchants-{slot}': items for slot, items in content['web']['armor_enchant_names'].items()}
 
             initial_values = dict()
             initial_values.update(talents)

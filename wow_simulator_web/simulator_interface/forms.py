@@ -51,6 +51,7 @@ class MyForm(forms.Form):
 
             self.fields.update({
                 f'armors-{slot}': MultipleChoiceField(
+                    required=False,
                     choices=armor_choices,
                     label=slot,
                     widget=SelectMultiple(
@@ -76,6 +77,7 @@ class MyForm(forms.Form):
 
                 self.fields.update({
                     f'armorsenchants-{slot}': MultipleChoiceField(
+                        required=False,
                         choices=enchant_choices,
                         label=slot,
                         widget=SelectMultiple(
@@ -134,6 +136,7 @@ class MyForm(forms.Form):
 
             self.fields.update({
                 f'weaponsenchants-{slot}': MultipleChoiceField(
+                    required=False,
                     choices=enchant_choices,
                     label=slot,
                     widget=SelectMultiple(
