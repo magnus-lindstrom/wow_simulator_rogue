@@ -1,0 +1,22 @@
+<h3><i>Weapon Enchants</i></h3>
+<div class="rounded border" style="padding-left:50px; padding-right:50px; padding-top:20px; padding-bottom:20px; border-color: darkgrey !important;">
+    {% for slot, slot_content in weapon_enchant.items %}
+    {% if forloop.first %}<div class="row">{% endif %}
+    <div class="col-sm-6">
+        <label for="drop_multiple_{{ slot }}" data-toggle="tooltip" data-placement="top" title="{{ slot }} Items">{{ slot }}</label>
+        <select class="selectpicker form-control show-tick" multiple data-title="Select {{ slot }} enchant..." data-live-search="true" name="weapon-enchant" id="drop_multiple_{{ slot }}">
+            {% for type, items in slot_content.items %}
+            <optgroup label="{{ type }}" data-max-options="1">
+                {% for item in items %}
+                <option value="{{ slot }}-{{ item.0 }}">{{ item.1 }}</option>
+                {% endfor %}
+            </optgroup>
+            {% endfor %}
+        </select>
+        <br>
+    </div>
+    {% if forloop.last %}</div>{% endif %}
+    {% if forloop.counter|divisibleby:2 %}</div><br><br><div class="row">{% endif %}
+
+    {% endfor %}
+</div>
