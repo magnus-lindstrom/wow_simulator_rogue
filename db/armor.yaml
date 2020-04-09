@@ -66,6 +66,21 @@ cape_of_the_black_baron:
     haste: 0.0
     attack_power: 20
   hit_procc: None
+aged_core_leather_gloves:
+  name: "Aged Core Leather Gloves"
+  set_tag: ''
+  slot: Hands
+  prim_stats:
+    agility: 0
+    strength: 15
+    sword_skill: 0
+    dagger_skill: 5
+  sec_stats:
+    crit: 0.15
+    hit: 0.0
+    haste: 0.0
+    attack_power: 0
+  hit_procc: None
 muggers_belt:
   name: "Mugger's Belt"
   set_tag: ''
