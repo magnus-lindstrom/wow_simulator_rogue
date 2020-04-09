@@ -76,7 +76,7 @@ aged_core_leather_gloves:
     sword_skill: 0
     dagger_skill: 5
   sec_stats:
-    crit: 0.15
+    crit: 0.01
     hit: 0.0
     haste: 0.0
     attack_power: 0
