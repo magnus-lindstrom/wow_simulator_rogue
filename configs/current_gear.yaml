@@ -1,0 +1,102 @@
+items:
+  armor_names:
+  - bloodfang_hood
+  - onyxia_tooth_pendant
+  - cape_of_the_black_baron
+  - nightslayer_gloves
+  - nightslayer_belt
+  - bloodfang_pants
+  - boots_of_the_shadow_flame
+  - master_dragonslayers_ring
+  - tarnished_elven_ring
+  - blackhands_breadth
+  - hand_of_justice
+  - satyrs_bow
+  - nightslayer_shoulder_pads
+  - nightslayer_chestpiece
+  - nightslayer_bracelets
+  mh_name: gutgore_ripper
+  oh_name: core_hound_tooth
+enchants:
+  armor_enchant_names:
+  - arcanum_of_rapidity
+  - lesser_agility
+  - greater_agility
+  - arcanum_of_rapidity
+  - greater_stats
+  - superior_strength
+  mh_enchant_names:
+  - superior_striking
+  - instant_poison_vi
+  oh_enchant_names:
+  - agility
+  - instant_poison_vi
+talents:
+  aggression: 2
+  dagger_specialization: 5
+  dual_wield_specialization: 5
+  improved_backstab: 3
+  improved_eviscerate: 0
+  improved_sinister_strike: 2
+  improved_slice_and_dice: 3
+  lethality: 5
+  malice: 5
+  opportunity: 5
+  precision: 5
+  relentless_strikes: 0
+  ruthlessness: 2
+  sword_specialization: 0
+  weapon_expertise: 2
+buffs:
+  battle_shout: true
+  bok: true
+  bom: true
+  grilled_squid: true
+  juju_might: true
+  juju_power: true
+  mongoose: true
+  motw: true
+  songflower_serenade: false
+web:
+  armor_enchant_names:
+    Back:
+    - lesser_agility
+    Chest:
+    - greater_stats
+    Hands:
+    - greater_agility
+    Head:
+    - arcanum_of_rapidity
+    Legs:
+    - arcanum_of_rapidity
+    Wrists:
+    - superior_strength
+  armor_items:
+    Back:
+    - cape_of_the_black_baron
+    Chest:
+    - nightslayer_chestpiece
+    Feet:
+    - boots_of_the_shadow_flame
+    Hands:
+    - nightslayer_gloves
+    Head:
+    - bloodfang_hood
+    Legs:
+    - bloodfang_pants
+    Neck:
+    - onyxia_tooth_pendant
+    Ranged:
+    - satyrs_bow
+    Ring:
+    - master_dragonslayers_ring
+    - tarnished_elven_ring
+    Shoulders:
+    - nightslayer_shoulder_pads
+    Trinket:
+    - blackhands_breadth
+    - hand_of_justice
+    Waist:
+    - nightslayer_belt
+    Wrists:
+    - nightslayer_bracelets
